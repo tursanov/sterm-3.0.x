@@ -66,3 +66,4 @@ option		__DO_STATIC__
 
 #CFLAGS		-std=gnu99 -Wall -Wno-switch -fno-strict-aliasing -g -pipe -I$(INCLUDE) -D_GNU_SOURCE
 CFLAGS		-std=gnu99 -Wall -Wno-switch -fno-strict-aliasing -pipe -O3 -DNDEBUG -I$(INCLUDE) -D_GNU_SOURCE
+CXXFLAGS	-std=gnu++0x -Wall -Wno-switch -fno-strict-aliasing -pipe -O3 -DNDEBUG -I$(INCLUDE) -D_GNU_SOURCE

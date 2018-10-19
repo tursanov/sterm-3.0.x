@@ -1,12 +1,11 @@
 include Makefile.conf
-DIR = fd/
+DIR = kkt/fd/
 
 INCLUDE = ../../include
-
-FFD_OBJS =	\
-	tlv		\
+FFD_OBJS =		\
 	ad 		\
 	fd		\
+	tlv
 
 OBJS = $(addsuffix .o, $(FFD_OBJS))
 

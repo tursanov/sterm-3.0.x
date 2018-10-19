@@ -19,6 +19,7 @@ GUI_OBJS =		\
 	xchange
 
 OBJS = $(addsuffix .o, $(GUI_OBJS))
+
 LOG = log
 
 .PHONY:	$(LOG)

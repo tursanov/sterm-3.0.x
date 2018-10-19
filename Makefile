@@ -24,7 +24,7 @@ BASE_OBJS =		\
 	sterm		\
 	tki		\
 	transport	\
-	xchange	\
+	xchange		\
 	list
 
 ifdef __USE_ISRV__
@@ -57,10 +57,13 @@ KKT_OBJS =		\
 	kkt		\
 	parser
 
-FD_OBJS =		\
-	tlv			\
-	fd			\
-	ad
+KKT_XML_OBJS =		\
+	xml
+
+KKT_FD_OBJS =		\
+	ad		\
+	fd		\
+	tlv
 
 LOG_OBJS =		\
 	express		\
@@ -93,7 +96,8 @@ USB_OBJS =		\
 OBJS =			\
 	$(addprefix base/,	$(addsuffix .o, $(BASE_OBJS)))		\
 	$(addprefix kkt/,	$(addsuffix .o, $(KKT_OBJS)))		\
-	$(addprefix kkt/fd/,	$(addsuffix .o, $(FD_OBJS)))		\
+	$(addprefix kkt/fd/,	$(addsuffix .o, $(KKT_FD_OBJS)))	\
+	$(addprefix kkt/xml/,	$(addsuffix .o, $(KKT_XML_OBJS)))	\
 	$(addprefix log/,	$(addsuffix .o, $(LOG_OBJS)))		\
 	$(addprefix gui/,	$(addsuffix .o, $(GUI_OBJS)))		\
 	$(addprefix gui/log/,	$(addsuffix .o, $(GUI_LOG_OBJS)))	\
@@ -106,7 +110,6 @@ SUBDIRS =		\
 	base		\
 	gui		\
 	kkt		\
-	kkt/fd		\
 	log		\
 	pos		\
 	ppp		\

@@ -2946,7 +2946,7 @@ static void show_kkt_info(void)
 			"%29s:  %s\n"		/* Текущий документ */
 			"%29s:  %s (%u)\n"	/* Смена */
 			"%29s:  %s\n"		/* Предупреждения */
-			"%29s:  %u (%s %s)\n"	/* Последний документ */
+			"%29s:  %u (%s %s)\n"	/* Последний сформ. документ */
 			"%29s:  %s\n"		/* Без квитанции ОФД */
 			"%29s:  %u (%s %s)\n"	/* Первый документ для ОФД */
 			"%29s:  %s\n"		/* Срок действия ФН */
@@ -2955,7 +2955,7 @@ static void show_kkt_info(void)
 
 			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес ККТ */
 			"%29s:  %u.%u.%u.%u\n"	/* Маска подсети */
-			"%29s:  %u.%u.%u.%u\n\n"	/* IP-адрес шлюза */
+			"%29s:  %u.%u.%u.%u\n\n"/* IP-адрес шлюза */
 
 			"%29s:  %s\n"		/* Точка доступа GPRS */
 			"%29s:  %s\n"		/* Пользователь GPRS */
@@ -2976,7 +2976,7 @@ static void show_kkt_info(void)
 		"Смена", fs_shift_ok ? (fs_shift_state.opened ? "Открыта" : "Закрыта") : "НЕТ",
 		fs_shift_ok ? fs_shift_state.shift_nr : 0,
 		"Предупреждения", fs_status_ok ? fs_alert_str(fs_status.alert_flags) : "НЕТ",
-		"Последний документ", fs_status_ok ? fs_status.last_doc_nr : 0,
+		"Последний сформ. документ", fs_status_ok ? fs_status.last_doc_nr : 0,
 		fs_status_ok ? fs_date_str(&fs_status.dt.date) : "00.00.0000",
 		fs_status_ok ? fs_time_str(&fs_status.dt.time) : "00:00",
 		"Без квитанции ОФД", fs_nr_unconfirmed(),

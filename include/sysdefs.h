@@ -22,7 +22,7 @@
 /* Определение размера структуры, начиная с заданного поля */
 #define xsizefrom(s, f) (sizeof(s) - offsetof(typeof(s), f))
 
-#if !defined __KERNEL__
+#if !defined __cplusplus && !defined __KERNEL__
 typedef int bool;
 #endif
 #define false 0
