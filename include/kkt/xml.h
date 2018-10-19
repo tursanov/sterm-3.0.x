@@ -18,7 +18,7 @@ extern "C" {
 
 typedef int (*kkt_xml_callback_t)(bool check, int evt, const char *name, const char *val);
 
-extern bool parse_kkt_xml(char *xml, bool check, kkt_xml_callback_t cbk,
+extern bool parse_kkt_xml(char *data, bool check, kkt_xml_callback_t cbk,
 	char **ep, const char **emsg);
 
 #if defined __cplusplus

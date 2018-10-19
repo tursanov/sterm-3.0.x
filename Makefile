@@ -131,7 +131,7 @@ $(SUBDIRS):
 
 sterm:	$(OBJS)
 	@echo -e "\t$(LD_NAME)   $@"
-	@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
+	@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE) -lstdc++
 
 mk_env:
 	@if [ ! -f $(STERM_HOME)/sterm.dat ]; then\

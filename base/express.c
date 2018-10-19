@@ -10,6 +10,7 @@
 #include "gui/dialog.h"
 #include "gui/scr.h"
 #include "kkt/kkt.h"
+#include "kkt/xml.h"
 #include "log/express.h"
 #include "log/local.h"
 #include "log/pos.h"
@@ -900,6 +901,25 @@ static uint8_t *check_lprn(uint8_t *txt, int l, int *ecode)
 	return txt;
 }
 
+/* Проверка XML для ККТ */
+static uint8_t *check_kkt_xml(uint8_t *txt, int l, int *ecode)
+{
+	*ecode = E_OK;
+	l = para_len(txt - resp_buf);
+	memcpy(text_buf, txt, l);
+	text_buf[l] = 0;
+	char *ep = NULL;
+	const char *emsg = NULL;
+	if (parse_kkt_xml((char *)text_buf, true, NULL, &ep, &emsg)){
+		printf("XML ok\n");
+		txt += l;
+	}else{
+		printf("%s: %s\n", emsg, ep);
+		*ecode = E_KKT_XML;
+	}
+	return txt;
+}
+
 /* Проверка абзаца ответа */
 static uint8_t *check_para(uint8_t *txt, int l, int *ecode)
 {
@@ -907,6 +927,7 @@ static uint8_t *check_para(uint8_t *txt, int l, int *ecode)
 	int dst = get_dest(txt[-1]);
 	bool has_warray = false;
 	*ecode = E_OK;
+	printf("%s: dst = %d\n", __func__, dst);
 	if ((txt == NULL) || (l <= 0))
 		return NULL;
 	else if (para_len(txt - resp_buf) > OUT_BUF_LEN){
@@ -917,6 +938,8 @@ static uint8_t *check_para(uint8_t *txt, int l, int *ecode)
 		p = check_aprn(txt, l, ecode);
 	else if (dst == dst_lprn)
 		p = check_lprn(txt, l, ecode);
+	else if (dst == dst_kkt)
+		return check_kkt_xml(txt, l, ecode);
 	else
 		p = txt;
 	if (*ecode != E_OK)
@@ -1198,9 +1221,7 @@ uint8_t *check_syntax(uint8_t *txt, int l, int *ecode)
 						*ecode = E_KKT_XML;
 						return p - 2;
 					}*/
-					p += l;
-					n_dsts++;
-					break;
+					goto main_chk;
 				case X_WR_LOG:
 					if (wm != wm_local){
 						*ecode = E_NODEVICE;
