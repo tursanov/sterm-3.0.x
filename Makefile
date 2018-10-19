@@ -139,7 +139,7 @@ mk_env:
 clean:
 	@rm -f sterm
 	@for dir in $(SUBDIRS); do \
-		$(MAKE) clean -C $$dir -I../; \
+		$(MAKE) clean -C $$dir -I../ -I../../; \
 	done
 
 more_clean:
