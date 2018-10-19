@@ -26,6 +26,7 @@
 #include "gui/log/pos.h"
 #include "gui/menu.h"
 #include "gui/options.h"
+#include "gui/kkt.h"
 #include "gui/ping.h"
 #include "gui/scr.h"
 #include "gui/ssaver.h"
@@ -108,6 +109,7 @@ bool help_active	= false;
 bool ssaver_active	= false;
 bool ping_active	= false;
 bool pos_active		= false;
+bool kkt_active		= false;
 
 static bool term_busy = false;		/* флаг занятости терминала */
 
@@ -1851,6 +1853,7 @@ static int handle_kbd(struct kbd_event *e, bool check_scr, bool busy)
 		{KEY_K, cmd_view_xlog},		/* просмотр ЦКЛ */
 		{KEY_L, cmd_iplir_version},	/* информация о версии VipNet-клиента */
 		{KEY_M, cmd_view_llog},		/* просмотр ПКЛ */
+		{KEY_O, cmd_kkt },			/* ККТ */
 		{KEY_P, cmd_ping},		/* ping */
 		{KEY_Q,	cmd_ppp_hangup},	/* разрыв соединения PPP */
 		{KEY_R, cmd_view_keys},		/* ключи */
@@ -2604,6 +2607,17 @@ static void show_ping(void)
 		}
 	}
 }
+
+/* Показать окно ККТ */
+static void show_kkt(void)
+{
+	if ((kt != key_srv) && (kt != key_dbg))
+		err_beep();
+	else if (!kkt_active){
+		init_kkt();
+	}
+}
+
 
 /* Показать окно POS-терминала */
 static void show_pos(void)
@@ -4022,6 +4036,7 @@ static bool process_term(void)
 		{cmd_options,		show_options,		true},
 		{cmd_calculator,	show_calculator,	true},
 		{cmd_ping,		show_ping,		true},
+		{cmd_kkt,		show_kkt,		true},
 		{cmd_view_error,	show_error,		true},
 
 		{cmd_edit_iplir, on_edit_iplir, false},

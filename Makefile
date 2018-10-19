@@ -44,7 +44,8 @@ GUI_OBJS =		\
 	scr		\
 	ssaver		\
 	status		\
-	xchange
+	xchange		\
+	kkt
 
 GUI_LOG_OBJS =		\
 	express		\

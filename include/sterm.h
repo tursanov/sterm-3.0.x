@@ -139,6 +139,7 @@ enum {
 	cmd_lprn_snapshots,
 	cmd_lprn_erase_sd,
 	cmd_continue,		/* используется при показе сообщений об ошибках ППУ */
+	cmd_kkt,
 };
 
 extern int kt;			/* тип ключа DS1990A */

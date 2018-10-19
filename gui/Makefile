@@ -16,7 +16,8 @@ GUI_OBJS =		\
 	scr		\
 	ssaver		\
 	status		\
-	xchange
+	xchange	\
+	kkt
 
 OBJS = $(addsuffix .o, $(GUI_OBJS))
 
