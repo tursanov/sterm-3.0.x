@@ -22,7 +22,8 @@ BASE_OBJS =		\
 	sterm		\
 	tki		\
 	transport	\
-	xchange
+	xchange	\
+	list
 
 ifdef __USE_ISRV__
 	BASE_OBJS += imsg

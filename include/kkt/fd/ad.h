@@ -1,0 +1,122 @@
+#ifndef AD_H
+#define AD_H
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include "list.h"
+
+// составляющая
+typedef struct L {
+    char *s;        // Название составляющей
+    uint8_t p;      // Код признака расчёта
+    uint8_t r;      // Код признака способа расчёта
+    int64_t t;      // Стоимость составляющей, включая НДС
+    uint8_t n;      // Стоимость составляющей, включая НДС
+    int64_t c;      // Величина НДС за составляющую
+} L;
+
+// создание составляющей
+extern L *L_create(void);
+// удаление составляющей
+extern void L_destroy(L *l);
+// запись составляющей в файл
+extern int L_save(L *l, FILE *f);
+// загрузка составляющей из файла
+extern L *L_load(FILE *f);
+
+// документ
+typedef struct K {
+    struct list_t llist;    // список составляющих
+    uint8_t o;          // Операция
+    int64_t d;          // Номер оформляемого документа или КРС при возврате
+    int64_t r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
+    int64_t i;          // индекс
+    int64_t p;          // ИНН перевозчика
+    char *h;            // телефон перевозчика
+    uint8_t m;          // способ оплаты
+    char *t;            // номер телефона пассажира
+    char *e;            // адрес электронной посты пассажира
+} K;
+
+// создание информации о документе
+extern K *K_create(void);
+// удаление информации о документе
+extern void K_destroy(K *k);
+// добавление составляющей в документ
+extern bool K_addL(K *k, L* l);
+// разделение документа на 2 по признаку расчета
+extern K *K_divide(K *k, uint8_t p);
+// проверка на равенство по всем L
+extern bool K_equalByL(K *k1, K *k2);
+
+// запись документа в файл
+extern int K_save(K *k, FILE *f);
+// загрузка документа из файла
+extern K *K_load(FILE *f);
+
+// сумма
+typedef struct S {
+    int64_t a; // общая сумма
+    int64_t n; // сумма наличных
+    int64_t e; // сумма электронных
+    int64_t p; // сумма в зачет ранее внесенных средств
+} S;
+
+// прибавить к dst src
+extern void S_add(S *dst, S*src);
+// вычесть из dst src
+extern void S_subtract(S* dst, S*src);
+// прибавить значение к сумме (в зависимости от вида расчета)
+extern void S_addValue(uint8_t m, int64_t value, S *sum, size_t count);
+// вычесть из суммы значение (в зависимости от вида расчета)
+extern void S_subtractValue(uint8_t m, int64_t value, S *sum, size_t count);
+
+// чек
+typedef struct C {
+    list_t klist;       // список тэгов K
+    uint64_t p;     // ИНН переводчика
+    char *s;        // телефон перевозчика
+    uint8_t t1054;  // признак расчета
+    uint8_t t1055;  // применяемая система налогообложения
+    S sum;          // сумма
+    uint8_t t1086;  // значение дополнительного реквизита пользователя
+    char *pe;       // Тел. или e-mail покупателя
+} C;
+
+extern C* C_create(void);
+extern void C_destroy(C *c);
+extern bool C_addK(C *c, K *k);
+
+extern int C_save(C *c, FILE *f);
+extern C* C_load(FILE *f);
+
+// данные кассира
+typedef struct P1 {
+    char *i;
+    char *p;
+    char *t;
+    char *s;
+} P1;
+
+// Корзина фискального приложения
+typedef struct AD {
+    P1 p1;              // данные кассира
+    uint8_t t1055;
+    char * t1086;
+#define MAX_SUM 4
+    S sum[MAX_SUM];     // сумма
+    list_t clist;           // список чеков
+} AD;
+
+// создание корзины
+extern AD *AD_create(void);
+// удаление корзины
+extern void AD_destroy(AD *ad);
+// сохранение корзины на диск
+extern int AD_save(AD *ad, const char *file_name);
+extern int AD_load(const char *file_name, AD **ad);
+// установка значения для тэга T1086
+extern void AD_setT1086(AD *ad, const char *i, const char *p, const char *t);
+
+#endif // AD_H

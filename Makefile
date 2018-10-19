@@ -24,7 +24,8 @@ BASE_OBJS =		\
 	sterm		\
 	tki		\
 	transport	\
-	xchange
+	xchange	\
+	list
 
 ifdef __USE_ISRV__
 	BASE_OBJS += imsg
@@ -55,6 +56,11 @@ KKT_OBJS =		\
 	io		\
 	kkt		\
 	parser
+
+FD_OBJS =		\
+	tlv			\
+	fd			\
+	ad
 
 LOG_OBJS =		\
 	express		\
@@ -87,6 +93,7 @@ USB_OBJS =		\
 OBJS =			\
 	$(addprefix base/,	$(addsuffix .o, $(BASE_OBJS)))		\
 	$(addprefix kkt/,	$(addsuffix .o, $(KKT_OBJS)))		\
+	$(addprefix kkt/fd/,	$(addsuffix .o, $(FD_OBJS)))		\
 	$(addprefix log/,	$(addsuffix .o, $(LOG_OBJS)))		\
 	$(addprefix gui/,	$(addsuffix .o, $(GUI_OBJS)))		\
 	$(addprefix gui/log/,	$(addsuffix .o, $(GUI_LOG_OBJS)))	\
@@ -99,6 +106,7 @@ SUBDIRS =		\
 	base		\
 	gui		\
 	kkt		\
+	kkt/fd		\
 	log		\
 	pos		\
 	ppp		\
@@ -116,7 +124,7 @@ inc_build:
 	@./helpers/setbuild.pl
 
 $(SUBDIRS):
-	@$(MAKE) -C $@ -I../
+	@$(MAKE) -C $@ -I../ -I../../
 
 sterm:	$(OBJS)
 	@echo -e "\t$(LD_NAME)   $@"
