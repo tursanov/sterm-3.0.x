@@ -25,6 +25,7 @@ BASE_OBJS =		\
 HELPERS_OBJS =		\
 	chipid		\
 	chkrmlic	\
+	licsig		\
 	mkbind		\
 	mklicenses	\
 	mklog		\
@@ -61,7 +62,8 @@ CHKRMLIC_BASE_OBJS =	\
 	tki
 
 CHKRMLIC_HELPERS_OBJS =	\
-	chkrmlic
+	chkrmlic	\
+	licsig
 
 CHKRMLIC_OBJS =		\
 	$(addprefix $(DIR_BASE), $(addsuffix .o, $(CHKRMLIC_BASE_OBJS))) \
@@ -78,6 +80,7 @@ MKBIND_BASE_OBJS =	\
 	tki
 
 MKBIND_HELPERS_OBJS =	\
+	licsig		\
 	mkbind
 
 MKBIND_OBJS =		\
@@ -95,6 +98,7 @@ MKLICENSES_BASE_OBJS =	\
 	tki
 
 MKLICENSES_HELPERS_OBJS =	\
+	licsig		\
 	mklicenses
 
 MKLICENSES_OBJS =	\
@@ -129,6 +133,7 @@ MW_BASE_OBJS =		\
 	tki
 
 MW_HELPERS_OBJS =	\
+	licsig		\
 	mw
 
 MW_OBJS =		\

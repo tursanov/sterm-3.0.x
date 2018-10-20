@@ -16,10 +16,11 @@ extern "C" {
 #define KKT_XML_ATTR		3	/* атрибут тега */
 #define KKT_XML_END		4	/* окончание XML */
 
-typedef int (*kkt_xml_callback_t)(bool check, int evt, const char *name, const char *val);
+typedef int (*kkt_xml_callback_t)(uint32_t check, int evt, const char *name, const char *val);
 
-extern bool parse_kkt_xml(char *data, bool check, kkt_xml_callback_t cbk,
-	char **ep, const char **emsg);
+extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
+
+extern uint8_t *parse_kkt_xml(uint8_t *data, uint32_t check, kkt_xml_callback_t cbk, int *ecode);
 
 #if defined __cplusplus
 }

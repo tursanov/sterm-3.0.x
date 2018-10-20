@@ -901,23 +901,54 @@ static uint8_t *check_lprn(uint8_t *txt, int l, int *ecode)
 	return txt;
 }
 
+__attribute__((__weak__)) int kkt_xml_callback(uint32_t check, int evt, const char *name,
+	const char *val)
+{
+	printf("%s: check = %u; evt = %d; name = [%s]; val = [%s]\n", __func__,
+		check, evt, name, val);
+	return E_OK;
+}
+
 /* Проверка XML для ККТ */
 static uint8_t *check_kkt_xml(uint8_t *txt, int l, int *ecode)
 {
+	uint8_t *ret = txt;
 	*ecode = E_OK;
-	l = para_len(txt - resp_buf);
-	memcpy(text_buf, txt, l);
-	text_buf[l] = 0;
-	char *ep = NULL;
-	const char *emsg = NULL;
-	if (parse_kkt_xml((char *)text_buf, true, NULL, &ep, &emsg)){
-		printf("XML ok\n");
-		txt += l;
-	}else{
-		printf("%s: %s\n", emsg, ep);
-		*ecode = E_KKT_XML;
+	int len = -1;
+	bool esc = false;
+	for (int i = 0; i < l; i++){
+		uint8_t b = txt[i];
+		if (esc){
+			if ((b == X_PARA_END) || (b == X_PARA_END_N))
+				len = i - 1;
+			else{
+				*ecode = E_KKT_XML;
+				ret = txt + i - 1;
+			}
+			break;
+		}else
+			esc = b == X_DLE;
 	}
-	return txt;
+	if (*ecode == E_OK){
+		if (len == -1){
+			ret = txt + l;
+			*ecode = E_NOPEND;
+		}else if (len > OUT_BUF_LEN)
+			*ecode = E_BIGPARA;
+	}
+	if (*ecode != E_OK)
+		return ret;
+	memcpy(text_buf, txt, len);
+	text_buf[len] = 0;
+	ret = parse_kkt_xml(text_buf, true, kkt_xml_callback, ecode);
+	printf("%s: ecode = %.2x\n", __func__, *ecode);
+	if (*ecode == E_OK)
+		ret = txt + len + 2;
+	else if (ret == NULL)
+		ret = txt;
+	else
+		ret = txt + (ret - text_buf);
+	return ret;
 }
 
 /* Проверка абзаца ответа */
@@ -927,12 +958,11 @@ static uint8_t *check_para(uint8_t *txt, int l, int *ecode)
 	int dst = get_dest(txt[-1]);
 	bool has_warray = false;
 	*ecode = E_OK;
-	printf("%s: dst = %d\n", __func__, dst);
 	if ((txt == NULL) || (l <= 0))
 		return NULL;
 	else if (para_len(txt - resp_buf) > OUT_BUF_LEN){
 		*ecode = E_BIGPARA;
-		return err_ptr = txt;
+		return txt;
 	}
 	if (dst == dst_aprn)
 		p = check_aprn(txt, l, ecode);
@@ -1370,7 +1400,7 @@ int make_resp_map(void)
 						break;
 					case X_PARA_END_N:
 						pi->jump_next = true;
-						first_print = false;
+						first_print = false;	/* pass through */
 					case X_PARA_END:
 					case X_REQ:
 						next_para = true;
@@ -1511,8 +1541,7 @@ bool check_raw_resp(void)
 			if (!check_etx() || !prepare_raw_resp())
 				return false;
 			clear_hash(prom);
-			err_ptr = check_syntax(resp_buf + text_offset,
-					text_len, &ecode);
+			err_ptr = check_syntax(resp_buf + text_offset, text_len, &ecode);
 			clear_hash(prom);
 			if (err_ptr == NULL){
 				n_paras = make_resp_map();
@@ -2011,6 +2040,13 @@ static bool try_print_llog(const uint8_t *data, size_t len)
 	return lret != LPRN_RET_RST;
 }
 
+static void execute_kkt(struct para_info *pi, int len)
+{
+	int err = E_OK;
+	text_buf[len] = 0;
+	parse_kkt_xml(text_buf, false, kkt_xml_callback, &err);
+}
+
 extern void show_llog(void);
 
 /* Обработка текста ответа. Возвращает false, если надо перейти к ОЗУ заказа */
@@ -2105,6 +2141,8 @@ bool execute_resp(void)
 						return resp_executing = false;
 					}
 					break;
+				case dst_kkt:
+					execute_kkt(p, l);	/* pass through */
 				default:
 					p->handled = true;
 					n--;

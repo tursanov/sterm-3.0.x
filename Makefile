@@ -18,18 +18,15 @@ BASE_OBJS =		\
 	iplir		\
 	kbd		\
 	keys		\
+	licsig		\
+	list		\
 	md5		\
 	rndtbl		\
 	serial		\
 	sterm		\
 	tki		\
 	transport	\
-	xchange		\
-	list
-
-ifdef __USE_ISRV__
-	BASE_OBJS += imsg
-endif
+	xchange
 
 GUI_OBJS =		\
 	adv_calc	\

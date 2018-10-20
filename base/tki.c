@@ -11,6 +11,7 @@
 #include "base64.h"
 #include "genfunc.h"
 #include "license.h"
+#include "licsig.h"
 #include "md5.h"
 #include "tki.h"
 
@@ -184,48 +185,18 @@ void check_iplir_bind(void)
 	iplir_ok = cmp_md5(&md5, &iplir_bind);
 }
 
-/* Буфер для работы с MBR */
-static uint8_t mbr[SECTOR_SIZE];
-
-/* Чтение MBR заданного устройства */
-static bool read_mbr(int dev)
-{
-	return	(lseek(dev, 0, SEEK_SET) == 0) &&
-		(read(dev, mbr, sizeof(mbr)) == sizeof(mbr));
-}
-
-/* Открытие устройства для чтения/записи LIC_SIGNATURE */
-static int open_term_dev(void)
-{
-	int dev = open(DOM_DEV, O_RDWR);
-	if (dev == -1)
-		dev = open(DOC_DEV, O_RDWR);
-	return dev;
-}
-
-/* Проверка присутствия признака установки лицензии */
-static bool check_lic_signature(int dev)
-{
-	if (read_mbr(dev))
-		return *(uint16_t *)(mbr + LIC_SIGNATURE_OFFSET) == LIC_SIGNATURE;
-	else
-		return true;
-}
-
-/* Проверка банковской лицензии */
+/* Проверка лицензии ИПТ */
 void check_bank_license(void)
 {
 	uint8_t buf[2 * TERM_NUMBER_LEN];
 	uint8_t v1[64], v2[64];
 	struct md5_hash md5;
-	int i, dev = open_term_dev();
-	bool flag;
-	if (dev == -1)
-		return;
-	flag = check_lic_signature(dev);
-	close(dev);
-	if (flag)
-		return;
+	int i;
+	bank_ok = false;
+#if defined __CHECK_LIC_SIGNATURE__
+	if (check_lic_signature(BANK_LIC_SIGNATURE_OFFSET, BANK_LIC_SIGNATURE))
+		return;		/* лицензия была удалена */
+#endif
 	get_tki_field(&tki, TKI_NUMBER, buf);
 	for (i = 0; i < TERM_NUMBER_LEN; i++)
 		buf[sizeof(buf) - i - 1] = ~buf[i];

@@ -26,6 +26,7 @@ BASE_OBJS =		\
 	ds1990a		\
 	genfunc		\
 	hex		\
+	licsig		\
 	md5		\
 	rndtbl		\
 	serial		\
@@ -131,6 +132,7 @@ multiport:	multiport.o
 MWL_BASE_OBJS =		\
 	base64		\
 	ds1990a		\
+	licsig		\
 	md5		\
 	tki
 
@@ -152,6 +154,7 @@ mwl:		$(MWL_OBJS)
 
 ## rmlic
 RMLIC_BASE_OBJS =	\
+	licsig		\
 	md5		\
 	rndtbl
 
@@ -169,6 +172,7 @@ rmlic:		$(RMLIC_OBJS)
 ## rmlicx
 RMLICX_BASE_OBJS =	\
 	base64		\
+	licsig		\
 	md5		\
 	rndtbl		\
 	tki

@@ -1,6 +1,6 @@
 /*
  *	Эти функции используются различными модулями терминала.
- *	(c) gsr 2000-2003
+ *	(c) gsr 2000-2003, 2018
  */
 
 #if !defined GENFUNC_H
@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <time.h>
 #include "sysdefs.h"
+
+#if defined __cplusplus
+extern "C" {
+#endif
 
 /*
  * Дата и время хранятся в специальном формате, чтобы
@@ -42,5 +46,9 @@ extern bool	fill_file(int fd, uint32_t len);
 /* Поиск заданной последовательности */
 extern uint8_t *memfind(uint8_t *mem, size_t mem_len, const uint8_t *tmpl,
 	size_t tmpl_len);
+
+#if defined __cplusplus
+}
+#endif
 
 #endif		/* GENFUNC_H */
