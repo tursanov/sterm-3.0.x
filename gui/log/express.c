@@ -1,6 +1,6 @@
 /*
  * Вывод на экран информации циклической контрольной ленты (ЦКЛ).
- * (c) gsr, Alex 2001-2004, 2009
+ * (c) gsr, Alex 2001-2004, 2009, 2018.
  */
 
 #include <ctype.h>
@@ -221,6 +221,7 @@ static void xlog_fill_scr_data(struct log_gui_context *ctx)
 			break;
 		case XLRT_NORMAL:
 		case XLRT_AUX:
+		case XLRT_KKT:
 			xlog_fill_scr_normal(ctx);
 			break;
 		case XLRT_SPECIAL:

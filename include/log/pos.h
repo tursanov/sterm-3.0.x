@@ -20,7 +20,7 @@ struct plog_header {
 	uint32_t tag;		/* признак заголовка */
 #define	PLOG_TAG	0x534f503e	/* >POS */
 	uint32_t len;		/* длина КЛ без учета заголовка */
-	uint32_t n_recs;		/* число записей */
+	uint32_t n_recs;	/* число записей */
 	uint32_t head;		/* смещение первой записи */
 	uint32_t tail;		/* смещение последней записи */
 	uint32_t cur_number;	/* номер текущей записи */
@@ -30,7 +30,7 @@ struct plog_header {
 struct plog_rec_header {
 	uint32_t tag;		/* признак заголовка записи */
 #define PLOG_REC_TAG	0x43455250	/* PREC */
-	uint32_t number;		/* номер записи */
+	uint32_t number;	/* номер записи */
 	uint32_t type;		/* тип записи */
 	uint32_t len;		/* длина записи без учета заголовка */
 	struct date_time dt;	/* дата и время (по Москве) создания записи */

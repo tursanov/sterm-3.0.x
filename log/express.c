@@ -1,4 +1,4 @@
-/* Функции для работы с циклической контрольной лентой. (c) gsr 2004, 2008. */
+/* Функции для работы с циклической контрольной лентой. (c) gsr 2004, 2008, 2018 */
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -110,6 +110,7 @@ static bool xlog_fill_map(struct log_handle *hlog)
 			case XLRT_BANK:
 			case XLRT_IPCHANGE:
 			case XLRT_REJECT:
+			case XLRT_KKT:
 				break;
 			default:
 				fprintf(stderr, "Запись %s #%u имеет неизвестный тип: %.4x.\n",
@@ -809,6 +810,7 @@ bool xlog_print_rec(void)
 	switch (xlog_rec_hdr.type){
 		case XLRT_NORMAL:
 		case XLRT_AUX:
+		case XLRT_KKT:
 			return xlog_print_xlrt_normal();
 		case XLRT_NOTIFY:
 			return xlog_print_xlrt_notify();

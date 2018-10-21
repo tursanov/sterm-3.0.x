@@ -1784,6 +1784,12 @@ static void preexecute_resp(void)
 					log_number = llog_write_rec(hllog, text_buf, l,
 						LLRT_NORMAL, log_para++);
 				break;
+			case dst_kkt:
+				no_print = false;
+				if (wm == wm_main)
+					log_number = xlog_write_rec(hxlog, text_buf, l,
+						XLRT_KKT, log_para++);
+				break;
 			case dst_text:
 				if (transition_flag != -1)
 					transition_flag++;

@@ -19,6 +19,8 @@
 #define STERM_PLOG_NAME		_("pos.log")
 /* Имя файла ПКЛ */
 #define STERM_LLOG_NAME		_("local.log")
+/* Имя файла ККЛ */
+#define STERM_KLOG_NAME		_("kkt.log")
 /* Имя файла конфигурации терминала */
 #define STERM_CFG_NAME		_("sterm.conf")
 /* Имя файла запросов */

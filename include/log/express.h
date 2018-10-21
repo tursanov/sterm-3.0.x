@@ -27,15 +27,15 @@ struct xlog_header {
 struct xlog_rec_header {
 	uint32_t tag;		/* признак заголовка записи */
 #define XLOG_REC_TAG	0x4345523e	/* >REC */
-	uint32_t number;		/* номер записи */
-	uint32_t n_para;		/* номер абзаца в записи */
+	uint32_t number;	/* номер записи */
+	uint32_t n_para;	/* номер абзаца в записи */
 	uint32_t type;		/* тип записи */
 	uint16_t code;		/* код записи (приходит из хост-ЭВМ) */
 	uint32_t len;		/* длина записи без учета заголовка */
 	struct date_time dt;	/* дата и время (по Москве) создания записи */
 	struct term_addr addr;	/* адрес терминала в момент создания записи */
 	uint32_t term_version;	/* версия ПО терминала, сделавшего запись */
-	uint16_t term_check_sum;	/* контрольная сумма терминала, сделавшего запись */
+	uint16_t term_check_sum;/* контрольная сумма терминала, сделавшего запись */
 	term_number tn;		/* заводской номер терминала, сделавшего запись */
 	uint8_t xprn_number[PRN_NUMBER_LEN];	/* заводской номер ОПУ */
 	uint8_t aprn_number[PRN_NUMBER_LEN];	/* заводской номер ДПУ */
@@ -63,6 +63,7 @@ enum {
 	XLRT_BANK,		/* абзац для ИПТ */
 	XLRT_IPCHANGE,		/* смена ip-адреса хост-ЭВМ на альтернативный */
 	XLRT_REJECT,		/* отказ от заказа */
+	XLRT_KKT,		/* абзац для ККТ */
 };
 
 extern int aux_msg_len;
