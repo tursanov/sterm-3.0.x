@@ -3,8 +3,8 @@
 #if !defined LOG_KKT_H
 #define LOG_KKT_H
 
+#include <sys/timeb.h>
 #include <time.h>
-#include <timeb.h>
 #include "log/generic.h"
 #include "blimits.h"
 #include "cfg.h"
@@ -74,6 +74,5 @@ extern bool  klog_read_rec(struct log_handle *hlog, uint32_t index);
 extern bool  klog_print_header(void);
 extern bool  klog_print_footer(void);
 extern bool  klog_print_rec(void);
-
 
 #endif		/* LOG_KKT_H */

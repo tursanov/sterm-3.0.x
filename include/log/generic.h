@@ -143,6 +143,8 @@ extern bool prn_write_char(uint8_t c);
 extern bool prn_write_chars_raw(const char *s, int n);
 /* Запись в буфер строки с перекодировкой */
 extern bool prn_write_str(const char *str);
+/* Запись в буфер строки по формату с перекодировкой */
+extern bool prn_write_str_fmt(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
 /* Запись в буфер печати символа конца строки */
 extern bool prn_write_eol(void);
 /* Запись в буфер печати текущих даты и времени */

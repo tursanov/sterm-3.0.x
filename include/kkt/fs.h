@@ -4,6 +4,7 @@
 #define KKT_FS_H
 
 #include <stdint.h>
+#include "sysdefs.h"
 
 /* Дата/время, используемые в ФН */
 struct kkt_fs_date {

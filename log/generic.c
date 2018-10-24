@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -353,6 +354,17 @@ bool prn_write_str(const char *str)
 	for (; *str; str++)
 		try_fn(prn_write_char(*str));
 	return true;
+}
+
+/* Запись в буфер строки по формату с перекодировкой */
+bool prn_write_str_fmt(const char *fmt, ...)
+{
+	static char str[256];
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(str, sizeof(str), fmt, ap);
+	va_end(ap);
+	return prn_write_str(str);
 }
 
 /* Запись в буфер печати символа конца строки */

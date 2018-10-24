@@ -33,6 +33,7 @@
 #include "gui/xchange.h"
 #include "kkt/kkt.h"
 #include "log/express.h"
+#include "log/kkt.h"
 #include "log/local.h"
 #include "log/pos.h"
 #include "pos/error.h"
@@ -1289,10 +1290,10 @@ static void set_timezone(void)
 		.tz_minuteswest	= -180,	/* GMT+3 */
 		.tz_dsttime	= 0,
 	};
-/*	time_t t;
-	struct tm *tm;*/
+	time_t t;
+	struct tm *tm;
 	settimeofday(NULL, &tz);
-/*	t = time(NULL);
+	t = time(NULL);
 	tm = localtime(&t);
 	printf("localtime:\t%.2d.%.2d.%.2d %.2d:%.2d:%.2d\n",
 			tm->tm_mday, tm->tm_mon + 1, tm->tm_year % 100,
@@ -1300,7 +1301,7 @@ static void set_timezone(void)
 	tm = gmtime(&t);
 	printf("gmtime:\t\t%.2d.%.2d.%.2d %.2d:%.2d:%.2d\n",
 			tm->tm_mday, tm->tm_mon + 1, tm->tm_year % 100,
-			tm->tm_hour, tm->tm_min, tm->tm_sec);*/
+			tm->tm_hour, tm->tm_min, tm->tm_sec);
 }
 #if __GNUC__ > 3
 #pragma GCC diagnostic warning "-Wnonnull"
@@ -1475,6 +1476,26 @@ static bool change_local_flag(void)
 	return ret;
 }
 
+static bool open_log(struct log_handle *hlog)
+{
+	bool ret = true;
+	printf("Открытие %s...", hlog->log_type);
+	fflush(stdout);
+	if (log_open(hlog, true))
+		printf("ok.\n");
+	else{
+		fprintf(stderr, "Ошибка открытия %s.\n", hlog->log_type);
+		ret = false;
+	}
+	return ret;
+}
+
+static inline bool open_logs(void)
+{
+	return	open_log(hxlog) && (!bank_ok || open_log(hplog)) &&
+		open_log(hllog) && open_log(hklog);
+}
+
 static bool create_term(void)
 {
 #if defined __USE_USB_KEY__
@@ -1495,14 +1516,6 @@ static bool create_term(void)
 		return false;
 	}
 #endif
-	printf("Открытие ЦКЛ...");
-	fflush(stdout);
-	if (log_open(hxlog, true))
-		printf("ok.\n");
-	else{
-		fprintf(stderr, "Ошибка открытия ЦКЛ.\n");
-		return false;
-	}
 	if (!pos_create()){
 		fprintf(stderr, "Ошибка инициализации ИПТ.\n");
 		return false;
@@ -1559,24 +1572,8 @@ static bool create_term(void)
 /* Для корректной выгрузки drviplir.o должен быть запущен iplircfg */
 /*	start_iplir();*/
 	check_bank_license();
-	if (bank_ok){
-		printf("Открытие БКЛ...");
-		fflush(stdout);
-		if (log_open(hplog, true))
-			printf("ok.\n");
-		else{
-			fprintf(stderr, "ошибка открытия БКЛ.\n");
-			return false;
-		}
-	}
-	printf("Открытие ПКЛ...");
-	fflush(stdout);
-	if (log_open(hllog, true))
-		printf("ok.\n");
-	else{
-		fprintf(stderr, "Ошибка открытия ПКЛ.\n");
+	if (!open_logs())
 		return false;
-	}
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));
@@ -2927,7 +2924,8 @@ static void show_kkt_info(void)
 	if (!cfg.has_kkt || (kkt == NULL)){
 		show_no_kkt();
 		return;
-	}
+	}else
+		set_term_astate(ast_none);
 	struct kkt_fs_status fs_status;
 	bool fs_status_ok = kkt_get_fs_status(&fs_status) == KKT_STATUS_OK;
 	struct kkt_fs_lifetime fs_lifetime;

@@ -1695,8 +1695,10 @@ static void sync_date(void)
 							 (lprn_sd_status > 0x01)))
 						lprn_sync_fail = true;
 				}
+#if defined __SYNC_KKT_RTC__
 				if (cfg.has_kkt && (kkt != NULL))
 					kkt_set_rtc(xt + cfg.tz_offs * 3600);
+#endif
 			}
 		}
 	}

@@ -66,6 +66,7 @@ KKT_FD_OBJS =		\
 LOG_OBJS =		\
 	express		\
 	generic		\
+	kkt		\
 	local		\
 	pos
 

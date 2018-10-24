@@ -72,7 +72,7 @@ static uint32_t klog_rec_crc32(void)
 {
 	init_crc32_tbl_if_need();
 	uint32_t crc32 = 0xffffffff;
-	size_t l = sizeof(klog_rec_hdr) + klog_rec_hdr.len;
+	size_t len = sizeof(klog_rec_hdr) + klog_rec_hdr.len;
 	for (int i = 0; i < len; i++){
 		uint8_t b = (i < sizeof(klog_rec_hdr)) ?
 			*((uint8_t *)&klog_rec_hdr + i) :
@@ -212,7 +212,7 @@ bool klog_can_print_range(struct log_handle *hlog)
 /* Можно ли распечатать контрольную ленту полностью */
 bool klog_can_print(struct log_handle *hlog)
 {
-	return plog_can_print_range(hlog);
+	return klog_can_print_range(hlog);
 }
 
 /* Можно ли проводить поиск по контрольной ленте */
@@ -278,27 +278,31 @@ static bool klog_add_rec(struct log_handle *hlog)
 	return ret;
 }
 
-static uint32_t get_op_time(time_t t0, uint16_t ms)
+static inline uint64_t timeb_to_ms(const struct timeb *t)
 {
-	timeb tp;
-	ftime(tp);
-	uint64_t dt = (tp.time * 1000 + tp.millitm) - (t0 * 1000 + ms);
-	return (uint32_t)dt;
+	return t->time * 1000 + t->millitm;
+}
+
+static uint32_t get_op_time(const struct timeb *t0)
+{
+	struct timeb t;
+	ftime(&t);
+	return (uint32_t)(timeb_to_ms(&t) - timeb_to_ms(t0));
 }
 
 /* Заполнение заголовка записи контрольной ленты */
 static void klog_init_rec_hdr(struct log_handle *hlog, struct klog_rec_header *hdr,
-	time_t t0, uint16_t ms)
+	const struct timeb *t0)
 {
 	hdr->tag = KLOG_REC_TAG;
 	hlog->hdr->cur_number++;
 	hdr->number = hlog->hdr->cur_number;
-	hdr->stream = KLOG_STREAM_KTL;
+	hdr->stream = KLOG_STREAM_CTL;
 	hdr->len = 0;
 	hdr->req_len = hdr->resp_len = 0;
-	time_t_to_date_time(t0, &hdr->dt);
-	hdr->ms = ms;
-	hdr->op_time = get_op_time(t0, ms);
+	time_t_to_date_time(t0->time, &hdr->dt);
+	hdr->ms = t0->millitm;
+	hdr->op_time = get_op_time(t0);
 	hdr->addr.gaddr = cfg.gaddr;
 	hdr->addr.iaddr = cfg.iaddr;
 	hdr->term_version = STERM_VERSION;
@@ -312,62 +316,191 @@ static void klog_init_rec_hdr(struct log_handle *hlog, struct klog_rec_header *h
 	hdr->crc32 = 0;
 }
 
-/* Занесение на ККЛ записи заданного типа. Возвращает номер записи */
-uint32_t plog_write_rec(struct log_handle *hlog, uint8_t *data, uint32_t len,
-		uint32_t type)
+static bool status_ok(uint8_t prefix, uint8_t cmd, uint8_t status)
 {
-	log_data_len = log_data_index = 0;
-	if (data != NULL){
-		if (len > sizeof(log_data)){
-			fprintf(stderr, "Переполнение буфера данных при записи "
-				"на %s (%u байт).\n", hlog->log_type, len);
-			return -1UL;
-		}
-		memcpy(log_data, data, len);
-		log_data_len = len;
-		if (type == PLRT_ERROR)
-			recode_str((char *)log_data, log_data_len);
+	bool ret = false;
+	switch (prefix){
+		case KKT_POLL:
+			switch (cmd){
+				case KKT_POLL_ENQ:
+				case KKT_POLL_PARAMS:
+					ret = status == KKT_STATUS_OK;
+					break;
+			}
+			break;
+		case KKT_SRV:
+			switch (cmd){
+				case KKT_SRV_FDO_IFACE:
+					ret = status == FDO_IFACE_STATUS_OK;
+					break;
+				case KKT_SRV_FDO_ADDR:
+					ret = status == FDO_ADDR_STATUS_OK;
+					break;
+				case KKT_SRV_FDO_REQ:
+					ret = status < KKT_STATUS_INTERNAL_BASE;
+					break;
+				case KKT_SRV_FDO_DATA:
+					ret = status == FDO_DATA_STATUS_OK;
+					break;
+				case KKT_SRV_FLOW_CTL:
+					ret = status == FLOW_CTL_STATUS_OK;
+					break;
+				case KKT_SRV_RST_TYPE:
+					ret = status == RST_TYPE_STATUS_OK;
+					break;
+				case KKT_SRV_RTC_GET:
+					ret = status == RTC_GET_STATUS_OK;
+					break;
+				case KKT_SRV_RTC_SET:
+					ret = status == RTC_SET_STATUS_OK;
+					break;
+				case KKT_SRV_LAST_DOC_INFO:
+				case KKT_SRV_PRINT_LAST:
+				case KKT_SRV_BEGIN_DOC:
+				case KKT_SRV_SEND_DOC:
+				case KKT_SRV_END_DOC:
+					ret = status == KKT_STATUS_OK;
+					break;
+				case KKT_SRV_NET_SETTINGS:
+					ret = status == NET_SETTINGS_STATUS_OK;
+					break;
+				case KKT_SRV_GPRS_SETTINGS:
+					ret = status == GPRS_CFG_STATUS_OK;
+					break;
+			}
+			break;
+		case KKT_FS:
+			switch (cmd){
+				case KKT_FS_STATUS:
+				case KKT_FS_NR:
+				case KKT_FS_LIFETIME:
+				case KKT_FS_VERSION:
+				case KKT_FS_LAST_ERROR:
+				case KKT_FS_SHIFT_PARAMS:
+				case KKT_FS_TRANSMISSION_STATUS:
+				case KKT_FS_FIND_DOC:
+				case KKT_FS_FIND_FDO_ACK:
+				case KKT_FS_UNCONFIRMED_DOC_CNT:
+				case KKT_FS_REGISTRATION_RESULT:
+				case KKT_FS_REGISTRATION_RESULT2:
+				case KKT_FS_REGISTRATION_PARAM:
+				case KKT_FS_REGISTRATION_PARAM2:
+				case KKT_FS_GET_DOC_STLV:
+				case KKT_FS_READ_DOC_TLV:
+				case KKT_FS_READ_REGISTRATION_TLV:
+				case KKT_FS_LAST_REG_DATA:
+				case KKT_FS_RESET:
+					ret = status == KKT_STATUS_OK;
+					break;
+			}
+			break;
+		case KKT_NUL:
+			case KKT_LOG:
+			case KKT_VF:
+			case KKT_CHEQUE:
+				ret = status == KKT_STATUS_OK;
+				break;
 	}
-	plog_init_rec_hdr(hlog, &plog_rec_hdr);
-	plog_rec_hdr.type = type;
-	plog_rec_hdr.len = len;
-	plog_rec_hdr.crc32 = plog_rec_crc32();
-	return plog_add_rec(hlog) ? plog_rec_hdr.number : -1UL;
+	return ret;
+}
+
+static int get_kkt_stream(uint8_t prefix, uint8_t cmd)
+{
+	int ret = KLOG_STREAM_CTL;
+	switch (prefix){
+		case KKT_POLL:
+		case KKT_FS:
+			break;
+		case KKT_SRV:
+			switch (cmd){
+				case KKT_SRV_FDO_REQ:
+				case KKT_SRV_FDO_DATA:
+					ret = KLOG_STREAM_FDO;
+			}
+			break;
+		case 0:
+			if (cmd != KKT_ECHO)
+				ret = KLOG_STREAM_PRN;
+			break;
+	}
+	return ret;
+}
+
+
+/* Занесение записи на ККЛ. Возвращает номер записи */
+uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
+	const uint8_t *req, uint16_t req_len,
+	uint8_t status, const uint8_t *resp, uint16_t resp_len)
+{
+	if ((hlog == NULL) || (t0 == NULL) || (req == NULL) || (req_len < 2) ||
+			(resp == NULL) || (resp_len < 2))
+		return -1UL;
+	size_t len = req_len + resp_len;
+	if (len > sizeof(log_data)){
+		fprintf(stderr, "Переполнение буфера данных при записи на %s (%u байт).\n",
+			hlog->log_type, len);
+		return -1UL;
+	}else if (cfg.kkt_log_level == KLOG_LEVEL_OFF)
+		return -1UL;
+	uint8_t cmd = req[1], prefix = KKT_NUL;
+	if ((cmd == KKT_POLL) || (cmd == KKT_SRV) || (cmd == KKT_FS)){
+		if (req_len < 3)
+			return -1UL;
+		else{
+			prefix = cmd;
+			cmd = req[2];
+		}
+	}
+	if (status_ok(prefix, cmd, status) &&
+			((cfg.kkt_log_level == KLOG_LEVEL_WARN) ||
+			 (cfg.kkt_log_level == KLOG_LEVEL_ERR)))
+		return -1UL;
+	int stream = get_kkt_stream(prefix, cmd);
+	log_data_len = log_data_index = 0;
+	memcpy(log_data, req, req_len);
+	memcpy(log_data + req_len, resp, resp_len);
+	log_data_len = len;
+	klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
+	klog_rec_hdr.stream = stream;
+	klog_rec_hdr.len = len;
+	klog_rec_hdr.req_len = req_len;
+	klog_rec_hdr.resp_len = resp_len;
+	klog_rec_hdr.cmd = cmd;
+	klog_rec_hdr.status = status;
+	klog_rec_hdr.crc32 = klog_rec_crc32();
+	return klog_add_rec(hlog) ? klog_rec_hdr.number : -1UL;
 }
 
 /* Чтение заданной записи контрольной ленты */
-bool plog_read_rec(struct log_handle *hlog, uint32_t index)
+bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 {
-	uint32_t offs, crc;
 	if (index >= hlog->hdr->n_recs)
 		return false;
-	log_data_len = 0;
-	log_data_index = 0;
-	offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
-	if (!log_read(hlog, offs, (uint8_t *)&plog_rec_hdr, sizeof(plog_rec_hdr)))
+	log_data_len = log_data_index = 0;
+	uint32_t offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
+	if (!log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)))
 		return false;
-	if (plog_rec_hdr.len > sizeof(log_data)){
+	if (klog_rec_hdr.len > sizeof(log_data)){
 		fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
-				hlog->log_type, index, plog_rec_hdr.len);
+				hlog->log_type, index, klog_rec_hdr.len);
 		return false;
 	}
-	offs = log_inc_index(hlog, offs, sizeof(plog_rec_hdr));
-	if ((plog_rec_hdr.len > 0) && !log_read(hlog, offs,
-			log_data, plog_rec_hdr.len))
+	offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
+	if ((klog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data, klog_rec_hdr.len))
 		return false;
-	crc = plog_rec_hdr.crc32;
-	plog_rec_hdr.crc32 = 0;
-	if (plog_rec_crc32() != crc){
+	uint32_t crc = klog_rec_hdr.crc32;
+	klog_rec_hdr.crc32 = 0;
+	if (klog_rec_crc32() != crc){
 		fprintf(stderr, "Несовпадение контрольной суммы для записи %s #%u.\n",
 				hlog->log_type, index);
 		return false;
 	}
-	plog_rec_hdr.crc32 = crc;
-	log_data_len = plog_rec_hdr.len;
+	klog_rec_hdr.crc32 = crc;
+	log_data_len = klog_rec_hdr.len;
 	return true;
 }
 
-/* Вывод заголовка распечатки БКЛ */
+/* Вывод заголовка распечатки ККЛ */
 bool klog_print_header(void)
 {
 	try_fn(prn_write_str("\x1e\x1eНАЧАЛО ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
@@ -389,211 +522,104 @@ bool klog_print_footer(void)
 /* Вывод заголовка записи на печать */
 static bool klog_print_rec_header(void)
 {
-	static char s[128];
-	snprintf(s, sizeof(s), "\x1e%.2hX%.2hX (\"ЭКСПРЕСС-2А-К\" %.4hX %.*s) "
-			"ОПУ=%.*s ППУ=%.*s",
-		(uint16_t)plog_rec_hdr.addr.gaddr, (uint16_t)plog_rec_hdr.addr.iaddr,
-		plog_rec_hdr.term_check_sum,
-		xsizeof(plog_rec_hdr.tn), plog_rec_hdr.tn,
-		xsizeof(plog_rec_hdr.xprn_number), plog_rec_hdr.xprn_number,
-		xsizeof(plog_rec_hdr.lprn_number), plog_rec_hdr.lprn_number);
-	try_fn(prn_write_str(s));
-	try_fn(prn_write_eol());
-	snprintf(s, sizeof(s), "ЗАПИСЬ %u ОТ ", plog_rec_hdr.number + 1);
-	try_fn(prn_write_str(s));
-	try_fn(prn_write_date_time(&plog_rec_hdr.dt));
-	snprintf(s, sizeof(s), " ЖЕТОН %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
-		ds_key_char(plog_rec_hdr.ds_type),
-		plog_rec_hdr.dsn[7], plog_rec_hdr.dsn[0],
-		plog_rec_hdr.dsn[6], plog_rec_hdr.dsn[5],
-		plog_rec_hdr.dsn[4], plog_rec_hdr.dsn[3],
-		plog_rec_hdr.dsn[2], plog_rec_hdr.dsn[1]);
-	return prn_write_str(s) && prn_write_eol();
+	return 	prn_write_str_fmt("\x1e%.2hhX%.2hhX (\"ЭКСПРЕСС-2А-К\" "
+			"%hhu.%hhu.%hhu %.4hX %.*s) ККТ=%.*s",
+			klog_rec_hdr.addr.gaddr, klog_rec_hdr.addr.iaddr,
+			VERSION_BRANCH(klog_rec_hdr.term_version),
+			VERSION_RELEASE(klog_rec_hdr.term_version),
+			VERSION_PATCH(klog_rec_hdr.term_version),
+			klog_rec_hdr.term_check_sum,
+			sizeof(klog_rec_hdr.tn), klog_rec_hdr.tn,
+			sizeof(klog_rec_hdr.kkt_nr), klog_rec_hdr.kkt_nr) &&
+		prn_write_eol() &&
+		prn_write_str_fmt("ЗАПИСЬ %u ОТ ", klog_rec_hdr.number + 1) &&
+		prn_write_date_time(&klog_rec_hdr.dt) &&
+		prn_write_str_fmt(" ЖЕТОН %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
+			ds_key_char(klog_rec_hdr.ds_type),
+			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
+			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
+			klog_rec_hdr.dsn[4], klog_rec_hdr.dsn[3],
+			klog_rec_hdr.dsn[2], klog_rec_hdr.dsn[1]) &&
+		prn_write_eol();
 }
 
-/* Можно ли выводить символ при печати БКЛ */
-static inline bool is_printable_char(uint8_t c)
+static inline bool is_print(uint8_t b)
+{
+	return (b >= 0x20) && (b <= 0x7f);
+}
+
+/* Вывод на печать строки контрольной ленты */
+static bool klog_print_line(bool recode)
+{
+	if (log_data_index >= klog_rec_hdr.len)
+		return false;
+	uint32_t begin = log_data_index, end = klog_rec_hdr.req_len, addr = begin;
+	if (log_data_index >= klog_rec_hdr.resp_len){
+		end = klog_rec_hdr.len;
+		addr -= klog_rec_hdr.req_len;
+	}
+	static char ln[128];
+	sprintf(ln, "%.4X:", addr);
+	off_t offs = 5;
+	for (uint32_t i = 0, idx = begin; i < 16; i++, idx++, offs += 3){
+		if ((i != 0) && ((i % 8) == 0)){
+			sprintf(ln + offs, " --");
+			offs += 3;
+		}
+		if (idx < end)
+			sprintf(ln + offs, " %.2hhX", log_data[idx]);
+		else
+			sprintf(ln + offs, "   ");
+	}
+	sprintf(ln + offs, "   ");
+	offs += 3;
+	for (uint32_t i = 0, idx = begin; i < 16; i++, idx++, offs++){
+		if (idx < end){
+			uint8_t b = log_data[idx];
+			sprintf(ln + offs, "%c", is_print(b) ? b : ' ');
+		}else
+			sprintf(ln + offs, " ");
+	}
+	bool ret = recode ? prn_write_str(ln) : prn_write_chars_raw(ln, -1);
+	return ret && prn_write_eol();
+}
+
+static bool klog_print_delim(size_t len)
 {
 	bool ret = true;
-	switch (c){
-		case 0x00:
-		case 0x0c:
-		case 0x7f:
-			ret = false;
-	}
-	return ret;
-}
-
-/*
- * Можно ли выводить команду при печати контрольной ленты.
- * Возвращает количество символов, которые не надо печатать. Если команду
- * можно напечатать, возвращает 0.
- */
-static int get_unprintable_len(uint8_t cmd)
-{
-	uint8_t b;
-	int k = log_data_index, l = 0;
-	bool flag = true;	/* команду можно вывести на печать */
-	bool loop_flag = true;
-	if (cmd == XPRN_PRNOP){
-		for (; loop_flag && (log_data_index < log_data_len); log_data_index++){
-			b = log_data[log_data_index];
-			switch (b){
-				case XPRN_PRNOP_VPOS_BK:
-				case XPRN_PRNOP_VPOS_ABS:
-					flag = false;		/* fall through */
-				case XPRN_PRNOP_HPOS_RIGHT:
-				case XPRN_PRNOP_HPOS_LEFT:
-				case XPRN_PRNOP_HPOS_ABS:
-				case XPRN_PRNOP_VPOS_FW:
-				case XPRN_PRNOP_INP_TICKET:
-				case XPRN_PRNOP_LINE_FW:
-					loop_flag = false;
-					break;
-			}
-		}
-	}else if ((cmd == XPRN_VPOS) && (log_data_index < log_data_len))
-		flag = log_data[log_data_index++] >= 0x38;
-	if (!flag)
-		l = log_data_index - k;
-	log_data_index = k;
-	return l;
-}
-
-/* Вывод на печать команды работы со штрих-кодом */
-static bool plog_print_bctl(uint8_t cmd)
-{
-	switch (cmd){
-		case XPRN_WR_BCODE:
-			return	prn_write_str("ПЧ ШТРИХ: ") &&
-				log_print_bcode();
-		case XPRN_RD_BCODE:
-			return	prn_write_str("ЧТ ШТРИХ: ") &&
-				log_print_bcode();
-		case XPRN_NO_BCODE:
-			log_data_index--;
-			return	prn_write_str("БЕЗ ШТРИХ");
-		default:
-			return false;
-	}
-}
-
-/* Вывод строки БКЛ на печать */
-static bool plog_print_line(void)
-{
-	enum {
-		st_start,
-		st_regular,
-		st_dle,
-		st_bctl,
-		st_cmd,
-		st_wcr,
-		st_wlf,
-		st_stop,
-	};
-	int st = st_start, l;
-	uint8_t b, cmd = 0;
-	for (; (log_data_index < log_data_len) && (st != st_stop); log_data_index++){
-		b = log_data[log_data_index];
-		switch (st){
-			case st_start:
-				try_fn(prn_write_char_raw('*'));
-				st = st_regular;
-				log_data_index--;
-				break;
-			case st_regular:
-				if (is_escape(b))
-					st = st_dle;
-				else if (b == 0x0a){
-					try_fn(prn_write_str("*\x0a"));
-					st = st_wcr;
-				}else if (b == 0x0d){
-					try_fn(prn_write_str("*\x0d"));
-					st = st_wlf;
-				}else if (is_printable_char(b))
-					try_fn(prn_write_char_raw(b));
-				break;
-			case st_dle:
-				cmd = b;
-				switch (b){
-					case XPRN_WR_BCODE:
-					case XPRN_RD_BCODE:
-					case XPRN_NO_BCODE:
-						st = st_bctl;
-						break;
-					default:
-						st = st_cmd;
-				}
-				break;
-			case st_bctl:
-				try_fn(plog_print_bctl(cmd));
-				if ((log_data_index >= (log_data_len - 1)) ||
-						((log_data[log_data_index + 1] != 0x0a) &&
-						 (log_data[log_data_index + 1] != 0x0d))){
-					try_fn(prn_write_char_raw('*'));
-					try_fn(prn_write_eol());
-					st = st_stop;
-				}else
-					st = st_regular;
-				break;
-			case st_cmd:
-				l = get_unprintable_len(cmd);
-				if (l == 0){
-					try_fn(prn_write_char_raw(X_DLE));
-					try_fn(prn_write_char_raw(cmd));
-				}
-				log_data_index += l - 1;
-				st = st_regular;
-				break;
-			case st_wcr:
-				if (b == 0x0d){
-					try_fn(prn_write_char_raw(b));
-					st = st_stop;
-				}else{
-					log_data_index--;
-					st = st_stop;
-				}
-				break;
-			case st_wlf:
-				if (b == 0x0a){
-					try_fn(prn_write_char_raw(b));
-					st = st_stop;
-				}else if (b == 0x0d)
-					try_fn(prn_write_char_raw(b));
-				else{
-					log_data_index--;
-					st = st_stop;
-				}
-				break;
-		}
-	}
-	if (st == st_stop)
-		return true;
-	else
-		return	prn_write_char_raw('*') &&
-			prn_write_eol();
-}
-
-/* Вывод на печать обычной записи */
-static bool plog_print_plrt_normal(void)
-{
-	for (log_data_index = 0; log_data_index < log_data_len;){
-		if (!plog_print_line())
+	for (int i = 0; i < len; i++){
+		ret = prn_write_char_raw('=');
+		if (!ret)
 			break;
 	}
-	return log_data_index == log_data_len;
+	return ret && prn_write_eol();
+}
+
+static bool klog_print_data_header(const char *title)
+{
+	bool ret = true;
+	if (title != NULL)
+		ret = prn_write_str(title) && prn_write_eol();
+	return ret && klog_print_delim(76);
 }
 
 /* Вывод записи контрольной ленты на печать */
-bool plog_print_rec(void)
+bool klog_print_rec(void)
 {
 	log_reset_prn_buf();
-	try_fn(plog_print_rec_header());
-	switch (plog_rec_hdr.type){
-		case PLRT_NORMAL:
-		case PLRT_ERROR:
-			return plog_print_plrt_normal();
-		default:
-			return false;
+	try_fn(klog_print_rec_header());
+	bool recode = klog_rec_hdr.stream != KLOG_STREAM_PRN;
+	if (klog_rec_hdr.req_len > 0){
+		try_fn(klog_print_data_header("ЗАПРОС:"));
+		for (log_data_index = 0; log_data_index < klog_rec_hdr.req_len;
+				log_data_index += 16)
+			try_fn(klog_print_line(recode));
 	}
+	if (klog_rec_hdr.resp_len > 0){
+		try_fn(klog_print_data_header("ОТВЕТ:"));
+		for (log_data_index = klog_rec_hdr.req_len; log_data_index < log_data_len;
+				log_data_index += 16)
+			try_fn(klog_print_line(recode));
+	}
+	return true;
 }
