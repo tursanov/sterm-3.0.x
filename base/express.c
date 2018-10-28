@@ -1247,10 +1247,10 @@ uint8_t *check_syntax(uint8_t *txt, int l, int *ecode)
 					if (!cfg.has_kkt || (kkt == NULL)){
 						*ecode = E_NO_KKT;
 						return p - 2;
-					}/*else{
-						*ecode = E_KKT_XML;
+					}else if (!cfg.fiscal_mode){
+						*ecode = E_KKT_NONFISCAL;
 						return p - 2;
-					}*/
+					}
 					goto main_chk;
 				case X_WR_LOG:
 					if (wm != wm_local){

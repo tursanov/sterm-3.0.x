@@ -5,6 +5,7 @@
 
 #include <sys/timeb.h>
 #include <time.h>
+#include "kkt/kkt.h"
 #include "log/generic.h"
 #include "blimits.h"
 #include "cfg.h"
@@ -33,6 +34,7 @@ struct klog_header {
 #define KLOG_STREAM_CTL		1	/* команды управления */
 #define KLOG_STREAM_PRN		2	/* команды печати */
 #define KLOG_STREAM_FDO		4	/* обмен с ОФД */
+#define KLOG_STREAM_ALL		(KLOG_STREAM_CTL | KLOG_STREAM_PRN | KLOG_STREAM_FDO)
 
 /* Заголовок записи ККЛ */
 struct klog_rec_header {

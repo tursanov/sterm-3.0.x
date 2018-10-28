@@ -84,6 +84,7 @@ struct term_cfg{
 	int		bank_pos_port;	/* COM-порт, к которому подключен POS-эмулятор */
 /* Настройки ККТ */
 	bool		has_kkt;	/* наличие ККТ */
+	bool		fiscal_mode;	/* фискальный режим ККТ */
 	int		fdo_iface;	/* интерфейс взаимодействия с ОФД */
 	uint32_t	fdo_ip;		/* ip-адрес ОФД */
 	uint16_t	fdo_port;	/* TCP-порт ОФД */
@@ -96,6 +97,7 @@ struct term_cfg{
 	val_str		kkt_gprs_passwd;/* пароль GPRS */
 	int		tax_system;	/* система налогообложения в ККТ */
 	int		kkt_log_level;	/* уровень детализации КЛ ККТ */
+	uint32_t	kkt_log_stream;	/* поток для просмотра в КЛ ККТ */
 	int		tz_offs;	/* смещение местного времени относительно московского (ч) */
 /* Настройки экрана */
 	uint32_t	blank_time;	/* время гашения экрана (мин) (0 -- нет гашения) */

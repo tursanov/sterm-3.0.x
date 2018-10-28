@@ -19,26 +19,26 @@ static enum {
 
 void begin_rx(void)
 {
-	reset_rx();
-	rx_exp_len = (tx_prefix == KKT_NUL) ? 3 : 4;
+	kkt_reset_rx();
+	kkt_rx_exp_len = (tx_prefix == KKT_NUL) ? 3 : 4;
 	rx_st = st_prefix;
 }
 
 static inline void begin_fix_data(size_t len)
 {
-	rx_exp_len += len;
+	kkt_rx_exp_len += len;
 	rx_st = st_fix_data;
 }
 
 static inline void begin_var_data_len(void)
 {
-	rx_exp_len += 2;
+	kkt_rx_exp_len += 2;
 	rx_st = st_var_data_len;
 }
 
 static inline void begin_var_data(size_t len)
 {
-	rx_exp_len += len;
+	kkt_rx_exp_len += len;
 	rx_st = st_var_data;
 }
 
@@ -64,14 +64,14 @@ static void parse_date_time(const uint8_t *data, struct kkt_fs_date_time *dt)
 static bool parse_prefix(void)
 {
 	bool ret = false;
-	if ((rx_len > 1) && (rx[0] == KKT_ESC2)){
+	if ((kkt_rx_len > 1) && (kkt_rx[0] == KKT_ESC2)){
 		if (tx_prefix == KKT_NUL){
-			if ((rx_len == 3) && (rx[1] == tx_cmd)){
-				kkt_status = rx[2];
+			if ((kkt_rx_len == 3) && (kkt_rx[1] == tx_cmd)){
+				kkt_status = kkt_rx[2];
 				ret = true;
 			}
-		}else if ((rx_len == 4) && (rx[1] == tx_prefix) && (rx[2] == tx_cmd)){
-			kkt_status = rx[3];
+		}else if ((kkt_rx_len == 4) && (kkt_rx[1] == tx_prefix) && (kkt_rx[2] == tx_cmd)){
+			kkt_status = kkt_rx[3];
 			ret = true;
 		}
 	}
@@ -85,9 +85,9 @@ static bool parse_status(void)
 
 static void parse_var_data_len(struct kkt_var_data *data)
 {
-	data->len = *(uint16_t *)(rx + rx_len - 2);
+	data->len = *(uint16_t *)(kkt_rx + kkt_rx_len - 2);
 	if (data->len > 0){
-		data->data = rx + rx_len;
+		data->data = kkt_rx + kkt_rx_len;
 		begin_var_data(data->len);
 	}else
 		data->data = NULL;
@@ -148,28 +148,28 @@ static bool parse_rtc_data(struct kkt_rtc_data *rtc)
 			begin_fix_data(7);
 	}else if (rx_st == st_fix_data){
 		memset(rtc, 0, sizeof(rtc));
-		if (is_bcd(rx[4]) && is_bcd(rx[5]))
-			rtc->year = from_bcd(rx[4]) * 100 + from_bcd(rx[5]);
+		if (is_bcd(kkt_rx[4]) && is_bcd(kkt_rx[5]))
+			rtc->year = from_bcd(kkt_rx[4]) * 100 + from_bcd(kkt_rx[5]);
 		else
 			ret = false;
-		if (ret && is_bcd(rx[6]))
-			rtc->month = from_bcd(rx[6]);
+		if (ret && is_bcd(kkt_rx[6]))
+			rtc->month = from_bcd(kkt_rx[6]);
 		else
 			ret = false;
-		if (ret && is_bcd(rx[7]))
-			rtc->day = from_bcd(rx[7]);
+		if (ret && is_bcd(kkt_rx[7]))
+			rtc->day = from_bcd(kkt_rx[7]);
 		else
 			ret = false;
-		if (ret && is_bcd(rx[8]))
-			rtc->hour = from_bcd(rx[8]);
+		if (ret && is_bcd(kkt_rx[8]))
+			rtc->hour = from_bcd(kkt_rx[8]);
 		else
 			ret = false;
-		if (ret && is_bcd(rx[9]))
-			rtc->minute = from_bcd(rx[9]);
+		if (ret && is_bcd(kkt_rx[9]))
+			rtc->minute = from_bcd(kkt_rx[9]);
 		else
 			ret = false;
-		if (ret && is_bcd(rx[10]))
-			rtc->second = from_bcd(rx[10]);
+		if (ret && is_bcd(kkt_rx[10]))
+			rtc->second = from_bcd(kkt_rx[10]);
 		else
 			ret = false;
 		if (ret)
@@ -194,14 +194,14 @@ static bool parse_last_doc_info(struct last_doc_info_arg *arg)
 			}
 		}
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 12;
-		arg->ldi.last_nr = *(const uint32_t *)(rx + offs);
+		off_t offs = kkt_rx_len - 12;
+		arg->ldi.last_nr = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		arg->ldi.last_type = *(const uint16_t *)(rx + offs);
+		arg->ldi.last_type = *(const uint16_t *)(kkt_rx + offs);
 		offs += sizeof(uint16_t);
-		arg->ldi.last_printed_nr = *(const uint32_t *)(rx + offs);
+		arg->ldi.last_printed_nr = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		arg->ldi.last_printed_type = *(const uint16_t *)(rx + offs);
+		arg->ldi.last_printed_type = *(const uint16_t *)(kkt_rx + offs);
 		begin_var_data_len();
 	}else if (rx_st == st_var_data_len)
 		parse_var_data_len(&arg->err_info);
@@ -225,12 +225,12 @@ static bool parse_print_last_doc(struct last_printed_info_arg *arg)
 			}
 		}
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 10;
-		arg->lpi.nr = *(const uint32_t *)(rx + offs);
+		off_t offs = kkt_rx_len - 10;
+		arg->lpi.nr = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		arg->lpi.sign = *(const uint32_t *)(rx + offs);
+		arg->lpi.sign = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		arg->lpi.type = *(const uint16_t *)(rx + offs);
+		arg->lpi.type = *(const uint16_t *)(kkt_rx + offs);
 		begin_var_data_len();
 	}else if (rx_st == st_var_data_len)
 		parse_var_data_len(&arg->err_info);
@@ -253,10 +253,10 @@ static bool parse_end_doc(struct doc_info_arg *arg)
 			}
 		}
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 8;
-		arg->di.nr = *(const uint32_t *)(rx + offs);
+		off_t offs = kkt_rx_len - 8;
+		arg->di.nr = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		arg->di.sign = *(const uint32_t *)(rx + offs);
+		arg->di.sign = *(const uint32_t *)(kkt_rx + offs);
 		begin_var_data_len();
 	}else if (rx_st == st_var_data_len)
 		parse_var_data_len(&arg->err_info);
@@ -272,18 +272,18 @@ static bool parse_fs_status(struct kkt_fs_status *fs_status)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(30);
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 30;
-		fs_status->life_state = rx[offs++];
-		fs_status->current_doc = rx[offs++];
-		fs_status->doc_data = rx[offs++];
-		fs_status->shift_state = rx[offs++];
-		fs_status->alert_flags = rx[offs++];
-		parse_date_time(rx + offs, &fs_status->dt);
+		off_t offs = kkt_rx_len - 30;
+		fs_status->life_state = kkt_rx[offs++];
+		fs_status->current_doc = kkt_rx[offs++];
+		fs_status->doc_data = kkt_rx[offs++];
+		fs_status->shift_state = kkt_rx[offs++];
+		fs_status->alert_flags = kkt_rx[offs++];
+		parse_date_time(kkt_rx + offs, &fs_status->dt);
 		offs += KKT_FS_DATE_TIME_LEN;
-		memcpy(fs_status->nr, rx + offs, KKT_FS_NR_LEN);
+		memcpy(fs_status->nr, kkt_rx + offs, KKT_FS_NR_LEN);
 		fs_status->nr[KKT_FS_NR_LEN] = 0;
 		offs += KKT_FS_NR_LEN;
-		fs_status->last_doc_nr = *(const uint32_t *)(rx + offs);
+		fs_status->last_doc_nr = *(const uint32_t *)(kkt_rx + offs);
 	}
 	return ret;
 }
@@ -297,7 +297,7 @@ static bool parse_fs_nr(char *fs_nr)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(KKT_FS_NR_LEN);
 	}else if (rx_st == st_fix_data){
-		memcpy(fs_nr, rx + rx_len - KKT_FS_NR_LEN, KKT_FS_NR_LEN);
+		memcpy(fs_nr, kkt_rx + kkt_rx_len - KKT_FS_NR_LEN, KKT_FS_NR_LEN);
 		fs_nr[KKT_FS_NR_LEN] = 0;
 	}
 	return ret;
@@ -312,11 +312,11 @@ static bool parse_fs_lifetime(struct kkt_fs_lifetime *lt)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(7);
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 7;
-		parse_date_time(rx + offs, &lt->dt);
+		off_t offs = kkt_rx_len - 7;
+		parse_date_time(kkt_rx + offs, &lt->dt);
 		offs += KKT_FS_DATE_TIME_LEN;
-		lt->reg_remain = rx[offs++];
-		lt->reg_complete = rx[offs];
+		lt->reg_remain = kkt_rx[offs++];
+		lt->reg_complete = kkt_rx[offs];
 	}
 	return ret;
 }
@@ -330,11 +330,11 @@ static bool parse_fs_version(struct kkt_fs_version *ver)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(KKT_FS_VERSION_LEN + 1);
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - KKT_FS_VERSION_LEN - 1;
-		memcpy(ver->version, rx + offs, KKT_FS_VERSION_LEN);
+		off_t offs = kkt_rx_len - KKT_FS_VERSION_LEN - 1;
+		memcpy(ver->version, kkt_rx + offs, KKT_FS_VERSION_LEN);
 		ver->version[KKT_FS_VERSION_LEN] = 0;
 		offs += KKT_FS_VERSION_LEN;
-		ver->type = rx[offs];
+		ver->type = kkt_rx[offs];
 	}
 	return ret;
 }
@@ -361,11 +361,11 @@ static bool parse_fs_shift_state(struct kkt_fs_shift_state *ss)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(5);
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 5;
-		ss->opened = (rx[offs++] != 0);
-		ss->shift_nr = *(const uint16_t *)(rx + offs);
+		off_t offs = kkt_rx_len - 5;
+		ss->opened = (kkt_rx[offs++] != 0);
+		ss->shift_nr = *(const uint16_t *)(kkt_rx + offs);
 		offs += sizeof(uint16_t);
-		ss->cheque_nr = *(const uint16_t *)(rx + offs);
+		ss->cheque_nr = *(const uint16_t *)(kkt_rx + offs);
 	}
 	return ret;
 }
@@ -379,14 +379,14 @@ static bool parse_fs_transmission_state(struct kkt_fs_transmission_state *ts)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(13);
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - 13;
-		ts->state = rx[offs++];
-		ts->read_msg_started = (rx[offs++] != 0);
-		ts->sndq_len = *(const uint16_t *)(rx + offs);
+		off_t offs = kkt_rx_len - 13;
+		ts->state = kkt_rx[offs++];
+		ts->read_msg_started = (kkt_rx[offs++] != 0);
+		ts->sndq_len = *(const uint16_t *)(kkt_rx + offs);
 		offs += sizeof(uint16_t);
-		ts->first_doc_nr = *(const uint32_t *)(rx + offs);
+		ts->first_doc_nr = *(const uint32_t *)(kkt_rx + offs);
 		offs += sizeof(uint32_t);
-		parse_date_time(rx + offs, &ts->first_doc_dt);
+		parse_date_time(kkt_rx + offs, &ts->first_doc_dt);
 	}
 	return ret;
 }
@@ -433,11 +433,11 @@ static bool parse_fs_find_doc(struct find_doc_info_arg *arg)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(2);
 	}else if (rx_st == st_fix_data){
-		arg->fdi.doc_type = rx[rx_len - 2];
-		arg->fdi.fdo_ack = rx[rx_len - 1];
+		arg->fdi.doc_type = kkt_rx[kkt_rx_len - 2];
+		arg->fdi.fdo_ack = kkt_rx[kkt_rx_len - 1];
 		arg->data.len = get_doc_data_len(arg->fdi.doc_type);
 		if (arg->data.len > 0){
-			arg->data.data = rx + rx_len;
+			arg->data.data = kkt_rx + kkt_rx_len;
 			begin_var_data(arg->data.len);
 		}else
 			arg->data.data = NULL;
@@ -455,12 +455,12 @@ static bool parse_fs_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack)
 			begin_fix_data(sizeof(struct kkt_fdo_ack));
 
 	}else if (rx_st == st_fix_data){
-		off_t offs = rx_len - sizeof(struct kkt_fdo_ack);
-		parse_date_time(rx + offs, &fdo_ack->dt);
+		off_t offs = kkt_rx_len - sizeof(struct kkt_fdo_ack);
+		parse_date_time(kkt_rx + offs, &fdo_ack->dt);
 		offs += KKT_FS_DATE_TIME_LEN;
-		memcpy(fdo_ack->fiscal_sign, rx + offs, sizeof(fdo_ack->fiscal_sign));
+		memcpy(fdo_ack->fiscal_sign, kkt_rx + offs, sizeof(fdo_ack->fiscal_sign));
 		offs += sizeof(fdo_ack->fiscal_sign);
-		fdo_ack->doc_nr = *(const uint32_t *)(rx + offs);
+		fdo_ack->doc_nr = *(const uint32_t *)(kkt_rx + offs);
 	}
 	return ret;
 }
@@ -474,7 +474,7 @@ static bool parse_fs_unconfirmed_cnt(uint32_t *cnt)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(sizeof(uint16_t));
 	}else if (rx_st == st_fix_data)
-		*cnt = *(const uint16_t *)(rx + rx_len - sizeof(uint16_t));
+		*cnt = *(const uint16_t *)(kkt_rx + kkt_rx_len - sizeof(uint16_t));
 	return ret;
 }
 

@@ -1,11 +1,13 @@
 /* Основной модуль для работы с ККТ. (c) gsr 2018 */
 
+#include <sys/timeb.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include "kkt/io.h"
 #include "kkt/kkt.h"
 #include "kkt/parser.h"
+#include "log/kkt.h"
 #include "cfg.h"
 
 const struct dev_info *kkt = NULL;
@@ -65,8 +67,8 @@ static bool on_wr_overflow(void)
 static inline bool write_byte(uint8_t b)
 {
 	bool ret = true;
-	if (likely(tx_len < sizeof(tx)))
-		tx[tx_len++] = b;
+	if (likely(kkt_tx_len < sizeof(kkt_tx)))
+		kkt_tx[kkt_tx_len++] = b;
 	else
 		ret = on_wr_overflow();
 	return ret;
@@ -80,9 +82,9 @@ static inline bool write_quot(void)
 static inline bool write_word(uint16_t w)
 {
 	bool ret = true;
-	if (likely((tx_len + sizeof(w)) <= sizeof(tx))){
-		*(uint16_t *)(tx + tx_len) = w;
-		tx_len += sizeof(uint16_t);
+	if (likely((kkt_tx_len + sizeof(w)) <= sizeof(kkt_tx))){
+		*(uint16_t *)(kkt_tx + kkt_tx_len) = w;
+		kkt_tx_len += sizeof(uint16_t);
 	}else
 		ret = on_wr_overflow();
 	return ret;
@@ -91,9 +93,9 @@ static inline bool write_word(uint16_t w)
 static inline bool write_dword(uint32_t dw)
 {
 	bool ret = true;
-	if (likely((tx_len + sizeof(dw)) <= sizeof(tx))){
-		*(uint32_t *)(tx + tx_len) = dw;
-		tx_len += sizeof(uint32_t);
+	if (likely((kkt_tx_len + sizeof(dw)) <= sizeof(kkt_tx))){
+		*(uint32_t *)(kkt_tx + kkt_tx_len) = dw;
+		kkt_tx_len += sizeof(uint32_t);
 	}else
 		ret = on_wr_overflow();
 	return ret;
@@ -102,9 +104,9 @@ static inline bool write_dword(uint32_t dw)
 static inline bool write_data(const uint8_t *data, size_t len)
 {
 	bool ret = true;
-	if (likely((data != NULL) && (len > 0) && ((tx_len + len) <= sizeof(tx)))){
-		memcpy(tx + tx_len, data, len);
-		tx_len += len;
+	if (likely((data != NULL) && (len > 0) && ((kkt_tx_len + len) <= sizeof(kkt_tx)))){
+		memcpy(kkt_tx + kkt_tx_len, data, len);
+		kkt_tx_len += len;
 	}else
 		ret = on_wr_overflow();
 	return ret;
@@ -124,13 +126,13 @@ static bool write_bcd(uint32_t v, size_t n)
 {
 	if (unlikely((n == 0) || (n > 4)))
 		return false;
-	else if (unlikely((tx_len + n) > sizeof(tx)))
+	else if (unlikely((kkt_tx_len + n) > sizeof(kkt_tx)))
 		return on_wr_overflow();
 	for (int i = 1; i <= n; i++){
-		tx[tx_len + n - i] = to_bcd(v % 100);
+		kkt_tx[kkt_tx_len + n - i] = to_bcd(v % 100);
 		v /= 100;
 	}
-	tx_len += n;
+	kkt_tx_len += n;
 	return true;
 }
 
@@ -139,19 +141,19 @@ static bool write_uint(uint32_t v, size_t nr_digits, bool quot)
 	size_t n = nr_digits;
 	if (likely(quot))
 		n += 2;
-	if (unlikely((tx_len + n) > sizeof(tx)))
+	if (unlikely((kkt_tx_len + n) > sizeof(kkt_tx)))
 		return on_wr_overflow();
 	if (likely(quot))
 		write_quot();
 	for (int i = nr_digits - 1; i >= 0; i--){
 		if (v == 0)
-			tx[tx_len + i] = 0x30;
+			kkt_tx[kkt_tx_len + i] = 0x30;
 		else{
-			tx[tx_len + i] = v % 10 + 0x30;
+			kkt_tx[kkt_tx_len + i] = v % 10 + 0x30;
 			v /= 10;
 		}
 	}
-	tx_len += nr_digits;
+	kkt_tx_len += nr_digits;
 	if (likely(quot))
 		write_quot();
 	return true;
@@ -162,7 +164,7 @@ static bool write_ip(uint32_t ip, bool quot)
 	size_t n = (ip == 0) ? 0 : 15;
 	if (likely(quot))
 		n += 2;
-	if (unlikely((tx_len + n) > sizeof(tx)))
+	if (unlikely((kkt_tx_len + n) > sizeof(kkt_tx)))
 		return on_wr_overflow();
 	if (quot)
 		write_quot();
@@ -170,7 +172,7 @@ static bool write_ip(uint32_t ip, bool quot)
 		for (int i = 0; i < 32; i += 8){
 			write_uint((ip >> i) & 0xff, 3, false);
 			if (i < 24)
-				tx[tx_len++] = '.';
+				kkt_tx[kkt_tx_len++] = '.';
 		}
 	}
 	if (likely(quot))
@@ -182,7 +184,7 @@ static bool write_port(uint16_t port, bool quot)
 {
 	bool ret = true;
 	if (port == 0){
-		if (unlikely((tx_len + 2) > sizeof(tx)))
+		if (unlikely((kkt_tx_len + 2) > sizeof(kkt_tx)))
 			ret = on_wr_overflow();
 		else{
 			write_quot();
@@ -198,13 +200,13 @@ static bool write_str(const char *str, bool quot)
 	size_t slen = (str == NULL) ? 0 : strlen(str), len = slen;
 	if (quot)
 		len += 2;
-	if (unlikely((tx_len + len) > sizeof(tx)))
+	if (unlikely((kkt_tx_len + len) > sizeof(kkt_tx)))
 		return on_wr_overflow();
 	if (likely(quot))
 		write_quot();
 	if (likely(slen > 0)){
-		memcpy(tx + tx_len, str, slen);
-		tx_len += slen;
+		memcpy(kkt_tx + kkt_tx_len, str, slen);
+		kkt_tx_len += slen;
 	}
 	if (likely(quot))
 		write_quot();
@@ -214,7 +216,7 @@ static bool write_str(const char *str, bool quot)
 static bool prepare_cmd(uint8_t prefix, uint8_t cmd)
 {
 	bool ret = false;
-	reset_tx();
+	kkt_reset_tx();
 	if (prefix == KKT_NUL)
 		ret = write_cmd(cmd);
 	else
@@ -266,40 +268,44 @@ static bool do_transaction(uint8_t prefix, uint8_t cmd, void *param)
 	bool ret = true;
 	parser_t parser = get_parser(prefix, cmd);
 	uint32_t timeout = get_timeout(prefix, cmd);
-	if (tx_len > 0){
+	struct timeb t0;
+	ftime(&t0);
+	if (kkt_tx_len > 0){
 		ssize_t rc = kkt_io_write(&timeout);
-		if (rc != tx_len)
-			ret = on_com_error(timeout);
+		if (rc != kkt_tx_len)
+			ret = kkt_on_com_error(timeout);
 	}
-	if (!ret)
-		return false;
-	begin_rx();
-	while (ret && (rx_len < rx_exp_len)){
-		size_t len = rx_exp_len - rx_len;
-		if ((rx_len + len) > sizeof(rx)){
-			kkt_status = KKT_STATUS_RESP_FMT_ERROR;
-			ret = false;
-		}else{
-			ssize_t rc = kkt_io_read(len, &timeout);
-			if (rc == len){
-				rx_len += rc;
-				if (!parser(param)){
-					kkt_status = KKT_STATUS_RESP_FMT_ERROR;
-					ret = false;
-				}
-			}else
-				ret = on_com_error(timeout);
+	if (ret){
+		begin_rx();
+		while (ret && (kkt_rx_len < kkt_rx_exp_len)){
+			size_t len = kkt_rx_exp_len - kkt_rx_len;
+			if ((kkt_rx_len + len) > sizeof(kkt_rx)){
+				kkt_status = KKT_STATUS_RESP_FMT_ERROR;
+				ret = false;
+			}else{
+				ssize_t rc = kkt_io_read(len, &timeout);
+				if (rc == len){
+					kkt_rx_len += rc;
+					if (!parser(param)){
+						kkt_status = KKT_STATUS_RESP_FMT_ERROR;
+						ret = false;
+					}
+				}else
+					ret = kkt_on_com_error(timeout);
+			}
 		}
-	}
+	}else
+		kkt_rx_len = 0;		/* kkt_reset_rx() обнуляет kkt_status */
+	klog_write_rec(hklog, &t0, kkt_tx, kkt_tx_len, kkt_status, kkt_rx, kkt_rx_len);
 	return ret;
 }
 
 static bool do_cmd(uint8_t prefix, uint8_t cmd, void *param)
 {
 	bool ret = false;
-	if (prepare_cmd(prefix, cmd) && open_dev_if_need()){
+	if (prepare_cmd(prefix, cmd) && kkt_open_dev_if_need()){
 		ret = do_transaction(prefix, cmd, param);
-		close_dev();
+		kkt_close_dev();
 	}
 	return ret;
 }
@@ -308,9 +314,9 @@ static bool do_cmd(uint8_t prefix, uint8_t cmd, void *param)
 uint8_t kkt_set_fdo_iface(int fdo_iface)
 {
 	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_IFACE) && write_byte(fdo_iface + 0x30) &&
-			open_dev_if_need()){
+			kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_FDO_IFACE, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -319,9 +325,9 @@ uint8_t kkt_set_fdo_iface(int fdo_iface)
 uint8_t kkt_set_fdo_addr(uint32_t fdo_ip, uint16_t fdo_port)
 {
 	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_ADDR) && write_ip(fdo_ip, true) &&
-			write_port(fdo_port, true) && open_dev_if_need()){
+			write_port(fdo_port, true) && kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_FDO_ADDR, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -360,14 +366,14 @@ uint8_t kkt_get_fdo_cmd(uint8_t prev_op, uint16_t prev_op_status, uint8_t *cmd,
 	else
 		snprintf(txt, sizeof(txt), "%c:%.4hX", prev_op, prev_op_status);
 	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_REQ) && write_str(txt, false) &&
-			open_dev_if_need()){
+			kkt_open_dev_if_need()){
 		struct kkt_fdo_cmd fdo_cmd;
 		if (do_transaction(KKT_SRV, KKT_SRV_FDO_REQ, &fdo_cmd)){
 			*cmd = fdo_cmd.cmd;
 			set_var_data(data, data_len, &fdo_cmd.data);
 			ok = vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(data, data_len);
@@ -380,9 +386,9 @@ uint8_t kkt_send_fdo_data(const uint8_t *data, size_t data_len)
 	assert(data != NULL);
 	assert(data_len > 0);
 	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_DATA) && write_word(data_len) &&
-			write_data(data, data_len) && open_dev_if_need()){
+			write_data(data, data_len) && kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_FDO_DATA, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -403,9 +409,9 @@ uint8_t kkt_set_rtc(time_t t)
 	if (prepare_cmd(KKT_SRV, KKT_SRV_RTC_SET) && write_bcd(tm->tm_year + 1900, 2) &&
 			write_bcd(tm->tm_mon + 1, 1) && write_bcd(tm->tm_mday, 1) &&
 			write_bcd(tm->tm_hour, 1) && write_bcd(tm->tm_min, 1) &&
-			write_bcd(tm->tm_sec, 1) && open_dev_if_need()){
+			write_bcd(tm->tm_sec, 1) && kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_RTC_SET, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -417,13 +423,13 @@ uint8_t kkt_get_last_doc_info(struct kkt_last_doc_info *ldi, uint8_t *err_info,
 	assert(ldi != NULL);
 	bool vset = false;
 	struct last_doc_info_arg arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_LAST_DOC_INFO) && open_dev_if_need()){
+	if (prepare_cmd(KKT_SRV, KKT_SRV_LAST_DOC_INFO) && kkt_open_dev_if_need()){
 		if (do_transaction(KKT_SRV, KKT_SRV_LAST_DOC_INFO, &arg)){
 			*ldi = arg.ldi;
 			set_var_data(err_info, err_info_len, &arg.err_info);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -440,13 +446,13 @@ uint8_t kkt_print_last_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_l
 	struct last_printed_info_arg arg;
 	if (prepare_cmd(KKT_SRV, KKT_SRV_PRINT_LAST) && write_word(doc_type) &&
 			write_word(tmpl_len) &&
-			((tmpl_len == 0) || write_data(tmpl, tmpl_len)) && open_dev_if_need()){
+			((tmpl_len == 0) || write_data(tmpl, tmpl_len)) && kkt_open_dev_if_need()){
 		if (do_transaction(KKT_SRV, KKT_SRV_PRINT_LAST, &arg)){
 			*lpi = arg.lpi;
 			set_var_data(err_info, err_info_len, &arg.err_info);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -459,12 +465,12 @@ uint8_t kkt_begin_doc(uint16_t doc_type, uint8_t *err_info, size_t *err_info_len
 	bool vset = false;
 	struct kkt_var_data arg;
 	if (prepare_cmd(KKT_SRV, KKT_SRV_BEGIN_DOC) && write_word(doc_type) &&
-			open_dev_if_need()){
+			kkt_open_dev_if_need()){
 		if (do_transaction(KKT_SRV, KKT_SRV_BEGIN_DOC, &arg)){
 			set_var_data(err_info, err_info_len, &arg);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -480,12 +486,12 @@ uint8_t kkt_send_doc_data(const uint8_t *data, size_t len, uint8_t *err_info,
 	bool vset = false;
 	struct kkt_var_data arg;
 	if (prepare_cmd(KKT_SRV, KKT_SRV_SEND_DOC) && write_word(len) &&
-			write_data(data, len) && open_dev_if_need()){
+			write_data(data, len) && kkt_open_dev_if_need()){
 		if (do_transaction(KKT_SRV, KKT_SRV_SEND_DOC, &arg)){
 			set_var_data(err_info, err_info_len, &arg);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -502,12 +508,12 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 	bool vset = false;
 	struct doc_info_arg arg;
 	if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(tmpl_len) &&
-			write_data(tmpl, tmpl_len) && open_dev_if_need()){
+			write_data(tmpl, tmpl_len) && kkt_open_dev_if_need()){
 		if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg)){
 			set_var_data(err_info, err_info_len, &arg.err_info);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -519,9 +525,9 @@ uint8_t kkt_set_eth_cfg(uint32_t ip, uint32_t netmask, uint32_t gw)
 {
 	if (prepare_cmd(KKT_SRV, KKT_SRV_NET_SETTINGS) && write_ip(ip, true) &&
 			write_ip(netmask, true) && write_ip(gw, true) &&
-			open_dev_if_need()){
+			kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_NET_SETTINGS, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -531,9 +537,9 @@ uint8_t kkt_set_gprs_cfg(const char *apn, const char *user, const char *password
 {
 	if (prepare_cmd(KKT_SRV, KKT_SRV_GPRS_SETTINGS) && write_str(apn, true) &&
 			write_str(user, true) && write_str(password, true) &&
-			open_dev_if_need()){
+			kkt_open_dev_if_need()){
 		do_transaction(KKT_SRV, KKT_SRV_GPRS_SETTINGS, NULL);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }
@@ -542,7 +548,7 @@ uint8_t kkt_set_gprs_cfg(const char *apn, const char *user, const char *password
 uint8_t kkt_set_cfg(void)
 {
 	uint8_t ret = KKT_STATUS_OK;
-	begin_batch_mode();
+	kkt_begin_batch_mode();
 	do {
 		ret = kkt_set_fdo_iface(cfg.fdo_iface);
 		printf("%s: kkt_set_fdo_iface: 0x%.2hhx\n", __func__, ret);
@@ -559,7 +565,7 @@ uint8_t kkt_set_cfg(void)
 		ret = kkt_set_gprs_cfg(cfg.kkt_gprs_apn, cfg.kkt_gprs_user, cfg.kkt_gprs_passwd);
 		printf("%s: kkt_set_gprs_cfg: 0x%.2hhx\n", __func__, ret);
 	} while (false);
-	end_batch_mode();
+	kkt_end_batch_mode();
 	return ret;
 }
 
@@ -643,14 +649,14 @@ uint8_t kkt_find_fs_doc(uint32_t nr, bool need_print,
 	bool vset = false;
 	memset(fdi, 0, sizeof(*fdi));
 	if (prepare_cmd(KKT_FS, KKT_FS_FIND_DOC) && write_dword(nr) &&
-			write_byte(need_print) && open_dev_if_need()){
+			write_byte(need_print) && kkt_open_dev_if_need()){
 		struct find_doc_info_arg arg;
 		if (do_transaction(KKT_FS, KKT_FS_FIND_DOC, &arg)){
 			*fdi = arg.fdi;
 			set_var_data(data, data_len, &arg.data);
 			vset = true;
 		}
-		close_dev();
+		kkt_close_dev();
 	}
 	if (!vset)
 		clr_var_data(data, data_len);
@@ -663,9 +669,9 @@ uint8_t kkt_find_fdo_ack(uint32_t nr, bool need_print, struct kkt_fs_fdo_ack *fd
 	assert(fdo_ack != NULL);
 	memset(fdo_ack, 0, sizeof(*fdo_ack));
 	if (prepare_cmd(KKT_FS, KKT_FS_FIND_FDO_ACK) && write_dword(nr) &&
-			write_byte(need_print) && open_dev_if_need()){
+			write_byte(need_print) && kkt_open_dev_if_need()){
 		do_transaction(KKT_FS, KKT_FS_FIND_FDO_ACK, fdo_ack);
-		close_dev();
+		kkt_close_dev();
 	}
 	return kkt_status;
 }

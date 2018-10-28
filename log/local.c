@@ -540,11 +540,11 @@ bool llog_print_header(bool full, uint32_t nr_rd_err)
 			VERSION_BRANCH(llog_rec_hdr.term_version),
 			VERSION_RELEASE(llog_rec_hdr.term_version),
 			VERSION_PATCH(llog_rec_hdr.term_version),
-			xsizeof(llog_rec_hdr.tn), llog_rec_hdr.tn);
+			sizeof(llog_rec_hdr.tn), llog_rec_hdr.tn);
 		try_fn(prn_write_str(s));
 		try_fn(prn_write_eol());
 		snprintf(s, sizeof(s), "èèì=%.*s",
-			xsizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
+			sizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
 		try_fn(prn_write_str(s));
 		try_fn(prn_write_eol());
 		if (nr_rd_err != 0){
@@ -612,8 +612,8 @@ bool llog_print_rec_header(void)
 			"%.4hX %.*s) èèì=%.*s",
 		llog_rec_hdr.addr.gaddr, llog_rec_hdr.addr.iaddr,
 		llog_rec_hdr.term_check_sum,
-		xsizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
-		xsizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
+		sizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
+		sizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "ÜÖíéç %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX"
@@ -668,9 +668,9 @@ static bool llog_print_rec_header_xprn(void)
 			"(\"ùäëèêÖëë-2Ä-ä\" %.4hX %.*s) éèì=%.*s Ñèì=%.*s",
 		llog_rec_hdr.addr.gaddr, llog_rec_hdr.addr.iaddr,
 		llog_rec_hdr.term_check_sum,
-		xsizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
-		xsizeof(llog_rec_hdr.xprn_number), llog_rec_hdr.xprn_number,
-		xsizeof(llog_rec_hdr.aprn_number), llog_rec_hdr.aprn_number);
+		sizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
+		sizeof(llog_rec_hdr.xprn_number), llog_rec_hdr.xprn_number,
+		sizeof(llog_rec_hdr.aprn_number), llog_rec_hdr.aprn_number);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "áÄèàëú %u/%u éí ",

@@ -24,11 +24,12 @@ struct log_gui_context {
  */
 	uint8_t scr_data[LOG_BUF_LEN];
 	uint32_t scr_data_len;	/* длина данных в экранном буфере */
-	uint32_t scr_data_lines;	/* число строк в экранном буфере */
+	uint32_t scr_data_lines;/* число строк в экранном буфере */
 	uint32_t first_line;	/* номер первой выводимой строки */
 	GCPtr gc;
 	GCPtr mem_gc;
 	bool modal;
+	bool asis;		/* показывать символы без перекодировки */
 /* Поздняя инициализация структуры */
 	void (*init)(struct log_gui_context *ctx);
 /* Чтение записи по индексу */

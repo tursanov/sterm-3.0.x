@@ -5,6 +5,7 @@ INCLUDE = ../../include
 GUI_LOG_OBJS =		\
 	express		\
 	generic		\
+	kkt		\
 	local		\
 	pos
 

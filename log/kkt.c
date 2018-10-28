@@ -97,13 +97,9 @@ static bool klog_fill_map(struct log_handle *hlog)
 	for (uint32_t i = 0, offs = hdr->head; i < hdr->n_recs; i++){
 		uint32_t tail = offs;
 		try_fn(log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)));
-		hlog->map[i].offset = offs;
-		hlog->map[i].number = klog_rec_hdr.number;
-		hlog->map[i].dt = klog_rec_hdr.dt;
-		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
 		if (klog_rec_hdr.tag != KLOG_REC_TAG){
-			fprintf(stderr, "Неверный формат заголовка записи %s #%u.\n",
-				hlog->log_type, i);
+			fprintf(stderr, "Неверный формат заголовка записи %s #%u (%.8x).\n",
+				hlog->log_type, i, klog_rec_hdr.tag);
 			return log_truncate(hlog, i, tail);
 		}else if (klog_rec_hdr.len > LOG_BUF_LEN){
 			fprintf(stderr, "Слишком длинная запись %s #%u: %u байт (max %u).\n",
@@ -115,6 +111,13 @@ static bool klog_fill_map(struct log_handle *hlog)
 				klog_rec_hdr.resp_len);
 			return log_truncate(hlog, i, tail);
 		}
+		bool stream_match = true; //(klog_rec_hdr.stream & cfg.kkt_log_stream) != 0;
+		if (stream_match){
+			hlog->map[i].offset = offs;
+			hlog->map[i].number = klog_rec_hdr.number;
+			hlog->map[i].dt = klog_rec_hdr.dt;
+		}
+		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
 		log_data_len = klog_rec_hdr.len;
 		if (log_data_len > 0)
 			try_fn(log_read(hlog, offs, log_data, log_data_len));
@@ -127,6 +130,8 @@ static bool klog_fill_map(struct log_handle *hlog)
 		}
 		klog_rec_hdr.crc32 = crc;
 		offs = log_inc_index(hlog, offs, klog_rec_hdr.len);
+/*		if (stream_match)
+			i++;*/
 	}
 	return true;
 }
@@ -432,8 +437,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	const uint8_t *req, uint16_t req_len,
 	uint8_t status, const uint8_t *resp, uint16_t resp_len)
 {
-	if ((hlog == NULL) || (t0 == NULL) || (req == NULL) || (req_len < 2) ||
-			(resp == NULL) || (resp_len < 2))
+	if ((hlog == NULL) || (t0 == NULL) || (req == NULL) || (req_len < 2))
 		return -1UL;
 	size_t len = req_len + resp_len;
 	if (len > sizeof(log_data)){
@@ -457,15 +461,18 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 		return -1UL;
 	int stream = get_kkt_stream(prefix, cmd);
 	log_data_len = log_data_index = 0;
-	memcpy(log_data, req, req_len);
-	memcpy(log_data + req_len, resp, resp_len);
-	log_data_len = len;
+	if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
+		memcpy(log_data, req, req_len);
+		if ((resp != NULL) && (resp_len > 0))
+			memcpy(log_data + req_len, resp, resp_len);
+		log_data_len = len;
+		klog_rec_hdr.len = len;
+		klog_rec_hdr.req_len = req_len;
+		klog_rec_hdr.resp_len = resp_len;
+	}
 	klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
 	klog_rec_hdr.stream = stream;
-	klog_rec_hdr.len = len;
-	klog_rec_hdr.req_len = req_len;
-	klog_rec_hdr.resp_len = resp_len;
-	klog_rec_hdr.cmd = cmd;
+	klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
 	klog_rec_hdr.status = status;
 	klog_rec_hdr.crc32 = klog_rec_crc32();
 	return klog_add_rec(hlog) ? klog_rec_hdr.number : -1UL;
@@ -554,7 +561,7 @@ static bool klog_print_line(bool recode)
 	if (log_data_index >= klog_rec_hdr.len)
 		return false;
 	uint32_t begin = log_data_index, end = klog_rec_hdr.req_len, addr = begin;
-	if (log_data_index >= klog_rec_hdr.resp_len){
+	if (log_data_index >= klog_rec_hdr.req_len){
 		end = klog_rec_hdr.len;
 		addr -= klog_rec_hdr.req_len;
 	}
@@ -576,7 +583,7 @@ static bool klog_print_line(bool recode)
 	for (uint32_t i = 0, idx = begin; i < 16; i++, idx++, offs++){
 		if (idx < end){
 			uint8_t b = log_data[idx];
-			sprintf(ln + offs, "%c", is_print(b) ? b : ' ');
+			sprintf(ln + offs, "%c", is_print(b) ? b : '.');
 		}else
 			sprintf(ln + offs, " ");
 	}
@@ -608,7 +615,7 @@ bool klog_print_rec(void)
 {
 	log_reset_prn_buf();
 	try_fn(klog_print_rec_header());
-	bool recode = klog_rec_hdr.stream != KLOG_STREAM_PRN;
+	bool recode = false; //klog_rec_hdr.stream != KLOG_STREAM_PRN;
 	if (klog_rec_hdr.req_len > 0){
 		try_fn(klog_print_data_header("ЗАПРОС:"));
 		for (log_data_index = 0; log_data_index < klog_rec_hdr.req_len;

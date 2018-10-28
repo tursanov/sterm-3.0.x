@@ -11,7 +11,7 @@
 struct log_header {
 	uint32_t tag;		/* признак заголовка (для каждой КЛ свой) */
 	uint32_t len;		/* длина КЛ без учета заголовка */
-	uint32_t n_recs;		/* число записей */
+	uint32_t n_recs;	/* число записей */
 	uint32_t head;		/* смещение первой записи */
 	uint32_t tail;		/* смещение последней записи */
 	uint32_t cur_number;	/* номер текущей записи */
@@ -26,7 +26,7 @@ struct log_header {
  */
 /* 30.08.04: элементами карты стали структуры типа map_entry_t */
 struct map_entry_t {
-	uint32_t offset;		/* смещение заголовка записи в ЛКЛ */
+	uint32_t offset;		/* смещение заголовка записи в КЛ */
 	uint32_t number;		/* номер записи */
 	struct date_time dt;		/* время создания записи */
 } __attribute__((__packed__));

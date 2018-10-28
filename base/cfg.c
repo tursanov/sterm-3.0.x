@@ -419,6 +419,7 @@ static struct {
 	CFG_ENTRY_INT		("bank-pos-port",	bank_pos_port),
 /* Настройки ККТ */
 	CFG_ENTRY_BOOL		("kkt",			has_kkt),
+	CFG_ENTRY_BOOL		("fiscal_mode",		fiscal_mode),
 	CFG_ENTRY_INT		("fdo-iface",		fdo_iface),
 	CFG_ENTRY_IP		("fdo-ip",		fdo_ip),
 	CFG_ENTRY_UINT16	("fdo-port",		fdo_port),
@@ -431,6 +432,7 @@ static struct {
 	CFG_ENTRY_STRING	("gprs-passwd",		kkt_gprs_passwd),
 	CFG_ENTRY_INT		("tax-system",		tax_system),
 	CFG_ENTRY_INT		("kkt-log-level",	kkt_log_level),
+	CFG_ENTRY_UINT32	("kkt-log-stream",	kkt_log_stream),
 	CFG_ENTRY_INT		("tz-offs",		tz_offs),
 /* Настройки экрана */
 	CFG_ENTRY_UINT32	("blank-time",		blank_time),

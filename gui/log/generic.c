@@ -240,8 +240,7 @@ void log_fill_scr_str(struct log_gui_context *ctx,
  * Добавление в экранный буфер строки. Возвращает false в случае переполнения
  * экранного буфера.
  */
-bool log_add_scr_str(struct log_gui_context *ctx, bool need_recode,
-		const char *format, ...)
+bool log_add_scr_str(struct log_gui_context *ctx, bool need_recode, const char *format, ...)
 {
 	static char s[LOG_SCREEN_COLS + 1];
 	int i, len;
@@ -281,22 +280,28 @@ static void log_draw_rec_header(struct log_gui_context *ctx)
 			ctx->get_head_line(i));
 }
 
-static bool log_is_lat(uint8_t c)
+static bool log_is_lat(const struct log_gui_context *ctx, uint8_t c)
 {
-	return (c >= 0x40) && (c <= 0x5f);
+	bool ret = false;
+	if (ctx->asis)
+		ret = ((c >= 0x41) && (c <= 0x5a)) || ((c >= 0x61) && (c <= 0x7a));
+	else
+		ret = (c >= 0x40) && (c <= 0x5f);
+	return ret;
 }
 
 /* Определение цвета выводимого символа и фона */
-static void log_get_char_color(uint8_t c, Color *fg, Color *bg)
+static void log_get_char_color(const struct log_gui_context *ctx, uint8_t c, Color *fg, Color *bg)
 {
-	bool inverse = c & 0x80;
-	c &= 0x7f;
+	bool inverse = !ctx->asis && (c & 0x80);
+	if (!ctx->asis)
+		c &= 0x7f;
 	if (inverse){
 		*fg = cfg.bg_color;
 		*bg = cfg.rus_color;
 	}else{
 		*bg = cfg.bg_color;
-		if (log_is_lat(c))
+		if (log_is_lat(ctx, c))
 			*fg = cfg.lat_color;
 		else
 			*fg = cfg.rus_color;
@@ -304,7 +309,7 @@ static void log_get_char_color(uint8_t c, Color *fg, Color *bg)
 }
 
 /* Вывод строки записи контрольной ленты. Возвращает длину выведенной строки. */
-static int log_draw_rec_line(struct log_gui_context *ctx, int line, int index)
+static int log_draw_rec_line(const struct log_gui_context *ctx, int line, int index)
 {
 	int n = ctx->scr_data[index++],
 	    w = font80x20->max_width, h = font80x20->max_height;
@@ -316,16 +321,17 @@ static int log_draw_rec_line(struct log_gui_context *ctx, int line, int index)
 		b = ctx->scr_data[index];
 		if (b == 0)
 			break;
-		log_get_char_color(b, &fg, &bg);
-		b &= 0x7f;
-		underline = log_is_lat(b);
+		log_get_char_color(ctx, b, &fg, &bg);
+		if (!ctx->asis)
+			b &= 0x7f;
+		underline = !ctx->asis && log_is_lat(ctx, b);
 		if (bg != cfg.bg_color){
 			tmp = ctx->mem_gc->brushcolor;
 			ctx->mem_gc->brushcolor = bg;
 			FillBox(ctx->mem_gc, n * w, line * h, w, h);
 			ctx->mem_gc->brushcolor = tmp;
 		}	
-		*s = recode(b);
+		*s = ctx->asis ? b : recode(b);
 		SetTextColor(ctx->mem_gc, fg);
 		TextOut(ctx->mem_gc, n * w, line * h, (char *)s);
 		if (underline){

@@ -177,7 +177,7 @@ static uint8_t map_tcap_byte(uint8_t b)
 	};
 	b &= 0x3f;
 	b &= ~TCAP_MASK;
-	if (cfg.has_kkt)
+	if (cfg.has_kkt && cfg.fiscal_mode)
 		b |= TCAP_KKT;
 	if ((wm == wm_local) && cfg.has_lprn)
 		b |= TCAP_EX_BCODE;

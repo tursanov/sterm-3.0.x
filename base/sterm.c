@@ -22,6 +22,7 @@
 #include "gui/dialog.h"
 #include "gui/help.h"
 #include "gui/log/express.h"
+#include "gui/log/kkt.h"
 #include "gui/log/local.h"
 #include "gui/log/pos.h"
 #include "gui/menu.h"
@@ -105,6 +106,7 @@ bool calc_active	= false;
 bool xlog_active	= false;
 bool plog_active	= false;
 bool llog_active	= false;
+bool klog_active	= false;
 bool xchg_active	= false;
 bool help_active	= false;
 bool ssaver_active	= false;
@@ -356,6 +358,7 @@ static bool set_term_defaults(void)
 	cfg.bank_pos_port = 0;
 
 	cfg.has_kkt = false;
+	cfg.fiscal_mode = false;
 	cfg.fdo_iface = KKT_FDO_IFACE_USB;
 	cfg.fdo_ip = 0;
 	cfg.fdo_port = 0;
@@ -368,6 +371,7 @@ static bool set_term_defaults(void)
 	memset(cfg.kkt_gprs_passwd, 0, sizeof(cfg.kkt_gprs_passwd));
 	cfg.tax_system = 0;
 	cfg.kkt_log_level = 0;
+	cfg.kkt_log_stream = KLOG_STREAM_ALL;
 	cfg.tz_offs = 0;
 
 	cfg.blank_time = 0;
@@ -759,6 +763,12 @@ static bool draw_llog(void)
 	return log_draw(llog_gui_ctx);
 }
 
+static bool draw_klog(void)
+{
+	return log_draw(klog_gui_ctx);
+}
+
+
 /* Полная перерисовка терминала */
 void redraw_term(bool show_text, const char *title)
 {
@@ -776,6 +786,7 @@ void redraw_term(bool show_text, const char *title)
 		{&xlog_active,	draw_xlog},
 		{&plog_active,	draw_plog},
 		{&llog_active,	draw_llog},
+		{&klog_active,	draw_klog},
 		{&xchg_active,	draw_xchange},
 		{&calc_active,	draw_calc},
 		{&ping_active,	draw_ping},
@@ -826,6 +837,8 @@ static void release_garbage(void)
 		log_release_view(plog_gui_ctx);
 	if (llog_active)
 		log_release_view(llog_gui_ctx);
+	if (klog_active)
+		log_release_view(klog_gui_ctx);
 	if (calc_active) {
 		if (cfg.simple_calc)
 			release_calc();
@@ -1132,14 +1145,14 @@ static bool test_kkt(void)
 	if (rc == KKT_STATUS_OK)
 		printf("nr_docs = %u\n", nr_docs);
 	else
-		printf("kkt_get_unconfirmed_docs_nr: 0x%.2hhx\n", rc);
+		printf("kkt_get_unconfirmed_docs_nr: 0x%.2hhx\n", rc);*/
 	rc = kkt_get_last_reg_data(data, &len);
 	if (rc == KKT_STATUS_OK){
 		printf("kkt_get_last_reg_data: len = %u\n", len);
 		if (len > 0)
 			write(STDOUT_FILENO, data, len);
 	}else
-		printf("kkt_get_last_reg_data: rc = 0x%.2hhx\n", rc);*/
+		printf("kkt_get_last_reg_data: rc = 0x%.2hhx\n", rc);
 	return ret;
 }
 #endif
@@ -1162,7 +1175,7 @@ static void init_devices(void)
 /* Инициализация терминала */
 static void init_term(bool need_init)
 {
-	bool flag = xlog_active || plog_active || llog_active;
+	bool flag = xlog_active || plog_active || llog_active || klog_active;
 	can_reject = false;
 	err_ptr = NULL;
 	if (!cfg.use_iplir){
@@ -1613,6 +1626,8 @@ static void release_term(void)
 	release_ppp_ipc();
 	log_close(hxlog);
 	log_close(hplog);
+	log_close(hllog);
+	log_close(hklog);
 	release_keys();
 	release_kbd();
 	xprn_release();
@@ -1845,6 +1860,7 @@ static int handle_kbd(struct kbd_event *e, bool check_scr, bool busy)
 		{KEY_A, cmd_switch_res},	/* изменение разрешения экрана */
 		{KEY_F, cmd_swap_ips},		/* обмен основного и альтернативного ip хост-ЭВМ */
 		{KEY_G, cmd_snap_shot},		/* печать копии экрана */
+		{KEY_H, cmd_view_klog},		/* просмотр ККЛ */
 		{KEY_I, cmd_term_info},		/* информация о терминале */
 		{KEY_J, cmd_view_xchange},	/* просмотр обмена в канале */
 		{KEY_K, cmd_view_xlog},		/* просмотр ЦКЛ */
@@ -1949,7 +1965,7 @@ static int handle_menu(struct kbd_event *e)
 		int cm = get_menu_command(mnu);
 		release_menu(mnu,true);
 		mnu = NULL;
-		online = !xlog_active && !plog_active && !llog_active;
+		online = !xlog_active && !plog_active && !llog_active && !klog_active;
 		pop_term_info();
 		ClearScreen(clBtnFace);
 		if (cm == cmd_none){
@@ -1959,6 +1975,8 @@ static int handle_menu(struct kbd_event *e)
 				log_redraw(plog_gui_ctx);
 			else if (llog_active)
 				log_redraw(llog_gui_ctx);
+			else if (klog_active)
+				log_redraw(klog_gui_ctx);
 			else
 				redraw_term(true, main_title);
 		}
@@ -1988,6 +2006,46 @@ static int handle_lprn_menu(struct kbd_event *e)
 	return cm;
 }
 
+static uint32_t prev_kkt_log_stream = 0;
+
+static uint32_t kkt_log_stream_to_idx(uint32_t stream)
+{
+	uint32_t ret;
+	switch (stream){
+		case KLOG_STREAM_CTL:
+			ret = 0;
+			break;
+		case KLOG_STREAM_PRN:
+			ret = 1;
+			break;
+		case KLOG_STREAM_FDO:
+			ret = 2;
+			break;
+		default:
+			ret = 3;
+	}
+	return ret;
+}
+
+static uint32_t idx_to_kkt_log_stream(uint32_t idx)
+{
+	uint32_t ret;
+	switch (idx){
+		case 0:
+			ret = KLOG_STREAM_CTL;
+			break;
+		case 1:
+			ret = KLOG_STREAM_PRN;
+			break;
+		case 2:
+			ret = KLOG_STREAM_FDO;
+			break;
+		default:
+			ret = KLOG_STREAM_ALL;
+	}
+	return ret;
+}
+
 /* Обработчик окна настроек терминала */
 static int handle_options(struct kbd_event *e)
 {
@@ -2000,6 +2058,7 @@ static int handle_options(struct kbd_event *e)
 	}
 	in_progress = true;
 	if (!process_options(e)){
+		cfg.kkt_log_stream = idx_to_kkt_log_stream(cfg.kkt_log_stream);
 		if (optn_cm == cmd_store_optn){
 			optn_get_items(&cfg);
 			if ((wm == wm_local) && lprn_params_read &&
@@ -2020,6 +2079,10 @@ static int handle_options(struct kbd_event *e)
 			write_cfg();
 			if (cfg.has_kkt)
 				kkt_set_cfg();
+			if (prev_kkt_log_stream != cfg.kkt_log_stream){
+				log_close(hklog);
+				open_log(hklog);
+			}
 			init_term(false);
 			scr_visible = true;
 			show_cursor();
@@ -2091,6 +2154,22 @@ static int handle_llog(struct kbd_event *e)
 		redraw_term(true, main_title);
 		if (!resp_executing)
 			set_term_astate(ast_none);
+		return cmd_none;
+	}
+	return cm;
+}
+
+/* Обработчик просмотра ККЛ */
+static int handle_klog(struct kbd_event *e)
+{
+	int cm = log_process(klog_gui_ctx, e);
+	if (cm == cmd_exit){
+		log_release_view(klog_gui_ctx);
+		online = true;
+		pop_term_info();
+		ClearScreen(clBtnFace);
+		redraw_term(true, main_title);
+		set_term_astate(ast_none);
 		return cmd_none;
 	}
 	return cm;
@@ -2199,6 +2278,7 @@ int get_cmd(bool check_scr, bool busy)
 		{&xlog_active,		handle_xlog},
 		{&plog_active,		handle_plog},
 		{&llog_active,		handle_llog},
+		{&klog_active,		handle_klog},
 		{&xchg_active,		handle_xchange},
 		{&help_active,		handle_help},
 		{&ping_active,		handle_ping},
@@ -2575,6 +2655,42 @@ static void show_llog_menu(void)
 	}
 }
 
+/* Показать ККЛ */
+static void show_klog(void)
+{
+	if (!cfg.has_kkt){
+		set_term_astate(ast_illegal);
+		err_beep();
+	}else if (!llog_active){
+		online = false;
+		guess_term_state();
+		push_term_info();
+		log_init_view(klog_gui_ctx);
+	}
+}
+
+/* Показать меню ККЛ */
+static void show_klog_menu(void)
+{
+	if (!menu_active){
+		push_term_info();
+		hide_cursor();
+		scr_visible = false;
+		set_term_busy(true);
+		mnu = new_menu(true, false);
+		add_menu_item(mnu, new_menu_item("Печать текущей записи",
+				cmd_print_klog_rec, true));
+		add_menu_item(mnu, new_menu_item("Печать диапазона записей",
+				cmd_print_klog_range, klog_can_print_range(hklog)));
+		add_menu_item(mnu, new_menu_item("Поиск записи по дате",
+				cmd_find_klog_date, klog_can_find(hklog)));
+		add_menu_item(mnu, new_menu_item("Поиск записи по номеру",
+				cmd_find_klog_number, klog_can_find(hklog)));
+		ClearScreen(clBlack);
+		draw_menu(mnu);
+	}
+}
+
 /* Показать окно настройки параметров */
 static void show_options(void)
 {
@@ -2582,10 +2698,12 @@ static void show_options(void)
 		err_beep();
 	else if (!optn_active){
 		online = false;
+		cfg.kkt_log_stream = kkt_log_stream_to_idx(cfg.kkt_log_stream);
 		if (s_state == ss_ready)
 			guess_term_state();
-		prev_s_state=s_state;
-		s_state=ss_ready;
+		prev_kkt_log_stream = cfg.kkt_log_stream;
+		prev_s_state = s_state;
+		s_state = ss_ready;
 		push_term_info();
 		init_options();
 	}
@@ -2682,7 +2800,7 @@ static void show_term_info(void)
 		"%29s:  выход",
 		"Терминал", "Код версии",
 		"CRC", term_check_sum,
-		"Серийный номер", xsizeof(tn), tn,
+		"Серийный номер", sizeof(tn), tn,
 		"IP хост-ЭВМ", inet_ntoa(dw2ip(get_x3_ip())),
 		cfg.use_p_ip ? "осн." : "доп.",
 		"Лицензия ИПТ", bank_ok ? "Есть" : "Нет",
@@ -3522,6 +3640,38 @@ static void print_llog_range(void)
 	do_print_log_range(llog_gui_ctx, llog_print_range);
 }
 
+
+/* Поиск записи ККЛ по дате её создания */
+static void find_klog_date(void)
+{
+	do_find_log_date(klog_gui_ctx);
+}
+
+/* Поиск записи ККЛ по номеру */
+static void find_klog_number(void)
+{
+	do_find_log_number(klog_gui_ctx);
+}
+
+/* Печать ККЛ */
+static void print_klog(void)
+{
+	do_print_log(klog_gui_ctx, klog_print_all, NULL);
+}
+
+/* Печать текущей записи ККЛ */
+static void print_klog_rec(void)
+{
+	do_print_log_rec(klog_gui_ctx, klog_print_current);
+}
+
+/* Печать диапазона записей ККЛ */
+static void print_klog_range(void)
+{
+	do_print_log_range(klog_gui_ctx, klog_print_range);
+}
+
+
 /* Печать копии экрана */
 static void print_sshot(void)
 {
@@ -4076,6 +4226,13 @@ static bool process_term(void)
 		{cmd_lprn_menu,		do_lprn_menu,		true},
 		{cmd_lprn_snapshots,	do_lprn_snapshots,	true},
 		{cmd_lprn_erase_sd,	do_lprn_erase_sd,	true},
+		{cmd_view_klog,		show_klog,		true},
+		{cmd_klog_menu,		show_klog_menu,		true},
+		{cmd_print_klog,	print_klog,		true},
+		{cmd_print_klog_rec,	print_klog_rec,		true},
+		{cmd_print_klog_range,	print_klog_range,	true},
+		{cmd_find_klog_date,	find_klog_date,		true},
+		{cmd_find_klog_number,	find_klog_number,	true},
 	};
 	int i, cm;
 	if (need_lock_term){

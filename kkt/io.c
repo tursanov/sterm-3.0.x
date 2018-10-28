@@ -15,7 +15,7 @@ static const struct dev_info *kkt_di = NULL;
 
 static bool batch_mode = false;
 
-void close_dev(void)
+void kkt_close_dev(void)
 {
 	if (!batch_mode && (kkt_dev != -1)){
 		serial_close(kkt_dev);
@@ -23,23 +23,23 @@ void close_dev(void)
 	}
 }
 
-void begin_batch_mode(void)
+void kkt_begin_batch_mode(void)
 {
 	batch_mode = true;
 }
 
-void end_batch_mode(void)
+void kkt_end_batch_mode(void)
 {
 	batch_mode = false;
-	close_dev();
+	kkt_close_dev();
 }
 
-bool open_dev(void)
+bool kkt_open_dev(void)
 {
 	bool ret = false;
 	if (kkt_di != NULL){
 		if (kkt_dev != -1)
-			close_dev();
+			kkt_close_dev();
 		kkt_dev = serial_open(kkt_di->ttyS_name, &kkt_di->ss, O_RDWR);
 		ret = kkt_dev != -1;
 	}
@@ -48,15 +48,15 @@ bool open_dev(void)
 	return ret;
 }
 
-bool open_dev_if_need(void)
+bool kkt_open_dev_if_need(void)
 {
 	bool ret = true;
 	if (kkt_dev == -1)
-		ret = open_dev();
+		ret = kkt_open_dev();
 	return ret;
 }
 
-bool on_com_error(uint32_t timeout)
+bool kkt_on_com_error(uint32_t timeout)
 {
 	if (timeout == 0)
 		kkt_status = KKT_STATUS_OP_TIMEOUT;
@@ -73,40 +73,40 @@ void kkt_io_init(const struct dev_info *di)
 
 void kkt_io_release(void)
 {
-	close_dev();
+	kkt_close_dev();
 }
 
-uint8_t tx[TX_BUF_LEN];
-size_t tx_len = 0;
+uint8_t kkt_tx[TX_BUF_LEN];
+size_t kkt_tx_len = 0;
 
-void reset_tx(void)
+void kkt_reset_tx(void)
 {
-	tx_len = 0;
+	kkt_tx_len = 0;
 	tx_prefix = tx_cmd = 0;
 }
 
-uint8_t rx[RX_BUF_LEN];
-size_t rx_len = 0;
-size_t rx_exp_len = 0;
+uint8_t kkt_rx[RX_BUF_LEN];
+size_t kkt_rx_len = 0;
+size_t kkt_rx_exp_len = 0;
 
-void reset_rx(void)
+void kkt_reset_rx(void)
 {
-	rx_len = rx_exp_len = 0;
+	kkt_rx_len = kkt_rx_exp_len = 0;
 	kkt_status = KKT_STATUS_OK;
 }
 
 ssize_t kkt_io_write(uint32_t *timeout)
 {
-	ssize_t ret = serial_write(kkt_dev, tx, tx_len, timeout);
+	ssize_t ret = serial_write(kkt_dev, kkt_tx, kkt_tx_len, timeout);
 /*	if (ret > 0)
-		write(STDOUT_FILENO, tx, ret);*/
+		write(STDOUT_FILENO, kkt_tx, ret);*/
 	return ret;
 }
 
 ssize_t kkt_io_read(size_t len, uint32_t *timeout)
 {
-	ssize_t ret = serial_read(kkt_dev, rx + rx_len, len, timeout);
+	ssize_t ret = serial_read(kkt_dev, kkt_rx + kkt_rx_len, len, timeout);
 /*	if (ret > 0)
-		write(STDOUT_FILENO, rx + rx_len, ret);*/
+		write(STDOUT_FILENO, kkt_rx + kkt_rx_len, ret);*/
 	return ret;
 }

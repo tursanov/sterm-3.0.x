@@ -15,8 +15,6 @@
 #include "config.h"
 
 #define ASIZE(a) (int)(sizeof(a)/sizeof(a[0]))
-/* Специальный вариант sizeof для printf("%.*s", sizeof()) */
-#define xsizeof(v) (int)sizeof(v)
 /* Универсальный вариант offsetof (принимает как типы, так и переменные) */
 #define xoffsetof(s, f) offsetof(typeof(s), f)
 /* Определение размера структуры, начиная с заданного поля */

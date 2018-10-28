@@ -46,6 +46,7 @@ extern bool calc_active;
 extern bool xlog_active;
 extern bool plog_active;
 extern bool llog_active;
+extern bool klog_active;
 extern bool xchg_active;
 extern bool help_active;
 extern bool ssaver_active;
@@ -140,6 +141,13 @@ enum {
 	cmd_lprn_erase_sd,
 	cmd_continue,		/* используется при показе сообщений об ошибках ППУ */
 	cmd_kkt,
+	cmd_view_klog,
+	cmd_klog_menu,
+	cmd_print_klog,
+	cmd_print_klog_rec,
+	cmd_print_klog_range,
+	cmd_find_klog_date,
+	cmd_find_klog_number,
 };
 
 extern int kt;			/* тип ключа DS1990A */

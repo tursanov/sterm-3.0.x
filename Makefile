@@ -47,6 +47,7 @@ GUI_OBJS =		\
 GUI_LOG_OBJS =		\
 	express		\
 	generic		\
+	kkt		\
 	local		\
 	pos
 

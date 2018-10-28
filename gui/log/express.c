@@ -254,9 +254,9 @@ static char *xlog_get_head_line1(char *buf)
 			VERSION_RELEASE(xlog_rec_hdr.term_version),
 			VERSION_PATCH(xlog_rec_hdr.term_version),
 			xlog_rec_hdr.term_check_sum,
-			xsizeof(xlog_rec_hdr.tn), xlog_rec_hdr.tn,
-			xsizeof(xlog_rec_hdr.xprn_number), xlog_rec_hdr.xprn_number,
-			xsizeof(xlog_rec_hdr.aprn_number), xlog_rec_hdr.aprn_number);
+			sizeof(xlog_rec_hdr.tn), xlog_rec_hdr.tn,
+			sizeof(xlog_rec_hdr.xprn_number), xlog_rec_hdr.xprn_number,
+			sizeof(xlog_rec_hdr.aprn_number), xlog_rec_hdr.aprn_number);
 	return buf;
 }
 
@@ -432,6 +432,7 @@ static struct log_gui_context _xlog_gui_ctx = {
 	.gc		= NULL,
 	.mem_gc		= NULL,
 	.modal		= false,
+	.asis		= false,
 	.init		= xlog_init_gui_ctx,
 	.read_rec	= xlog_read_rec,
 	.get_head_line	= xlog_get_head_line,

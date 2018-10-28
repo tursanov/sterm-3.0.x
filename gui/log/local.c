@@ -356,10 +356,10 @@ static char *llog_get_head_line1(char *buf)
 			VERSION_RELEASE(llog_rec_hdr.term_version),
 			VERSION_PATCH(llog_rec_hdr.term_version),
 			llog_rec_hdr.term_check_sum,
-			xsizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
-			xsizeof(llog_rec_hdr.xprn_number), llog_rec_hdr.xprn_number,
-			xsizeof(llog_rec_hdr.aprn_number), llog_rec_hdr.aprn_number,
-			xsizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
+			sizeof(llog_rec_hdr.tn), llog_rec_hdr.tn,
+			sizeof(llog_rec_hdr.xprn_number), llog_rec_hdr.xprn_number,
+			sizeof(llog_rec_hdr.aprn_number), llog_rec_hdr.aprn_number,
+			sizeof(llog_rec_hdr.lprn_number), llog_rec_hdr.lprn_number);
 	return buf;
 }
 
@@ -717,6 +717,7 @@ static struct log_gui_context _llog_gui_ctx = {
 	.gc		= NULL,
 	.mem_gc		= NULL,
 	.modal		= false,
+	.asis		= false,
 	.init		= llog_init_gui_ctx,
 	.read_rec	= llog_read_rec,
 	.get_head_line	= llog_get_head_line,

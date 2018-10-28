@@ -503,9 +503,9 @@ static bool xlog_print_rec_header(void)
 			"(\"Š‘…‘‘-2€-Š\" %.4hX %.*s) “=%.*s „“=%.*s",
 		xlog_rec_hdr.addr.gaddr, xlog_rec_hdr.addr.iaddr,
 		xlog_rec_hdr.term_check_sum,
-		xsizeof(xlog_rec_hdr.tn), xlog_rec_hdr.tn,
-		xsizeof(xlog_rec_hdr.xprn_number), xlog_rec_hdr.xprn_number,
-		xsizeof(xlog_rec_hdr.aprn_number), xlog_rec_hdr.aprn_number);
+		sizeof(xlog_rec_hdr.tn), xlog_rec_hdr.tn,
+		sizeof(xlog_rec_hdr.xprn_number), xlog_rec_hdr.xprn_number,
+		sizeof(xlog_rec_hdr.aprn_number), xlog_rec_hdr.aprn_number);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "‡€ˆ‘œ %u/%u ’ ",

@@ -142,6 +142,8 @@ static const char *optn_tax_systems[] =
 	{"ОСН", "УСН доход", "УСН доход-расход", "ЕНВД", "ЕСН", "Патент"};
 static const char *optn_kkt_log_level[] =
 	{"Всё", "Информация", "Предупреждения", "Ошибки", "Нет"};
+static const char *optn_kkt_log_stream[] =
+	{"Управление", "Печать", "ОФД", "Всё"};
 static int optn_tz_offs[] = {-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0,
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
@@ -165,7 +167,7 @@ static int optn_watches[] = {0, 10, 30, 60, 90, 120, 180, 300, 600};
 #endif
 
 /* bool */
-//static const char *optn_bool1[] = {"Нет", "Да"};
+static const char *optn_bool1[] = {"Нет", "Да"};
 static const char *optn_bool2[] = {"Нет", "Есть"};
 static const char *optn_bool3[] = {"Выкл.", "Вкл."};
 
@@ -385,7 +387,7 @@ static struct optn_item ppp_optn_items[] = {
 		"для его инициализации.", OPTN_STR_EDIT_LEN, ppp_init, NULL),
 	OPTN_LSTR_EDIT("Номер дозвона", "Номер телефона ISP\r\n"
 		"ВНИМАНИЕ: если вы работаете по \r\n"
-		"выделенной линии оставьте это поле\r\n"
+		"выделенной линии, оставьте это поле\r\n"
 		"пустым", OPTN_STR_EDIT_LEN, ppp_phone, NULL),
 	OPTN_STR_ENUM("Набор номера", "Тип набора номера при соединении\r\n"
 		"по коммутируемой линии", optn_dial_mode, ini_bool, ppp_tone_dial, NULL),
@@ -414,6 +416,8 @@ static struct optn_item bank_optn_items[] = {
 static struct optn_item kkt_optn_items[] = {
 	OPTN_BOOL2("Наличие ККТ", "Наличие ККТ в составе терминала",
 		has_kkt, on_kkt_change),
+	OPTN_BOOL1("Фискальный режим", "Работа ККТ в фискальном режиме",
+		fiscal_mode, NULL),
 	OPTN_STR_ENUM("Связь с ОФД", "Способ связи ККТ с ОФД",
 		optn_fdo_iface, ini_int, fdo_iface, on_fdo_iface_change),
 	OPTN_IP_EDIT("IP ОФД", "IP-адрес ОФД", fdo_ip, NULL),
@@ -433,6 +437,8 @@ static struct optn_item kkt_optn_items[] = {
 		optn_tax_systems, ini_uint32, tax_system, NULL),
 	OPTN_STR_ENUM("Детализация КЛ3", "Уровень детализации КЛ работы с ККТ",
 		optn_kkt_log_level, ini_int, kkt_log_level, NULL),
+	OPTN_STR_ENUM("Поток в КЛ3", "Поток, для которого отображаются данные\r\n"
+		"в КЛ работы с ККТ", optn_kkt_log_stream, ini_uint32, kkt_log_stream, NULL),
 	OPTN_INT_ENUM("Часовой пояс", "Смещение в часах местного времени\r\n"
 		"относительно московского", optn_tz_offs, ini_int, tz_offs, NULL),
 };
@@ -851,7 +857,7 @@ static int optn_index_by_val(struct optn_item *item, int w)
 }
 
 /* Получение элемента редактирования по смещению параметра в term_cfg */
-struct optn_item *__optn_item_by_offset(int offset)
+static struct optn_item *__optn_item_by_offset(int offset)
 {
 	struct optn_item *ret = NULL;
 	for (int i = 0; i < ASIZE(optn_groups); i++){
@@ -866,6 +872,21 @@ struct optn_item *__optn_item_by_offset(int offset)
 }
 
 #define optn_item_by_offset(fld) __optn_item_by_offset(offsetof(struct term_cfg, fld))
+
+static bool __optn_set_item_enable(int offset, bool enable)
+{
+	bool ret = false;
+	struct optn_item *itm = __optn_item_by_offset(offset);
+	if (itm != NULL){
+		itm->enabled = enable;
+		ret = true;
+	}
+	return ret;
+}
+
+#define optn_set_item_enable(fld, en) __optn_set_item_enable(offsetof(struct term_cfg, fld), en)
+#define optn_enable_item(fld) optn_set_item_enable(fld, true)
+#define optn_disable_item(fld) optn_set_item_enable(fld, false)
 
 /*
  * Разрешение/запрещение редактирования параметров БСО ППУ в зависимости
@@ -1546,7 +1567,7 @@ static bool draw_optn_help(void)
 	i++;
 	
 	SetTextColor(pMemGC, clGreen);
-	sprintf(buf, "Заводской номер: %.*s", xsizeof(tn), tn);
+	sprintf(buf, "Заводской номер: %.*s", sizeof(tn), tn);
 	TextOut(pMemGC, 20, 20 + i * (pFont->max_height + 4), buf);
 	i++;
 	
@@ -2192,11 +2213,8 @@ static void on_iplir_change(struct optn_item *item)
 /* Вызывается при включении/выключении флага наличия ОПУ */
 static void on_xprn_change(struct optn_item *item)
 {
-	if (item == NULL)
-		return;
-	struct optn_item *itm = optn_item_by_offset(xprn_number);
-	if (itm != NULL)
-		itm->enabled = item->vv.flag;
+	if (item != NULL)
+		optn_set_item_enable(xprn_number, item->vv.flag);
 }
 
 /* Вызывается при включении/выключении флага наличия ДПУ */
@@ -2204,13 +2222,8 @@ static void on_aprn_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	bool enabled = item->vv.flag;
-	struct optn_item *itm = optn_item_by_offset(aprn_number);
-	if (itm != NULL)
-		itm->enabled = enabled;
-	itm = optn_item_by_offset(aprn_tty);
-	if (itm != NULL)
-		itm->enabled = enabled;
+	optn_set_item_enable(aprn_number, item->vv.flag);
+	optn_set_item_enable(aprn_tty, item->vv.flag);
 }
 
 /* Вызывается при изменении параметра "Связь с ИПТ" */
@@ -2218,13 +2231,8 @@ static void on_bank_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	bool enabled = item->vv.flag;
-	struct optn_item *itm = optn_item_by_offset(bank_proc_ip);
-	if (itm != NULL)
-		itm->enabled = enabled;
-	itm = optn_item_by_offset(bank_pos_port);
-	if (itm != NULL)
-		itm->enabled = enabled;
+	optn_set_item_enable(bank_proc_ip, item->vv.flag);
+	optn_set_item_enable(bank_pos_port, item->vv.flag);
 }
 
 /* Вызывается при изменении параметра "Наличие ККТ" */
@@ -2232,11 +2240,16 @@ static void on_kkt_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	bool enabled = item->vv.flag;
-	struct optn_item *itm = optn_item_by_offset(fdo_iface);
-	if (itm != NULL)
-		itm->enabled = enabled;
-	on_fdo_iface_change(itm);
+	optn_set_item_enable(fiscal_mode, item->vv.flag);
+	optn_set_item_enable(fdo_iface, item->vv.flag);
+	optn_set_item_enable(fdo_ip, item->vv.flag);
+	optn_set_item_enable(fdo_port, item->vv.flag);
+	optn_set_item_enable(fdo_poll_period, item->vv.flag);
+	optn_set_item_enable(tax_system, item->vv.flag);
+	optn_set_item_enable(kkt_log_level, item->vv.flag);
+	optn_set_item_enable(kkt_log_stream, item->vv.flag);
+	optn_set_item_enable(tz_offs, item->vv.flag);
+	on_fdo_iface_change(optn_item_by_offset(fdo_iface));
 }
 
 /* Вызывается при изменении интерфейса взаимодействия ККТ с ОФД */
@@ -2247,24 +2260,12 @@ static void on_fdo_iface_change(struct optn_item *item)
 	struct optn_item *itm = optn_item_by_offset(has_kkt);
 	bool kkt = (itm == NULL) ? false : itm->vv.flag;
 	int fdo_iface = item->vv.i;
-	itm = optn_item_by_offset(kkt_ip);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_ETH);
-	itm = optn_item_by_offset(kkt_netmask);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_ETH);
-	itm = optn_item_by_offset(kkt_gw);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_ETH);
-	itm = optn_item_by_offset(kkt_gprs_apn);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_GPRS);
-	itm = optn_item_by_offset(kkt_gprs_user);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_GPRS);
-	itm = optn_item_by_offset(kkt_gprs_passwd);
-	if (itm != NULL)
-		itm->enabled = kkt && (fdo_iface == KKT_FDO_IFACE_GPRS);
+	optn_set_item_enable(kkt_ip, kkt && (fdo_iface == KKT_FDO_IFACE_ETH));
+	optn_set_item_enable(kkt_netmask, kkt && (fdo_iface == KKT_FDO_IFACE_ETH));
+	optn_set_item_enable(kkt_gw, kkt && (fdo_iface == KKT_FDO_IFACE_ETH));
+	optn_set_item_enable(kkt_gprs_apn, kkt && (fdo_iface == KKT_FDO_IFACE_GPRS));
+	optn_set_item_enable(kkt_gprs_user, kkt && (fdo_iface == KKT_FDO_IFACE_GPRS));
+	optn_set_item_enable(kkt_gprs_passwd, kkt && (fdo_iface == KKT_FDO_IFACE_GPRS));
 }
 
 /* Вызывается в случае изменения цветовой схемы ДО прорисовки окна настройки */

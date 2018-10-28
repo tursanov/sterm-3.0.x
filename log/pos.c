@@ -381,9 +381,9 @@ static bool plog_print_rec_header(void)
 			"“=%.*s “=%.*s",
 		(uint16_t)plog_rec_hdr.addr.gaddr, (uint16_t)plog_rec_hdr.addr.iaddr,
 		plog_rec_hdr.term_check_sum,
-		xsizeof(plog_rec_hdr.tn), plog_rec_hdr.tn,
-		xsizeof(plog_rec_hdr.xprn_number), plog_rec_hdr.xprn_number,
-		xsizeof(plog_rec_hdr.lprn_number), plog_rec_hdr.lprn_number);
+		sizeof(plog_rec_hdr.tn), plog_rec_hdr.tn,
+		sizeof(plog_rec_hdr.xprn_number), plog_rec_hdr.xprn_number,
+		sizeof(plog_rec_hdr.lprn_number), plog_rec_hdr.lprn_number);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "‡€ˆ‘œ %u ’ ", plog_rec_hdr.number + 1);
