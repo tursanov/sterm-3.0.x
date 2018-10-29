@@ -435,12 +435,18 @@ static void log_draw_hints(struct log_gui_context *ctx)
 	DeleteGC(gc);
 }
 
+/* Можно ли показывать данную запись */
+static bool log_can_show_rec(struct log_gui_context *ctx, uint32_t index)
+{
+	return (ctx->filter == NULL) || ctx->filter(ctx->hlog, index);
+}
+
 /* Рисование контрольной ленты */
 bool log_draw(struct log_gui_context *ctx)
 {
 	ClearGC(ctx->mem_gc, cfg.bg_color);
 	log_draw_rec_header(ctx);
-	if (ctx->hlog->hdr->n_recs > 0)
+	if ((ctx->hlog->hdr->n_recs > 0) && log_can_show_rec(ctx, ctx->cur_rec_index))
 		log_draw_rec_data(ctx);
 	CopyGC(ctx->gc, 0, 0, ctx->mem_gc, 0, 0,
 			GetCX(ctx->mem_gc), GetCY(ctx->mem_gc));
@@ -474,60 +480,103 @@ static bool log_seek_rec(struct log_gui_context *ctx, uint32_t index)
 /* Перемещение между записями */
 static bool log_next_rec(struct log_gui_context *ctx)
 {
-	if (ctx->cur_rec_index < (ctx->hlog->hdr->n_recs - 1)){
-		ctx->cur_rec_index++;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t idx = ctx->cur_rec_index;
+	while (!ret && ((idx + 1) < ctx->hlog->hdr->n_recs)){
+		idx++;
+		ret = log_can_show_rec(ctx, idx);
+	}
+	if (ret)
+		ctx->cur_rec_index = idx;
+	return ret;
 }
 
 static bool log_prev_rec(struct log_gui_context *ctx)
 {
-	if (ctx->cur_rec_index > 0){
-		ctx->cur_rec_index--;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t idx = ctx->cur_rec_index;
+	while (!ret && (idx > 0)){
+		idx--;
+		ret = log_can_show_rec(ctx, idx);
+	}
+	if (ret)
+		ctx->cur_rec_index = idx;
+	return ret;
 }
 
 static bool log_next_group(struct log_gui_context *ctx, bool big)
 {
-	if (ctx->cur_rec_index < (ctx->hlog->hdr->n_recs - 1)){
-		ctx->cur_rec_index += big ? LOG_BGROUP_LEN : LOG_GROUP_LEN;
-		if (ctx->cur_rec_index >= ctx->hlog->hdr->n_recs)
-			ctx->cur_rec_index = ctx->hlog->hdr->n_recs - 1;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t delta = big ? LOG_BGROUP_LEN : LOG_GROUP_LEN;
+	uint32_t idx = ctx->cur_rec_index;
+	while (!ret && ((idx + 1) < ctx->hlog->hdr->n_recs)){
+		if (delta > 0){
+			idx += delta;
+			if (idx >= ctx->hlog->hdr->n_recs)
+				idx = ctx->hlog->hdr->n_recs - 1;
+			delta = 0;
+		}else
+			idx++;
+		ret = log_can_show_rec(ctx, idx);
+	}
+	if (ret)
+		ctx->cur_rec_index = idx;
+	return ret;
 }
 
 static bool log_prev_group(struct log_gui_context *ctx, bool big)
 {
-	if (ctx->cur_rec_index > 0){
-		ctx->cur_rec_index -= big ? LOG_BGROUP_LEN : LOG_GROUP_LEN;
-		if (ctx->cur_rec_index < 0)
-			ctx->cur_rec_index = 0;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t delta = big ? LOG_BGROUP_LEN : LOG_GROUP_LEN;
+	uint32_t idx = ctx->cur_rec_index;
+	while (!ret && (idx > 0)){
+		if (delta > 0){
+			if (idx < delta)
+				idx = 0;
+			else
+				idx -= delta;
+			delta = 0;
+		}else
+			idx--;
+		ret = log_can_show_rec(ctx, idx);
+	}
+	if (ret)
+		ctx->cur_rec_index = idx;
+	return ret;
 }
 
 static bool log_first_rec(struct log_gui_context *ctx)
 {
-	if (ctx->cur_rec_index != 0){
-		ctx->cur_rec_index = 0;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t idx0 = ctx->cur_rec_index, idx = idx0;
+	if (idx > 0){
+		idx = 0;
+		ret = log_can_show_rec(ctx, idx);
+		while (!ret && (idx < idx0)){
+			idx++;
+			ret = log_can_show_rec(ctx, idx);
+		}
+		if (ret)
+			ctx->cur_rec_index = idx;
+	}
+	return ret;
 }
 
 static bool log_last_rec(struct log_gui_context *ctx)
 {
-	if (ctx->cur_rec_index < (ctx->hlog->hdr->n_recs - 1)){
-		ctx->cur_rec_index = ctx->hlog->hdr->n_recs - 1;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t idx0 = ctx->cur_rec_index, idx = idx0;
+	if ((idx + 1) < ctx->hlog->hdr->n_recs){
+		idx = ctx->hlog->hdr->n_recs - 1;
+		ret = log_can_show_rec(ctx, idx);
+		while (!ret && (idx > idx0)){
+			idx--;
+			ret = log_can_show_rec(ctx, idx);
+		}
+		if (ret)
+			ctx->cur_rec_index = idx;
+	}
+	return ret;
 }
 
 /* Перемещение внутри записи. Возвращает true, если надо перерисовать запись */
@@ -728,12 +777,23 @@ bool log_init_view(struct log_gui_context *ctx)
 	set_term_astate(ast_none);
 	hide_cursor();
 	ctx->modal = false;
+	bool empty = true;
+	uint32_t idx = 0;
 	if (ctx->hlog->hdr->n_recs > 0){
-		ctx->cur_rec_index = ctx->hlog->hdr->n_recs - 1;
-		ctx->read_rec(ctx->hlog, ctx->cur_rec_index);
-		ctx->fill_scr_data(ctx);
-	}else
+		idx = ctx->hlog->hdr->n_recs - 1;
+		empty = !log_can_show_rec(ctx, idx);
+		while (empty && (idx > 0)){
+			idx--;
+			empty = !log_can_show_rec(ctx, idx);
+		}
+	}
+	if (empty)
 		ctx->cur_rec_index = 0;
+	else{
+		ctx->cur_rec_index = idx;
+		ctx->read_rec(ctx->hlog, idx);
+		ctx->fill_scr_data(ctx);
+	}
 	ctx->first_line = 0;
 	ctx->mem_gc = CreateMemGC(w, h);
 	ctx->gc = CreateGC((DISCX - w) / 2, titleCY, w, h);

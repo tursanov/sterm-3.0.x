@@ -92,6 +92,7 @@ static bool plog_fill_map(struct log_handle *hlog)
 		hlog->map[i].offset = offs;
 		hlog->map[i].number = plog_rec_hdr.number;
 		hlog->map[i].dt = plog_rec_hdr.dt;
+		hlog->map[i].tag = 0;
 		offs = log_inc_index(hlog, offs, sizeof(plog_rec_hdr));
 		if (plog_rec_hdr.tag != PLOG_REC_TAG){
 			fprintf(stderr, "Неверный формат заголовка записи %s #%u.\n",

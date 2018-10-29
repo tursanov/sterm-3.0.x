@@ -32,6 +32,8 @@ struct log_gui_context {
 	bool asis;		/* показывать символы без перекодировки */
 /* Поздняя инициализация структуры */
 	void (*init)(struct log_gui_context *ctx);
+/* Можно ли показывать запись */
+	bool (*filter)(struct log_handle *hlog, uint32_t index);
 /* Чтение записи по индексу */
 	bool (*read_rec)(struct log_handle *hlog, uint32_t index);
 /* Получение заданной строки заголовка */

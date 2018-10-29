@@ -111,12 +111,10 @@ static bool klog_fill_map(struct log_handle *hlog)
 				klog_rec_hdr.resp_len);
 			return log_truncate(hlog, i, tail);
 		}
-		bool stream_match = true; //(klog_rec_hdr.stream & cfg.kkt_log_stream) != 0;
-		if (stream_match){
-			hlog->map[i].offset = offs;
-			hlog->map[i].number = klog_rec_hdr.number;
-			hlog->map[i].dt = klog_rec_hdr.dt;
-		}
+		hlog->map[i].offset = offs;
+		hlog->map[i].number = klog_rec_hdr.number;
+		hlog->map[i].dt = klog_rec_hdr.dt;
+		hlog->map[i].tag = klog_rec_hdr.stream;
 		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
 		log_data_len = klog_rec_hdr.len;
 		if (log_data_len > 0)
@@ -130,8 +128,6 @@ static bool klog_fill_map(struct log_handle *hlog)
 		}
 		klog_rec_hdr.crc32 = crc;
 		offs = log_inc_index(hlog, offs, klog_rec_hdr.len);
-/*		if (stream_match)
-			i++;*/
 	}
 	return true;
 }
@@ -211,7 +207,8 @@ uint32_t klog_index_for_number(struct log_handle *hlog, uint32_t number)
 /* Можно ли отпечатать диапазон записей контрольной ленты */
 bool klog_can_print_range(struct log_handle *hlog)
 {
-	return cfg.has_xprn && (hlog->hdr->n_recs > 0);
+	return cfg.has_xprn && (cfg.kkt_log_stream == KLOG_STREAM_ALL) &&
+		(hlog->hdr->n_recs > 0);
 }
 
 /* Можно ли распечатать контрольную ленту полностью */
@@ -223,7 +220,7 @@ bool klog_can_print(struct log_handle *hlog)
 /* Можно ли проводить поиск по контрольной ленте */
 bool klog_can_find(struct log_handle *hlog)
 {
-	return hlog->hdr->n_recs > 0;
+	return (cfg.kkt_log_stream == KLOG_STREAM_ALL) && (hlog->hdr->n_recs > 0);
 }
 
 /*

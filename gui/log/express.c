@@ -434,6 +434,7 @@ static struct log_gui_context _xlog_gui_ctx = {
 	.modal		= false,
 	.asis		= false,
 	.init		= xlog_init_gui_ctx,
+	.filter		= NULL,
 	.read_rec	= xlog_read_rec,
 	.get_head_line	= xlog_get_head_line,
 	.get_hint_line	= xlog_get_hint_line,

@@ -2058,9 +2058,9 @@ static int handle_options(struct kbd_event *e)
 	}
 	in_progress = true;
 	if (!process_options(e)){
-		cfg.kkt_log_stream = idx_to_kkt_log_stream(cfg.kkt_log_stream);
 		if (optn_cm == cmd_store_optn){
 			optn_get_items(&cfg);
+			cfg.kkt_log_stream = idx_to_kkt_log_stream(cfg.kkt_log_stream);
 			if ((wm == wm_local) && lprn_params_read &&
 					(lprn_set_params(&cfg) == LPRN_RET_ERR)){
 				ClearScreen(clBlack);
@@ -2069,7 +2069,8 @@ static int handle_options(struct kbd_event *e)
 					"параметры работы в ППУ.",
 					dlg_yes, DLG_BTN_YES, al_center);
 			}
-		}
+		}else
+			cfg.kkt_log_stream = idx_to_kkt_log_stream(cfg.kkt_log_stream);
 		release_options(true);
 		online = true;
 		pop_term_info();
@@ -2672,20 +2673,22 @@ static void show_klog(void)
 /* Показать меню ККЛ */
 static void show_klog_menu(void)
 {
-	if (!menu_active){
+	bool can_print = klog_can_print_range(hklog);
+	bool can_find = klog_can_find(hklog);
+	if (!menu_active && (can_print || can_find)){
 		push_term_info();
 		hide_cursor();
 		scr_visible = false;
 		set_term_busy(true);
 		mnu = new_menu(true, false);
 		add_menu_item(mnu, new_menu_item("Печать текущей записи",
-				cmd_print_klog_rec, true));
+				cmd_print_klog_rec, can_print));
 		add_menu_item(mnu, new_menu_item("Печать диапазона записей",
-				cmd_print_klog_range, klog_can_print_range(hklog)));
+				cmd_print_klog_range, can_print));
 		add_menu_item(mnu, new_menu_item("Поиск записи по дате",
-				cmd_find_klog_date, klog_can_find(hklog)));
+				cmd_find_klog_date, can_find));
 		add_menu_item(mnu, new_menu_item("Поиск записи по номеру",
-				cmd_find_klog_number, klog_can_find(hklog)));
+				cmd_find_klog_number, can_find));
 		ClearScreen(clBlack);
 		draw_menu(mnu);
 	}

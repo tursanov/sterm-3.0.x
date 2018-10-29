@@ -277,6 +277,7 @@ static struct log_gui_context _plog_gui_ctx = {
 	.modal		= false,
 	.asis		= false,
 	.init		= plog_init_gui_ctx,
+	.filter		= NULL,
 	.read_rec	= plog_read_rec,
 	.get_head_line	= plog_get_head_line,
 	.get_hint_line	= plog_get_hint_line,

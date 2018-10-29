@@ -90,7 +90,8 @@ static void klog_fill_scr_data(struct log_gui_context *ctx)
 /* Первая строка заголовка записи */
 static char *klog_get_head_line1(char *buf)
 {
-	if (hklog->hdr->n_recs == 0)
+	if ((hklog->hdr->n_recs == 0) ||
+			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index))
 		*buf = 0;
 	else
 		sprintf(buf, "%.2hhX%.2hhX (\"ЭКСПРЕСС-2А-К\" "
@@ -125,8 +126,11 @@ static const char *get_stream_name(int stream)
 /* Вторая строка заголовка */
 static char *klog_get_head_line2(char *buf)
 {
-	if (hklog->hdr->n_recs == 0)
-		sprintf(buf, "                                  На контрольной ленте нет записей");
+	if ((hklog->hdr->n_recs == 0) ||
+			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index))
+		sprintf(buf, "                             "
+			"На контрольной ленте нет записей [%s]",
+			get_stream_name(klog_rec_hdr.stream));
 	else{
 		sprintf(buf, "Запись %u [%s] от %.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3hu "
 			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
@@ -223,7 +227,9 @@ bool klog_print_range(struct log_gui_context *ctx, uint32_t from, uint32_t to)
 bool klog_print_all(struct log_gui_context *ctx)
 {
 	uint32_t n0, n1;
-	if ((hklog->hdr->n_recs == 0) || !log_get_boundary_numbers(hklog, &n0, &n1))
+	if ((hklog->hdr->n_recs == 0) ||
+			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index) ||
+			!log_get_boundary_numbers(hklog, &n0, &n1))
 		return false;
 	return klog_print_range(ctx, n0 + 1, n1 + 1);
 }
@@ -243,6 +249,13 @@ static void klog_init_gui_ctx(struct log_gui_context *ctx)
 	ctx->hlog = hklog;
 }
 
+/* Можно ли показывать данную запись */
+static bool klog_can_show_rec(struct log_handle *hlog, uint32_t index)
+{
+	return	(cfg.kkt_log_stream == KLOG_STREAM_ALL) ||
+		(hlog->map[index].tag == cfg.kkt_log_stream);
+}
+
 static struct log_gui_context _klog_gui_ctx = {
 	.hlog		= NULL,
 	.active		= &klog_active,
@@ -258,6 +271,7 @@ static struct log_gui_context _klog_gui_ctx = {
 	.modal		= false,
 	.asis		= false,
 	.init		= klog_init_gui_ctx,
+	.filter		= klog_can_show_rec,
 	.read_rec	= klog_read_rec,
 	.get_head_line	= klog_get_head_line,
 	.get_hint_line	= klog_get_hint_line,
