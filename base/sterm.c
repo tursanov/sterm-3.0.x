@@ -2783,10 +2783,17 @@ static void show_pos(void)
 	}
 }
 
+static inline void show_no_kkt(void){
+	set_term_astate(ast_no_kkt);
+	err_beep();
+}
+
 /* Показать окно фискального приложения */
 static void show_fa(void)
 {
-	if (!fa_active){
+	if (!cfg.has_kkt || (kkt == NULL))
+		show_no_kkt();
+	else if (!fa_active){
 		online = false;
 		guess_term_state();
 		push_term_info();
@@ -3060,10 +3067,6 @@ static const char *fs_nr_unconfirmed(void)
 
 static void show_kkt_info(void)
 {
-	void show_no_kkt(void){
-		set_term_astate(ast_no_kkt);
-		err_beep();
-	}
 	if (!cfg.has_kkt || (kkt == NULL)){
 		show_no_kkt();
 		return;
