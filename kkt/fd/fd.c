@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "sysdefs.h"
@@ -190,7 +191,7 @@ static void set_fn_error(char *s, uint8_t *err_info, size_t err_info_len)
             sprintf(s, "%s", "Ошибка приема из ФН");
 			break;
         default:
-            sprintf(s, "%s", "Неизвестная ошибка");
+            sprintf(s, "%s (0x%.2x)", "Неизвестная ошибка", err_info[1]);
 			break;
     }
 }
@@ -277,7 +278,7 @@ static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x45: // STATUS_FS_ERR
 			s += sprintf(s, "%s", "общая аппаратная ошибка ФН");
 			if (err_info_len > 0)
-                set_fn_error(s, err_info, err_info_len);		    
+                set_fn_error(s, err_info, err_info_len);
 			break;
 		case 0x46: //
 			sprintf(s, "%s", "последний сформированный документ не отпечатан");
@@ -394,8 +395,11 @@ static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0xf1: // STATUS_TIMEOUT
 			sprintf(s, "%s", "Таймаут приема ответа от ФР");
 			break;
+		case 0xf2:
+			sprintf(s, "%s", "ККТ не обнаружена. Подключите ККТ");
+			break;
 		default:
-			sprintf(s, "%s", "неизвестная ошибка");
+			sprintf(s, "%s (0x%.2x)", "Неизвестная ошибка", status);
 			break;
 	}
 }
@@ -517,7 +521,7 @@ int fd_registration(fd_registration_params_t *params) {
 
 	ffd_tlv_add_string(1021, params->cashier, strlen(params->cashier), false);
 	if (params->cashier_inn[0] != 0)
-		ffd_tlv_add_string(1023, params->cashier_inn, 12, true);
+		ffd_tlv_add_string(1203, params->cashier_inn, 12, true);
 
 	ffd_tlv_add_string(1060, params->tax_service_site, strlen(params->tax_service_site), false);
 	ffd_tlv_add_string(1117, params->cheque_sender_email, strlen(params->cheque_sender_email), false);
@@ -540,13 +544,13 @@ int fd_registration(fd_registration_params_t *params) {
 // открытие смены
 int fd_open_shift(fd_shift_params_t *params)
 {
-	printf("shift_params:\n\tcashier: %s\n\tcashier_inn: %s\n",
-			params->cashier, params->cashier_inn);
-
 	ffd_tlv_reset();
 	ffd_tlv_add_string(1021, params->cashier, strlen(params->cashier), false);
 	if (params->cashier_inn[0] != 0)
-		ffd_tlv_add_string(1023, params->cashier_inn, 12, true);
+		ffd_tlv_add_string(1203, params->cashier_inn, 12, true);
+
+	printf("Кассир: %s\n", params->cashier);
+	printf("ИНН кассира: %s\n", params->cashier_inn);
 
 	return fd_create_doc(OPEN_SHIFT, NULL, 0);
 }
@@ -557,7 +561,7 @@ int fd_close_shift(fd_shift_params_t *params)
 	ffd_tlv_reset();
 	ffd_tlv_add_string(1021, params->cashier, strlen(params->cashier), false);
 	if (params->cashier_inn[0] != 0)
-		ffd_tlv_add_string(1023, params->cashier_inn, 12, true);
+		ffd_tlv_add_string(1203, params->cashier_inn, 12, true);
 
 	return fd_create_doc(CLOSE_SHIFT, NULL, 0);
 }

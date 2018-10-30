@@ -52,6 +52,7 @@ extern bool help_active;
 extern bool ssaver_active;
 extern bool ping_active;
 extern bool pos_active;
+extern bool fa_active;
 
 /* Команды терминала */
 enum {
@@ -140,7 +141,6 @@ enum {
 	cmd_lprn_snapshots,
 	cmd_lprn_erase_sd,
 	cmd_continue,		/* используется при показе сообщений об ошибках ППУ */
-	cmd_kkt,
 	cmd_view_klog,
 	cmd_klog_menu,
 	cmd_print_klog,
@@ -148,6 +148,15 @@ enum {
 	cmd_print_klog_range,
 	cmd_find_klog_date,
 	cmd_find_klog_number,
+/* Фискальное приложение */
+	cmd_fa,
+	cmd_reg_fa,
+	cmd_open_shift_fa,
+	cmd_close_shift_fa,
+	cmd_cheque_fa,
+	cmd_cheque_corr_fa,
+	cmd_calc_report_fa,
+	cmd_close_fs_fa,
 };
 
 extern int kt;			/* тип ключа DS1990A */

@@ -33,6 +33,8 @@ GUI_OBJS =		\
 	calc		\
 	dialog		\
 	exgdi		\
+	fa		\
+	forms		\
 	gdi		\
 	help		\
 	menu		\
@@ -41,8 +43,7 @@ GUI_OBJS =		\
 	scr		\
 	ssaver		\
 	status		\
-	xchange		\
-	kkt
+	xchange
 
 GUI_LOG_OBJS =		\
 	express		\

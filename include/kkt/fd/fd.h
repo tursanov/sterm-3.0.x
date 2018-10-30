@@ -1,7 +1,7 @@
 #ifndef FD_H
 #define FD_H
 
-#include "kkt/fd/ad.h"
+//#include "kkt/fd/ad.h"
 
 // режимы работы
 #define REG_MODE_CRYPTO		0x01
@@ -33,7 +33,6 @@ typedef struct fd_registraton_params_t {
 // параметры открытия/закрытия смены
 typedef struct fd_shift_params_t {
     char cashier[64+1]; // кассир
-    char post[64+1]; // должность
     char cashier_inn[12+1]; // инн кассира
 } fd_shift_params_t;
 

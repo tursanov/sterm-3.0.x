@@ -25,9 +25,9 @@
 #include "gui/log/kkt.h"
 #include "gui/log/local.h"
 #include "gui/log/pos.h"
+#include "gui/fa.h"
 #include "gui/menu.h"
 #include "gui/options.h"
-#include "gui/kkt.h"
 #include "gui/ping.h"
 #include "gui/scr.h"
 #include "gui/ssaver.h"
@@ -112,7 +112,7 @@ bool help_active	= false;
 bool ssaver_active	= false;
 bool ping_active	= false;
 bool pos_active		= false;
-bool kkt_active		= false;
+bool fa_active		= false;
 
 static bool term_busy = false;		/* флаг занятости терминала */
 
@@ -791,6 +791,7 @@ void redraw_term(bool show_text, const char *title)
 		{&calc_active,	draw_calc},
 		{&ping_active,	draw_ping},
 		{&pos_active,	pos_screen_draw},
+		{&fa_active,	draw_fa},
 	};
 	int i;
 	bool v=scr_visible;
@@ -853,6 +854,8 @@ static void release_garbage(void)
 		pos_active = false;
 	}else
 		pos_set_state(pos_new);
+	if (fa_active)
+		release_fa();
 	end_message_box();
 	if (ssaver_active)
 		scr_wakeup();
@@ -1866,7 +1869,7 @@ static int handle_kbd(struct kbd_event *e, bool check_scr, bool busy)
 		{KEY_K, cmd_view_xlog},		/* просмотр ЦКЛ */
 		{KEY_L, cmd_iplir_version},	/* информация о версии VipNet-клиента */
 		{KEY_M, cmd_view_llog},		/* просмотр ПКЛ */
-		{KEY_O, cmd_kkt },			/* ККТ */
+		{KEY_O, cmd_fa},		/* фискальное приложение */
 		{KEY_P, cmd_ping},		/* ping */
 		{KEY_Q,	cmd_ppp_hangup},	/* разрыв соединения PPP */
 		{KEY_R, cmd_view_keys},		/* ключи */
@@ -2244,6 +2247,22 @@ static int handle_pos(struct kbd_event *e)
 	return cmd_none;
 }
 
+/* Обработчик фискального приложения */
+static int handle_fa(struct kbd_event *e)
+{
+	if (!process_fa(e)){
+		release_fa();
+		online = true;
+		pop_term_info();
+		scr_visible = true;
+		show_cursor();
+
+		redraw_term(true, main_title);
+	}
+
+	return cmd_none;
+}
+
 /* Гашение экрана */
 static void blank_screen(void)
 {
@@ -2284,6 +2303,7 @@ int get_cmd(bool check_scr, bool busy)
 		{&help_active,		handle_help},
 		{&ping_active,		handle_ping},
 		{&pos_active,		handle_pos},
+		{&fa_active,		handle_fa},
 	};
 	int i;
 	struct kbd_event e;
@@ -2726,17 +2746,6 @@ static void show_ping(void)
 	}
 }
 
-/* Показать окно ККТ */
-static void show_kkt(void)
-{
-	if ((kt != key_srv) && (kt != key_dbg))
-		err_beep();
-	else if (!kkt_active){
-		init_kkt();
-	}
-}
-
-
 /* Показать окно POS-терминала */
 static void show_pos(void)
 {
@@ -2769,6 +2778,20 @@ static void show_pos(void)
 			pos_screen_draw();
 			pos_set_state(pos_init);
 		}else{
+			online = true;
+			pop_term_info();
+		}
+	}
+}
+
+/* Показать окно фискального приложения */
+static void show_fa(void)
+{
+	if (!fa_active){
+		online = false;
+		guess_term_state();
+		push_term_info();
+		if (!init_fa()) {
 			online = true;
 			pop_term_info();
 		}
@@ -4187,7 +4210,7 @@ static bool process_term(void)
 		{cmd_options,		show_options,		true},
 		{cmd_calculator,	show_calculator,	true},
 		{cmd_ping,		show_ping,		true},
-		{cmd_kkt,		show_kkt,		true},
+		{cmd_fa,		show_fa,		true},
 		{cmd_view_error,	show_error,		true},
 
 		{cmd_edit_iplir, on_edit_iplir, false},

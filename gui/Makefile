@@ -8,6 +8,8 @@ GUI_OBJS =		\
 	calc		\
 	dialog		\
 	exgdi		\
+	fa		\
+	forms		\
 	gdi		\
 	help		\
 	menu		\
@@ -16,8 +18,7 @@ GUI_OBJS =		\
 	scr		\
 	ssaver		\
 	status		\
-	xchange	\
-	kkt
+	xchange
 
 OBJS = $(addsuffix .o, $(GUI_OBJS))
 
