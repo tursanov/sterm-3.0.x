@@ -1795,7 +1795,6 @@ static bool bad_repeat(struct kbd_event *e)
 		KEY_T,		/* Ctrl+Е -- ошибка в тексте ответа */
 		KEY_U,		/* Ctrl+U -- печать сохранённых образов бланков на ППУ */
 		KEY_X,		/* Ctrl+X -- БКЛ */
-		KEY_Y,		/* Ctrl+Y -- ЛКЛ */
 		KEY_Z,		/* Ctrl+Z -- получение номера БСО */
 		KEY_COMMA,	/* Ctrl+Б -- вызов банковского приложения */
 #if defined __USE_REQ_LIST__

@@ -458,6 +458,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 		return -1UL;
 	int stream = get_kkt_stream(prefix, cmd);
 	log_data_len = log_data_index = 0;
+	klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
 	if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
 		memcpy(log_data, req, req_len);
 		if ((resp != NULL) && (resp_len > 0))
@@ -467,10 +468,18 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 		klog_rec_hdr.req_len = req_len;
 		klog_rec_hdr.resp_len = resp_len;
 	}
-	klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
 	klog_rec_hdr.stream = stream;
 	klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
 	klog_rec_hdr.status = status;
+	if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
+		memcpy(log_data, req, req_len);
+		if ((resp != NULL) && (resp_len > 0))
+			memcpy(log_data + req_len, resp, resp_len);
+		log_data_len = len;
+		klog_rec_hdr.len = len;
+		klog_rec_hdr.req_len = req_len;
+		klog_rec_hdr.resp_len = resp_len;
+	}
 	klog_rec_hdr.crc32 = klog_rec_crc32();
 	return klog_add_rec(hlog) ? klog_rec_hdr.number : -1UL;
 }
@@ -538,6 +547,7 @@ static bool klog_print_rec_header(void)
 		prn_write_eol() &&
 		prn_write_str_fmt("‡€ˆ‘œ %u ’ ", klog_rec_hdr.number + 1) &&
 		prn_write_date_time(&klog_rec_hdr.dt) &&
+		prn_write_str_fmt(".%.3u", klog_rec_hdr.ms) &&
 		prn_write_str_fmt(" †…’ %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
 			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
