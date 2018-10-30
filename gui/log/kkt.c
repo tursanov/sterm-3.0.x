@@ -127,11 +127,16 @@ static const char *get_stream_name(int stream)
 static char *klog_get_head_line2(char *buf)
 {
 	if ((hklog->hdr->n_recs == 0) ||
-			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index))
-		sprintf(buf, "                             "
+			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index)){
+		static char msg[LOG_SCREEN_COLS + 1];
+		snprintf(msg, sizeof(msg), "На контрольной ленте нет записей [%s]",
+			get_stream_name(cfg.kkt_log_stream));
+		size_t msg_len = strlen(msg);
+		sprintf(buf, "%*s", (LOG_SCREEN_COLS + msg_len) / 2, msg);
+/*		sprintf(buf, "                             "
 			"На контрольной ленте нет записей [%s]",
-			get_stream_name(klog_rec_hdr.stream));
-	else{
+			get_stream_name(cfg.kkt_log_stream));*/
+	}else{
 		sprintf(buf, "Запись %u [%s] от %.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3hu "
 			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
 			klog_rec_hdr.number + 1, get_stream_name(klog_rec_hdr.stream),
