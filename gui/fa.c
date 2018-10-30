@@ -195,7 +195,6 @@ void fa_close_shift() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
-
 void fa_calc_report() {
 	BEGIN_FORM(form, "Отчет о текущем состоянии расчетов")
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
@@ -215,6 +214,45 @@ void fa_calc_report() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+void fa_close_fs() {
+	BEGIN_FORM(form, "Закрытие ФН")
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1023, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_BUTTON(1, "Печать", NULL)
+		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+	END_FORM()
+
+	while (form_execute(form) == 1) {
+		form_text_t cashier;
+		form_text_t inn;
+		fd_close_fs_params_t p;
+
+		form_get_text(form, 1021, &cashier, true);
+		form_get_text(form, 1023, &inn, false);
+
+		memcpy(p.cashier, cashier.text, cashier.length);
+		p.cashier[cashier.length] = 0;
+
+		if (inn.length > 0)
+			memcpy(p.cashier_inn, inn.text, inn.length);
+		p.cashier_inn[inn.length] = 0;
+
+		printf("Кассир: %s\n", cashier.text);
+		printf("ИНН Кассира: %s\n", inn.text);
+
+		if (fd_close_fs(&p) != 0) {
+			const char *error;
+			fd_get_last_error(&error);
+			message_box("Ошибка", error, dlg_yes, 0, al_center);
+			form_draw(form);
+		} else
+			break;
+	}
+	form_destroy(form);
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
+
 bool process_fa(const struct kbd_event *e)
 {
 	if (!e->pressed)
@@ -230,6 +268,9 @@ bool process_fa(const struct kbd_event *e)
 					break;
 				case cmd_calc_report_fa:
 					fa_calc_report();
+					break;
+				case cmd_close_fs_fa:
+					fa_close_fs();
 					break;
 				/*case cmd_sys_fa:
 					fa_set_group(OPTN_GROUP_SYSTEM);

@@ -31,7 +31,7 @@ struct form_t {
 	int name_width;
 	size_t item_count;
 	form_item_t *items;
-	size_t active_index;
+	int active_index;
 	int result;
 };
 
@@ -223,9 +223,15 @@ static bool form_process(form_t *form, const struct kbd_event *_e) {
 				return false;
 			case KEY_TAB:
 				control_focus(active_control, false);
-				form->active_index++;
-				if (form->active_index >= form->item_count)
-					form->active_index = 0;
+				if (e.shift_state & SHIFT_SHIFT) {
+					form->active_index--;
+					if (form->active_index < 0)
+						form->active_index = form->item_count - 1;
+				} else {
+					form->active_index++;
+					if (form->active_index >= form->item_count)
+						form->active_index = 0;
+				}
 				active_control = form->items[form->active_index].control;
 				control_focus(active_control, true);
 				break;
@@ -244,7 +250,7 @@ int form_execute(form_t *form)
 {
 	struct kbd_event e;
 	int ret;
-	
+
 	kbd_flush_queue();
 
 	if (form == NULL)

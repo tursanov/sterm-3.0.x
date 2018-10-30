@@ -37,10 +37,7 @@ typedef struct fd_shift_params_t {
 } fd_shift_params_t;
 
 // параметры закрытия ФН
-typedef struct fd_close_fs_params_t {
-    char cashier[64+1]; // кассир
-    char cashier_inn[12+1]; // ИНН кассира
-} fd_close_fs_params_t;
+typedef fd_shift_params_t fd_close_fs_params_t;
 
 // тип суммы
 typedef enum fd_sum_type_t {
@@ -87,6 +84,8 @@ int fd_open_shift(fd_shift_params_t *params);
 int fd_close_shift(fd_shift_params_t *params);
 // отчет о текущих расчетах
 int fd_calc_report();
+// закрытие ФН
+int fd_close_fs(fd_close_fs_params_t *params);
 
 
 #endif

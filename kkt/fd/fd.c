@@ -571,3 +571,14 @@ int fd_calc_report() {
 	ffd_tlv_reset();
 	return fd_create_doc(CALC_REPORT, NULL, 0);
 }
+
+// закрытие ФН
+int fd_close_fs(fd_close_fs_params_t *params)
+{
+	ffd_tlv_reset();
+	ffd_tlv_add_string(1021, params->cashier, strlen(params->cashier), false);
+	if (params->cashier_inn[0] != 0)
+		ffd_tlv_add_string(1203, params->cashier_inn, 12, true);
+
+	return fd_create_doc(CLOSE_FS, NULL, 0);
+}
