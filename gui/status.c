@@ -89,7 +89,7 @@ bool scr_set_rstatus(const char *s)
 		return false;
 }
 
-bool scr_show_log(bool show)
+bool scr_show_log(bool show __attribute__((unused)))
 {
 	char s[4]="   ";
 	Color bg = LOG_BG_COLOR;
@@ -126,7 +126,7 @@ bool scr_show_mode(bool show)
 			strcpy(s,"hex");
 		else if (key_input || wait_key)
 			strcpy(s,"клч");
-		else if (shift_state & SHIFT_CTRL)
+		else if (kbd_shift_state & SHIFT_CTRL)
 			strcpy(s,"доп");
 		else
 			strcpy(s,"осн");

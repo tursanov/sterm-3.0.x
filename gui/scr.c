@@ -361,7 +361,7 @@ void init_input_windows(void)
 }
 
 /* Перерисовка строки статуса */
-static void RedrawStatus(bool all)
+static void RedrawStatus(bool all __attribute__((unused)))
 {
 	GCPtr pGC = CreateGC(6, DISCY-82, DISCX-12, 4);
 	DrawBorder(pGC, 0, 0, GetCX(pGC), GetCY(pGC), borderCX, 
@@ -1198,7 +1198,7 @@ static int cm_up(bool set)
 	return cmd_none;
 }
 
-static int cm_up2(struct kbd_event *e)
+static int cm_up2(struct kbd_event *e __attribute__((unused)))
 {
 	return cm_up(true);
 }
@@ -1227,7 +1227,7 @@ static bool sel_up(void)
 	return ret;
 }
 
-static void cm_shift_up(struct kbd_event *e)
+static void cm_shift_up(struct kbd_event *e __attribute__((unused)))
 {
 	if (sel_up()){
 		int pg = page;
@@ -1251,7 +1251,7 @@ static int cm_left(bool set)
 	return cmd_none;
 }
 
-static int cm_left2(struct kbd_event *e)
+static int cm_left2(struct kbd_event *e __attribute__((unused)))
 {
 	return cm_left(true);
 }
@@ -1278,7 +1278,7 @@ static bool sel_left(void)
 
 static int cm_right(bool set);
 
-static void cm_shift_left(struct kbd_event *e)
+static void cm_shift_left(struct kbd_event *e __attribute__((unused)))
 {
 	cm_left(false);
 	if (sel_left()){
@@ -1306,7 +1306,7 @@ static int cm_down(bool set)
 	return cmd_none;
 }
 
-static int cm_down2(struct kbd_event *e)
+static int cm_down2(struct kbd_event *e __attribute__((unused)))
 {
 	return cm_down(true);
 }
@@ -1337,7 +1337,7 @@ static bool sel_down(void)
 	return ret;
 }
 
-static void cm_shift_down(struct kbd_event *e)
+static void cm_shift_down(struct kbd_event *e __attribute__((unused)))
 {
 	if (sel_down()){
 		int pg = page;
@@ -1361,7 +1361,7 @@ static int cm_right(bool set)
 	return cmd_none;
 }
 
-static int cm_right2(struct kbd_event *e)
+static int cm_right2(struct kbd_event *e __attribute__((unused)))
 {
 	return cm_right(true);
 }
@@ -1388,7 +1388,7 @@ static bool sel_right(void)
 	return ret;
 }
 
-static void cm_shift_right(struct kbd_event *e)
+static void cm_shift_right(struct kbd_event *e __attribute__((unused)))
 {
 	if (sel_right()){
 		cm_right(true);
@@ -1792,7 +1792,7 @@ static int cm_next_key(struct kbd_event *e)
 	return cmd_none;
 }
 
-static int cm_ch_key(struct kbd_event *e)
+static int cm_ch_key(struct kbd_event *e __attribute__((unused)))
 {
 	if (txt_type == txt_rich)
 		return cmd_view_req;
@@ -1809,7 +1809,7 @@ static int cm_ch_key(struct kbd_event *e)
 	return cmd_none;
 }
 
-static int cm_key(struct kbd_event *e)
+static int cm_key(struct kbd_event *e __attribute__((unused)))
 {
 	if (txt_type == txt_rich)
 		return cmd_view_req;
@@ -1858,7 +1858,7 @@ int cm_clear(void)
 	return cmd_none;
 }
 
-static int cm_hex(struct kbd_event *e)
+static int cm_hex(struct kbd_event *e __attribute__((unused)))
 {
 	if ((kt == key_dbg) && !wait_key && !key_input){
 		hex_input=!hex_input;

@@ -240,7 +240,8 @@ bool klog_print_all(struct log_gui_context *ctx)
 }
 
 /* Обработчик событий клавиатуры */
-static int klog_handle_kbd(struct log_gui_context *ctx, struct kbd_event *e)
+static int klog_handle_kbd(struct log_gui_context *ctx __attribute__((unused)),
+	const struct kbd_event *e)
 {
 	if (e->pressed && (e->shift_state == 0) && (e->key == KEY_F2))
 		return cmd_klog_menu;

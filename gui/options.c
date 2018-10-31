@@ -1990,7 +1990,7 @@ static int get_aprn_port(void)
 }
 
 /* Проверка введенных данных о принтерах */
-static bool on_exit_devices(const struct optn_group *group)
+static bool on_exit_devices(const struct optn_group *group __attribute__((unused)))
 {
 	char *message = NULL;
 	int aprn_port = get_aprn_port();
@@ -2079,7 +2079,7 @@ static bool on_exit_check_ip(const struct optn_group *group)
 	return valid && host_ok;
 }
 
-static bool on_exit_ppp(const struct optn_group *group)
+static bool on_exit_ppp(const struct optn_group *group __attribute__((unused)))
 {
 	int ppp_port = get_ppp_port();
 	int pos_port = get_pos_port();

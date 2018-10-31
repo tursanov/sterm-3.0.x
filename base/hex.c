@@ -36,7 +36,7 @@ uint32_t read_hex(uint8_t *p, int n)
 	return v;
 }
 
-uint8_t read_hex_byte(uint8_t *p, uint8_t *b)
+uint8_t read_hex_byte(uint8_t *p)
 {
 	return read_hex(p, 2);
 }

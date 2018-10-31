@@ -244,14 +244,14 @@ uint32_t xlog_index_for_number(struct log_handle *hlog, uint32_t number, uint32_
 }
 
 /* Можно ли записать на контрольную ленту */
-bool xlog_can_write(struct log_handle *hlog)
+bool xlog_can_write(struct log_handle *hlog __attribute__((unused)))
 {
 	return true;
 /*	return log_hdr.printed || (log_free_space() >= MIN_LOG_FREE);*/
 }
 
 /* Можно ли очистить контрольную ленту */
-bool xlog_can_clear(struct log_handle *hlog)
+bool xlog_can_clear(struct log_handle *hlog __attribute__((unused)))
 {
 	return false;
 /*	return (log_hdr.n_recs > 0) && !cfg.cyclic_log && log_hdr.printed;*/
@@ -264,7 +264,7 @@ bool xlog_can_print_range(struct log_handle *hlog)
 }
 
 /* Можно ли распечатать контрольную ленту полностью */
-bool xlog_can_print(struct log_handle *hlog)
+bool xlog_can_print(struct log_handle *hlog __attribute__((unused)))
 {
 	return false;
 /*	return cfg.has_xprn && (log_hdr.n_recs > 0) && !cfg.cyclic_log;*/

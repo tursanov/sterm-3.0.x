@@ -23,7 +23,8 @@ void log_clear_ctx(struct log_gui_context *ctx)
 }
 
 /* Определение длины команды XPRN_PRNOP; index указывает на код команды */
-static int log_get_prnop_len(const uint8_t *data, uint32_t len, int index)
+static int log_get_prnop_len(const uint8_t *data __attribute__((unused)),
+	uint32_t len, int index)
 {
 	uint32_t ret = len - index;
 	if (ret > 4)
@@ -582,85 +583,93 @@ static bool log_last_rec(struct log_gui_context *ctx)
 /* Перемещение внутри записи. Возвращает true, если надо перерисовать запись */
 static bool log_line_up(struct log_gui_context *ctx)
 {
+	bool ret = false;
 	if (ctx->first_line > 0){
 		ctx->first_line--;
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 static bool log_line_down(struct log_gui_context *ctx)
 {
+	bool ret = false;
 	if ((ctx->first_line + LOG_SCREEN_LINES - ctx->nr_head_lines) <
 			ctx->scr_data_lines){
 		ctx->first_line++;
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 static bool log_pg_up(struct log_gui_context *ctx)
 {
+	bool ret = false;
 	if (ctx->first_line > 0){
-		ctx->first_line -= (LOG_SCREEN_LINES - ctx->nr_head_lines);
-		if (ctx->first_line < 0)
+		uint32_t delta = LOG_SCREEN_LINES - ctx->nr_head_lines;
+		if (ctx->first_line < delta)
 			ctx->first_line = 0;
-		return true;
-	}else
-		return false;
+		else
+			ctx->first_line -= delta;
+		ret = true;
+	}
+	return ret;
 }
 
 static bool log_pg_down(struct log_gui_context *ctx)
 {
-	uint32_t n = LOG_SCREEN_LINES - ctx->nr_head_lines;
-	if ((ctx->first_line + n) < ctx->scr_data_lines){
-		ctx->first_line += n;
-		return true;
-	}else
-		return false;
+	bool ret = false;
+	uint32_t delta = LOG_SCREEN_LINES - ctx->nr_head_lines;
+	if ((ctx->first_line + delta) < ctx->scr_data_lines){
+		ctx->first_line += delta;
+		ret = true;
+	}
+	return ret;
 }
 
 static bool log_home(struct log_gui_context *ctx)
 {
+	bool ret = false;
 	if (ctx->first_line > 0){
 		ctx->first_line = 0;
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 static bool log_end(struct log_gui_context *ctx)
 {
+	bool ret = false;
 	uint32_t n = LOG_SCREEN_LINES - ctx->nr_head_lines;
 	if ((ctx->first_line + n) < ctx->scr_data_lines){
 		ctx->first_line = ctx->scr_data_lines - n;
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 /* Поиск записи контрольной ленты по её номеру */
 bool log_show_rec_by_number(struct log_gui_context *ctx, uint32_t number)
 {
+	bool ret = false;
 	uint32_t index = log_find_rec_by_number(ctx->hlog, number - 1);
 	if (index != -1UL)
-		return log_seek_rec(ctx, index);
-	else{
+		ret = log_seek_rec(ctx, index);
+	else
 		set_term_astate(ast_no_log_item);
-		return false;
-	}
+	return ret;
 }
 
 /* Поиск записи контрольной ленты по дате создания */
 bool log_show_rec_by_date(struct log_gui_context *ctx, struct date_time *dt)
 {
+	bool ret = false;
 	uint32_t index = log_find_rec_by_date(ctx->hlog, dt);
 	if (index != -1UL)
-		return log_seek_rec(ctx, index);
-	else{
+		ret = log_seek_rec(ctx, index);
+	else
 		set_term_astate(ast_no_log_item);
-		return false;
-	}
+	return ret;
 }
 
 /* Обработчик событий клавиатуры в норммальном состоянии */

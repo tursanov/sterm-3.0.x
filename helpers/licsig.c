@@ -8,13 +8,15 @@
 #include "licsig.h"
 
 /* Проверка присутствия признака удаления лицензии */
-bool check_lic_signature(off_t offs, uint16_t sig)
+bool check_lic_signature(off_t offs __attribute__((unused)),
+	uint16_t sig __attribute__((unused)))
 {
 	return false;
 }
 
 /* Запись признака установленной лицензии */
-bool write_lic_signature(off_t offs, uint16_t sig)
+bool write_lic_signature(off_t offs __attribute__((unused)),
+	uint16_t sig __attribute__((unused)))
 {
 	return true;
 }

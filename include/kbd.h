@@ -1,16 +1,12 @@
-/*
- * Коды клавиш и прототипы функций для работы с клавиатурой.
- * (c) gsr 2000
- */
-#ifndef KBD_H
+/* Работа с клавиатурой терминала и динамиком. (c) gsr 2000-2001, 2010, 2018 */
+
+#if !defined KBD_H
 #define KBD_H
 
 #include <time.h>
 #include "sysdefs.h"
 
-#define IO_TTY	"/dev/tty0"
-
-/* Keyboard MEDIUMRAW codes */
+/* Коды клавиатуры в режиме MEDIUMRAW */
 
 #define KEY_NONE	0xff
 #define KEY_ESCAPE	0x01
@@ -120,8 +116,7 @@
 #define KEY_LWIN	0x7d
 #define KEY_RWIN	0x7e
 
-/* keyboard shift flags */
-
+/* Состояние клавиш-модификаторов */
 #define SHIFT_LSHIFT	0x0001
 #define SHIFT_RSHIFT	0x0002
 #define SHIFT_LCTRL	0x0004
@@ -134,6 +129,8 @@
 #define SHIFT_SHIFT	(SHIFT_LSHIFT | SHIFT_RSHIFT)
 #define SHIFT_CT_AL	(SHIFT_CTRL | SHIFT_ALT)
 
+extern int kbd_shift_state;
+
 struct kbd_event{
 	uint8_t key;
 	uint8_t ch;
@@ -144,16 +141,7 @@ struct kbd_event{
 
 extern int kbd;
 
-/* Различные раскладки клавиатуры */
-struct key_metric{
-	uint8_t key;
-	int rus;
-	int lat;
-};
-
 #define N_CHAR_KEYS	64
-typedef struct key_metric key_metric_array[N_CHAR_KEYS];
-extern struct key_metric *kbd_keys;
 
 /* Язык клавиатуры */
 enum {
@@ -161,36 +149,17 @@ enum {
 	lng_lat,
 };
 
-#define PKEY_BUF_LEN	32
-extern int	pressed_keys[PKEY_BUF_LEN];
+extern int kbd_lang;
 
-extern int	shift_state;
-
-extern struct key_metric	kbd_dos_keys[];
-extern struct key_metric	kbd_win_keys[];
-extern struct key_metric	*kbd_keys;
-extern int		kbd_n_dos_keys;
-extern int		kbd_n_win_keys;
-extern int		kbd_n_keys;
-extern int	 	kbd_lang;
-extern time_t 		kbd_last_click;
-
-extern bool		init_kbd(void);
-extern void		release_kbd(void);
-extern int		kbd_switch_language(void);
-extern void		kbd_check_language(struct kbd_event *e);
-extern bool		kbd_mark_key(struct kbd_event *e);
-extern bool		kbd_check_repeat(struct kbd_event *e);
-extern void		kbd_set_shift(int flag,bool set);
-extern bool		kbd_check_shift(struct kbd_event *e);
-extern time_t		kbd_idle_interval(void);
-extern void		kbd_reset_idle_interval(void);
-extern bool		kbd_set_rate(int rate,int delay);
-extern int		kbd_get_char(int key);
-extern bool		kbd_get_event(struct kbd_event *e);
-extern bool		kbd_wait_event(struct kbd_event *e);
-extern void		kbd_flush_queue(void);
-extern bool		kbd_exact_shift_state(struct kbd_event *e, int state);
+extern bool init_kbd(void);
+extern void release_kbd(void);
+extern uint32_t kbd_idle_interval(void);
+extern void kbd_reset_idle_interval(void);
+extern bool kbd_set_rate(int rate,int delay);
+extern bool kbd_get_event(struct kbd_event *e);
+extern bool kbd_wait_event(struct kbd_event *e);
+extern void kbd_flush_queue(void);
+extern bool kbd_exact_shift_state(struct kbd_event *e, int state);
 
 #if defined __CONSOLE_SWITCHING__
 extern int strip_ctrl(void);
@@ -198,12 +167,10 @@ extern int strip_ctrl(void);
 
 /* Управление звуком */
 
-#define TIMER_FREQ_MHZ	1.19318
-
-extern void	sound(unsigned __freq);
-extern void	nosound(void);
-extern void	beep(unsigned __freq,unsigned __ms);
-extern void	beep_sync(unsigned __freq,unsigned __ms);
+extern void sound(uint32_t freq);
+extern void nosound(void);
+extern void beep(uint32_t freq, uint32_t ms);
+extern void beep_sync(uint32_t freq, uint32_t ms);
 
 #define delay(ms) usleep((ms)*1000)
 

@@ -164,7 +164,7 @@ bool lprn_error_shown = false;;
 static bool remount_home(bool rw)
 {
 #if defined __FAKE_REMOUNT__
-	return true;
+	return rw == rw;	/* true */
 #else
 	char cmd[64];
 	sprintf(cmd, "mount -n -o remount,%s /home", rw ? "rw" : "ro");
@@ -2272,7 +2272,7 @@ static void blank_screen(void)
 }
 
 /* Проверка возможности гашения экрана */
-static bool check_screen_blank(time_t idle)
+static bool check_screen_blank(uint32_t idle)
 {
 	if ((cfg.blank_time > 0) && !ssaver_active &&
 			(idle > cfg.blank_time * 60) && online){
@@ -2307,7 +2307,7 @@ int get_cmd(bool check_scr, bool busy)
 	int i;
 	struct kbd_event e;
 	int cm = cmd_none;
-	time_t idle = kbd_idle_interval();
+	uint32_t idle = kbd_idle_interval();
 #if defined __USE_USB_KEY__
 	if (!check_usbkey())
 		return cmd_exit;

@@ -17,10 +17,9 @@ static char tbl_base64[64] = {
 
 static int int_from_base64(int c)
 {
-	int i;
 	if (c == '=')
 		return 0;
-	for (i = 0; i < sizeof(tbl_base64); i++){
+	for (size_t i = 0; i < sizeof(tbl_base64); i++){
 		if (c == tbl_base64[i])
 			return i;
 	}

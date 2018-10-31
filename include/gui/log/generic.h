@@ -43,7 +43,7 @@ struct log_gui_context {
 /* Заполнение экранного буфера */
 	void (*fill_scr_data)(struct log_gui_context *ctx);
 /* Обработчик событий клавиатуры */
-	int  (*handle_kbd)(struct log_gui_context *ctx, struct kbd_event *e);
+	int  (*handle_kbd)(struct log_gui_context *ctx, const struct kbd_event *e);
 };
 
 /*

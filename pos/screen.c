@@ -732,7 +732,7 @@ static void process_pos_edit(pos_edit_t *edit,
 		if (edit->text[0] != '\x0')
 		{
 			edit->root.update = true;
-			if ((shift_state & SHIFT_CTRL))
+			if ((kbd_shift_state & SHIFT_CTRL))
 				edit->text[0] = '\x0';
 			else 
 			{
@@ -996,7 +996,7 @@ static void free_pos_menu(pos_menu_t *menu)
 }
 
 /* Разбор ответа */
-static bool pos_parse_cur(struct pos_data_buf *buf, bool check_only)
+static bool pos_parse_cur(struct pos_data_buf *buf, bool check_only __attribute__((unused)))
 {
 	uint16_t x, y;
 	if (!pos_read_word(buf, &x) || !pos_read_word(buf, &y)){
@@ -1009,7 +1009,8 @@ static bool pos_parse_cur(struct pos_data_buf *buf, bool check_only)
 	return pos_screen_cur(x, y);
 }
 
-static bool pos_parse_cls(struct pos_data_buf *buf, bool check_only)
+static bool pos_parse_cls(struct pos_data_buf *buf __attribute__((unused)),
+	bool check_only __attribute__((unused)))
 {
 	return pos_screen_cls();
 }

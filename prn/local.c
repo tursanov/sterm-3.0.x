@@ -174,7 +174,7 @@ static void lprn_log_txt(FILE *f, uint8_t *data, size_t len)
 	uint8_t b;
 	fprintf(f, "    ");
 	for (i = 0; i < len; i++){
-		b = lprn_data_buf[i];
+		b = data[i];
 		fputc(b < 0x20 ? '.' : recode(b), f);
 	}
 	fprintf(f, "\r\n");

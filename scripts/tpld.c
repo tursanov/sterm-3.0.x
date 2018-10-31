@@ -343,7 +343,7 @@ static int nr_retries;
  * Функции обработки состояний конечного автомата загрузчика.
  * Если b == -1UL, данных по COM-порту не получено.
  */
-static void on_st_start(uint32_t b)
+static void on_st_start(uint32_t b __attribute__((unused)))
 {
 	int ret;
 	nr_block = -1;

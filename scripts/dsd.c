@@ -401,7 +401,7 @@ static void release_dsd(void)
 	}
 }
 
-static void sigterm_handler(int n)
+static void sigterm_handler(int n __attribute__((unused)))
 {
 	loop_flag = false;
 }

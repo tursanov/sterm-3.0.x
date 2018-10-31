@@ -1516,7 +1516,7 @@ int next_printable(void)
 /* Проверка наличия КТ в тексте ответа */
 static bool check_etx(void)
 {
-	int i, k;
+	size_t i, k;
 	for (i = k = 0; i < sizeof(resp_buf); i++){
 		if (resp_buf[i] == BSC_ETX){
 			resp_len = i + 1;
@@ -1566,7 +1566,7 @@ int handle_para(int n_para)
 	static uint8_t buf[TEXT_BUF_LEN];
 	struct para_info *pi = map + n_para;
 	uint8_t *p, *eptr, id;
-	uint16_t i, n, m = 0, l = 0, ll;
+	uint32_t i, n, m = 0, l = 0, ll;
 	bool dle = false;
 	if ((pi == NULL) || (pi->offset == -1))
 		return 0;
@@ -2048,7 +2048,7 @@ static bool try_print_llog(const uint8_t *data, size_t len)
 	return lret != LPRN_RET_RST;
 }
 
-static void execute_kkt(struct para_info *pi, int len)
+static void execute_kkt(struct para_info *pi __attribute__((unused)), int len)
 {
 	int err = E_OK;
 	text_buf[len] = 0;

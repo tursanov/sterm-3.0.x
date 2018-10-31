@@ -79,7 +79,7 @@ int kbd_get_char_ex(int key)
 	int i;
 	for (i=0; i < N_CHAR_KEYS; i++)
 		if (kbd_keys_ex[i].key == key) {
-			if (shift_state & SHIFT_SHIFT)
+			if (kbd_shift_state & SHIFT_SHIFT)
 				return (kbd_lang_ex == lng_rus) ? kbd_keys_ex[i].rusu : kbd_keys_ex[i].latu;
 			else
 				return (kbd_lang_ex == lng_rus) ? kbd_keys_ex[i].rusl : kbd_keys_ex[i].latl;

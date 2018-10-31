@@ -1,4 +1,4 @@
-/* Работа с клавиатурой терминала и динамиком. (c) gsr 2000-2001, 2010 */
+/* Работа с клавиатурой терминала и динамиком. (c) gsr 2000-2001, 2010, 2018 */
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -17,13 +17,24 @@
 #include "kbd.h"
 #include "serial.h"
 
-int kbd=-1;
-int oldkbmode;
-struct termios old,new;
+#define IO_TTY	"/dev/tty0"
 
-int shift_state=0;
+int kbd = -1;
+static int oldkbmode = 0;
+static struct termios old, new;
 
-key_metric_array kbd_win_keys = {
+int kbd_shift_state = 0;
+
+/* Различные раскладки клавиатуры */
+struct key_metric{
+	uint8_t key;
+	int rus;
+	int lat;
+};
+
+typedef struct key_metric key_metric_array[N_CHAR_KEYS];
+
+static key_metric_array kbd_win_keys = {
 	{KEY_ESCAPE	,'\x1b'	,'\x1b'},
 	{KEY_1		,'!'	,'!'},
 	{KEY_2		,'"'	,'@'},
@@ -90,20 +101,21 @@ key_metric_array kbd_win_keys = {
 	{KEY_NUMSLASH	,'/'	,'/'},
 };
 
-struct key_metric	*kbd_keys = kbd_win_keys;
+static struct key_metric *kbd_keys = kbd_win_keys;
 
-int	 	kbd_lang = lng_rus;
-time_t 		kbd_last_click=0;
-int		pressed_keys[PKEY_BUF_LEN];
+int kbd_lang = lng_rus;
+static time_t kbd_last_click = 0;
 
-int kbd_switch_language(void)
+static int pressed_keys[32];
+
+static int kbd_switch_language(void)
 {
 	int old_lang=kbd_lang;
 	kbd_lang = (kbd_lang == lng_rus) ? lng_lat : lng_rus;
 	return old_lang;
 }
 
-void kbd_check_language(struct kbd_event *e)
+static void kbd_check_language(const struct kbd_event *e)
 {
 	if ((e != NULL) && !e->repeated){
 		switch (e->key){
@@ -119,78 +131,86 @@ void kbd_check_language(struct kbd_event *e)
 	}
 }
 
-bool kbd_mark_key(struct kbd_event *e)
+static bool kbd_check_repeat(const struct kbd_event *e)
 {
-	int i;
+	bool ret = false;
+	if ((e != NULL) && e->pressed){
+		for (int i = 0; i < ASIZE(pressed_keys); i++)
+			if (pressed_keys[i] == e->key){
+				ret = true;
+				break;
+			}
+	}
+	return ret;
+}
+
+static void kbd_set_shift(int shift, bool set)
+{
+	if (set)
+		kbd_shift_state |= shift;
+	else
+		kbd_shift_state &= ~shift;
+}
+
+static bool kbd_check_shift(const struct kbd_event *e)
+{
+	bool ret = false;
+	if ((e != NULL) && !e->repeated){
+		ret = true;
+		switch (e->key){
+			case KEY_LSHIFT:
+				kbd_set_shift(SHIFT_LSHIFT, e->pressed);
+				break;
+			case KEY_RSHIFT:
+				kbd_set_shift(SHIFT_RSHIFT, e->pressed);
+				break;
+			case KEY_LCTRL:
+				kbd_set_shift(SHIFT_LCTRL, e->pressed);
+				break;
+			case KEY_RCTRL:
+				kbd_set_shift(SHIFT_RCTRL, e->pressed);
+				break;
+			case KEY_LALT:
+				kbd_set_shift(SHIFT_LALT, e->pressed);
+				break;
+			case KEY_RALT:
+				kbd_set_shift(SHIFT_RALT, e->pressed);
+				break;
+			default:
+				ret = false;
+		}
+	}
+	return ret;
+}
+
+static bool kbd_mark_key(const struct kbd_event *e)
+{
+	bool ret = false;
 	if (e != NULL){
 		if (e->pressed){
 			if (!kbd_check_repeat(e)){
-				for (i=0; i < PKEY_BUF_LEN; i++)
+				for (int i = 0; i < ASIZE(pressed_keys); i++)
 					if (pressed_keys[i] == 0){
-						pressed_keys[i]=e->key;
-						return true;
+						pressed_keys[i] = e->key;
+						ret = true;
+						break;
 					}
 			}
 		}else{
-			for (i=0; i < PKEY_BUF_LEN; i++)
+			for (int i = 0; i < ASIZE(pressed_keys); i++)
 				if (pressed_keys[i] == e->key){
-					pressed_keys[i]=0;
-					return true;
+					pressed_keys[i] = 0;
+					ret = true;
+					break;
 				}
 		}
 	}
-	return false;
+	return ret;
 }
 
-bool kbd_check_repeat(struct kbd_event *e)
+uint32_t kbd_idle_interval(void)
 {
-	if ((e != NULL) && e->pressed){
-		int i;
-		for (i=0; i < PKEY_BUF_LEN; i++)
-			if (pressed_keys[i] == e->key)
-				return true;
-	}
-	return false;
-}
-
-void kbd_set_shift(int flag,bool set)
-{
-	if (set)
-		shift_state |= flag;
-	else
-		shift_state &= ~flag;
-}
-
-bool kbd_check_shift(struct kbd_event *e)
-{
-	if ((e != NULL) && !e->repeated){
-		switch (e->key){
-			case KEY_LSHIFT:
-				kbd_set_shift(SHIFT_LSHIFT,e->pressed);
-				return true;
-			case KEY_RSHIFT:
-				kbd_set_shift(SHIFT_RSHIFT,e->pressed);
-				return true;
-			case KEY_LCTRL:
-				kbd_set_shift(SHIFT_LCTRL,e->pressed);
-				return true;
-			case KEY_RCTRL:
-				kbd_set_shift(SHIFT_RCTRL,e->pressed);
-				return true;
-			case KEY_LALT:
-				kbd_set_shift(SHIFT_LALT,e->pressed);
-				return true;
-			case KEY_RALT:
-				kbd_set_shift(SHIFT_RALT,e->pressed);
-				return true;
-		}
-	}
-	return false;
-}
-
-time_t kbd_idle_interval(void)
-{
-	return time(NULL)-kbd_last_click;
+	return time(NULL) - kbd_last_click;
 }
 
 void kbd_reset_idle_interval(void)
@@ -198,16 +218,18 @@ void kbd_reset_idle_interval(void)
 	kbd_last_click = time(NULL);
 }
 
-bool kbd_set_rate(int rate,int delay)
+bool kbd_set_rate(int rate, int delay)
 {
-	struct kbd_repeat kbd_rep={delay,rate};
-	return ioctl(kbd,KDKBDREP,&kbd_rep) == 0;
+	struct kbd_repeat kbd_rep = {
+		.delay = delay,
+		.period = rate
+	};
+	return ioctl(kbd, KDKBDREP, &kbd_rep) == 0;
 }
 
-int kbd_get_char(int key)
+static int kbd_get_char(int key)
 {
-	int i;
-	for (i=0; i < N_CHAR_KEYS; i++)
+	for (int i = 0; i < N_CHAR_KEYS; i++)
 		if (kbd_keys[i].key == key)
 			return (kbd_lang == lng_rus) ? kbd_keys[i].rus : kbd_keys[i].lat;
 	return 0;
@@ -217,18 +239,18 @@ bool kbd_get_event(struct kbd_event *e)
 {
 	bool ret = false;
 	if (e != NULL){
-		memset(e,0,sizeof(struct kbd_event));
-		e->key=KEY_NONE;
-		if (read(kbd,&e->key,sizeof(e->key)) == sizeof(e->key)){
+		memset(e, 0, sizeof(*e));
+		e->key = KEY_NONE;
+		if (read(kbd, &e->key, sizeof(e->key)) == sizeof(e->key)){
 			e->pressed = !(e->key & 0x80);
 			e->key &= 0x7f;
-			e->repeated=kbd_check_repeat(e);
+			e->repeated = kbd_check_repeat(e);
 			kbd_check_shift(e);
-			e->shift_state=shift_state;
+			e->shift_state = kbd_shift_state;
 			kbd_check_language(e);
-			e->ch=kbd_get_char(e->key);
+			e->ch = kbd_get_char(e->key);
 			kbd_mark_key(e);
-			kbd_last_click=time(NULL);
+			kbd_last_click = time(NULL);
 			ret = true;
 		}
 	}
@@ -237,11 +259,13 @@ bool kbd_get_event(struct kbd_event *e)
 
 bool kbd_wait_event(struct kbd_event *e)
 {
+	bool ret = false;
 	if (e != NULL){
-		while (!kbd_get_event(e));
-		return true;
-	}else
-		return false;
+		while (!kbd_get_event(e))
+			usleep(1000);
+		ret = true;
+	}
+	return ret;
 }
 
 void kbd_flush_queue(void)
@@ -265,20 +289,21 @@ bool kbd_exact_shift_state(struct kbd_event *e, int state)
 #if defined __CONSOLE_SWITCHING__
 int strip_ctrl(void)
 {
-	int i, *p = pressed_keys, ret = 0;
-	for (i = 0; i < ASIZE(pressed_keys); i++, p++){
+	int *p = pressed_keys, ret = 0;
+	for (int i = 0; i < ASIZE(pressed_keys); i++, p++){
 		if ((*p == KEY_LCTRL) || (*p == KEY_RCTRL)){
 			*p = 0;
 			ret++;
 		}
 	}
-	shift_state &= ~SHIFT_CTRL;
+	kbd_shift_state &= ~SHIFT_CTRL;
 	return ret;
 }
 #endif
 
-/* various sound functions */
-static bool sound_on=false;
+#define TIMER_FREQ_MHZ	1.19318
+
+static bool sound_on = false;
 
 /* Устройство для управления динамиком через COM-порт */
 static int sound_com = -1;
@@ -333,11 +358,11 @@ static void close_sound_com(void)
 	}
 }
 
-void sound(unsigned __freq)
+void sound(uint32_t freq)
 {
 	if (kbd != -1){
-		__freq = TIMER_FREQ_MHZ * 1000000.0 / __freq;
-		ioctl(kbd, KIOCSOUND, __freq);
+		freq = TIMER_FREQ_MHZ * 1000000.0 / freq;
+		ioctl(kbd, KIOCSOUND, freq);
 		com_sound_on();
 		sound_on = true;
 	}
@@ -352,68 +377,69 @@ void nosound(void)
 	}
 }
 
-static void sound_callback(int __n)
+static void sound_callback(int n __attribute__((unused)))
 {
 	nosound();
-	signal(SIGALRM,SIG_IGN);
+	signal(SIGALRM, SIG_IGN);
 }
 
-void beep(unsigned __freq, unsigned __ms)
+void beep(uint32_t freq, uint32_t ms)
 {
 	if (!sound_on && (kbd != -1)){
-		sound(__freq);
-		if (__ms != 0){	/* 0 -- бесконечный звук */
+		sound(freq);
+		if (ms != 0){	/* 0 -- бесконечный звук */
 			static struct itimerval tv={{0, 0}, {0, 0}};
-			tv.it_value.tv_sec=__ms / 1000;
-			tv.it_value.tv_usec=(__ms % 1000) * 1000;
+			tv.it_value.tv_sec=ms / 1000;
+			tv.it_value.tv_usec=(ms % 1000) * 1000;
 			signal(SIGALRM, sound_callback);
 			setitimer(ITIMER_REAL, &tv, NULL);
 		}
 	}
 }
 
-void beep_sync(unsigned __freq,unsigned __ms)
+void beep_sync(uint32_t freq, uint32_t ms)
 {
 	if (kbd != -1){
-		sound(__freq);
-		delay(__ms);
+		sound(freq);
+		delay(ms);
 		nosound();
 	}
 }
 
 bool init_kbd(void)
 {
-	int i;
-	kbd_lang=lng_rus;
-	kbd_last_click=time(NULL);
-	for (i=0; i < PKEY_BUF_LEN; pressed_keys[i++]=0);
+	bool ret = false;
+	kbd_lang = lng_rus;
+	kbd_last_click = time(NULL);
+	for (int i = 0; i < ASIZE(pressed_keys); i++)
+		pressed_keys[i] = 0;
 	kbd = open(IO_TTY, O_RDONLY);
 	if (kbd != -1){
-		ioctl(kbd,KDGKBMODE,&oldkbmode);
-		fcntl(kbd,F_SETFL,O_NONBLOCK);
-		tcgetattr(kbd,&old);
-		memcpy(&new,&old,sizeof(struct termios));
-		new.c_iflag=0;
+		ioctl(kbd, KDGKBMODE, &oldkbmode);
+		fcntl(kbd, F_SETFL, O_NONBLOCK);
+		tcgetattr(kbd, &old);
+		memcpy(&new, &old, sizeof(new));
+		new.c_iflag = 0;
 		new.c_lflag &= ~(ICANON | ECHO | ISIG);
-		new.c_cc[VTIME]=1;
+		new.c_cc[VTIME] = 1;
 #if defined __CONSOLE_SWITCHING__
 		new.c_cc[VINTR] = 0;
 		new.c_cc[VQUIT] = 0;
 #endif
-		tcsetattr(kbd,TCSAFLUSH,&new);
-		ioctl(kbd,KDSKBMODE,K_MEDIUMRAW);
+		tcsetattr(kbd, TCSAFLUSH, &new);
+		ioctl(kbd, KDSKBMODE, K_MEDIUMRAW);
 		open_sound_com();
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 void release_kbd(void)
 {
 	close_sound_com();
-	ioctl(kbd,KDSKBMODE,oldkbmode);
-	tcsetattr(kbd,0,&old);
-	fcntl(kbd,F_SETFL,O_SYNC);
+	ioctl(kbd, KDSKBMODE, oldkbmode);
+	tcsetattr(kbd, 0, &old);
+	fcntl(kbd, F_SETFL, O_SYNC);
 	close(kbd);
-	kbd=-1;
+	kbd = -1;
 }

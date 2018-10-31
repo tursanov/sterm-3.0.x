@@ -99,7 +99,8 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 }
 
 /* Занесение в экранный буфер записи неизвестного типа */
-static void plog_fill_scr_unknown(struct log_gui_context *ctx, uint32_t id)
+static void plog_fill_scr_unknown(struct log_gui_context *ctx,
+	uint32_t id __attribute__((unused)))
 {
 	log_fill_scr_str(ctx, "НЕИЗВЕСТН\x9bЙ ТИП ЗАПИСИ: %.4X", plog_rec_hdr.type);
 }
@@ -248,7 +249,8 @@ bool plog_print_all(struct log_gui_context *ctx)
 }
 
 /* Обработчик событий клавиатуры */
-static int plog_handle_kbd(struct log_gui_context *ctx, struct kbd_event *e)
+static int plog_handle_kbd(struct log_gui_context *ctx __attribute__((unused)),
+	const struct kbd_event *e)
 {
 	if (e->pressed && (e->shift_state == 0) && (e->key == KEY_F2))
 		return cmd_plog_menu;

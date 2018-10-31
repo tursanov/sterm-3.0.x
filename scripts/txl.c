@@ -332,16 +332,17 @@ void flush_home(void)
 {
 }
 
-bool is_escape(uint8_t c)
+bool is_escape(uint8_t c __attribute__((unused)))
 {
 	return false;
 }
 
-char ds_key_char(int kt)
+char ds_key_char(int kt __attribute__((unused)))
 {
 	return '*';
 }
 
-void get_tki_field(const struct term_key_info *info, int name, uint8_t *val)
+void get_tki_field(const struct term_key_info *info __attribute__((unused)),
+	int name __attribute__((unused)), uint8_t *val __attribute__((unused)))
 {
 }

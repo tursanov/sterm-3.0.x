@@ -400,7 +400,7 @@ static void do_update(void)
 }
 
 /* Обработчик сигнала SIGTERM */
-static void sigterm_handler(int n)
+static void sigterm_handler(int n __attribute__((unused)))
 {
 	struct sigaction sa = {
 		.sa_handler	= SIG_DFL
@@ -410,7 +410,7 @@ static void sigterm_handler(int n)
 }
 
 /* Обработчик сигнала SIGUPD */
-static void sigupd_handler(int n)
+static void sigupd_handler(int n __attribute__((unused)))
 {
 	need_update = true;
 }

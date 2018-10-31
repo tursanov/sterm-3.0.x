@@ -84,7 +84,7 @@ static int get_param_type(char *name)
 	return POS_PARAM_UNKNOWN;
 }
 
-static bool pos_parse_finish(struct pos_data_buf *buf, bool check_only)
+static bool pos_parse_finish(struct pos_data_buf *buf __attribute__((unused)), bool check_only)
 {
 	if (!check_only)
 		pos_set_state(pos_finish);
@@ -187,7 +187,8 @@ static bool pos_parse_response_parameters(struct pos_data_buf *buf,
 	return true;
 }
 
-static bool pos_parse_init_required(struct pos_data_buf *buf, bool check_only)
+static bool pos_parse_init_required(struct pos_data_buf *buf __attribute__((unused)),
+	bool check_only)
 {
 	if (!check_only && (_term_aux_state == ast_none))
 		set_term_astate(ast_pos_need_init);

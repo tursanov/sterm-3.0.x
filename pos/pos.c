@@ -536,7 +536,7 @@ static void pos_close(bool close_com)
 }
 
 /* Обработка различных состояний конечного автомата POS-эмулятора */
-static void on_pos_new(uint32_t t)
+static void on_pos_new(uint32_t t __attribute__((unused)))
 {
 	pos_close(true);
 	pos_set_error(POS_ERROR_CLASS_SYSTEM, POS_ERR_NOT_INIT, 0);
@@ -560,11 +560,11 @@ static void on_pos_init_check(uint32_t t)
 	}
 }
 
-static void on_pos_idle(uint32_t t)
+static void on_pos_idle(uint32_t t __attribute__((unused)))
 {
 }
 
-static void on_pos_init(uint32_t t)
+static void on_pos_init(uint32_t t __attribute__((unused)))
 {
 	if (pos_open() && pos_send_init()){
 		pos_write_scr(&pos_buf, "ИДЕТ СОЕДИНЕНИЕ С POS-ЭМУЛЯТОРОМ",
@@ -608,7 +608,7 @@ static void on_pos_enter(uint32_t t)
 			POS_ERR_TIMEOUT, 0);
 }
 
-static void on_pos_print(uint32_t t)
+static void on_pos_print(uint32_t t __attribute__((unused)))
 {
 	if (pos_prn_data_len > 0){
 		plog_write_rec(hplog, pos_prn_buf, pos_prn_data_len, PLRT_NORMAL);
@@ -638,19 +638,19 @@ static void on_pos_printing(uint32_t t)
 	}
 }
 
-static void on_pos_finish(uint32_t t)
+static void on_pos_finish(uint32_t t __attribute__((unused)))
 {
 	pos_set_state(pos_new);
 }
 
-static void on_pos_break(uint32_t t)
+static void on_pos_break(uint32_t t __attribute__((unused)))
 {
 	pos_send_finish();
 	pos_close(false);
 	pos_set_state(pos_wait);
 }
 
-static void on_pos_err(uint32_t t)
+static void on_pos_err(uint32_t t __attribute__((unused)))
 {
 	char *s = pos_err_xdesc;	/* pos_parse_resp сбрасывает pos_err_xdesc */
 	err_beep();
