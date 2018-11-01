@@ -516,7 +516,7 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 /* ‚ë¢®¤ § £®«®¢ª  à á¯¥ç âª¨ ŠŠ‹ */
 bool klog_print_header(void)
 {
-	try_fn(prn_write_str("\x1e\x1e€—€‹ …—€’ˆ Š’‹œ‰ ‹…’› "
+	try_fn(prn_write_str("\x1e€—€‹ …—€’ˆ Š’‹œ‰ ‹…’› "
 		"(€’€ ‘ ŠŠ’) "));
 	try_fn(prn_write_cur_date_time());
 	return prn_write_str("\x1c\x0b") && prn_write_eol();
@@ -526,7 +526,7 @@ bool klog_print_header(void)
 bool klog_print_footer(void)
 {
 	log_reset_prn_buf();
-	try_fn(prn_write_str("\x1e\x1e\x10\x0bŠ…– …—€’ˆ Š’‹œ‰ ‹…’› "
+	try_fn(prn_write_str("\x1e\x10\x0bŠ…– …—€’ˆ Š’‹œ‰ ‹…’› "
 		"(€’€ ‘ ŠŠ’) "));
 	try_fn(prn_write_cur_date_time());
 	return prn_write_str("\x1c\x0b") && prn_write_eol();
@@ -635,5 +635,5 @@ bool klog_print_rec(void)
 				log_data_index += 16)
 			try_fn(klog_print_line(recode));
 	}
-	return true;
+	return prn_write_eol();
 }

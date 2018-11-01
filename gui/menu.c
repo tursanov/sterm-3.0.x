@@ -48,7 +48,8 @@ void release_menu_item(struct menu_item *item)
 void release_menu(struct menu *mnu, bool unset_active)
 {
 	if (mnu != NULL){
-		for (struct menu_item *p = mnu->head; p != NULL;){
+		struct menu_item *p = mnu->head;
+		for (int i = 0; (p != NULL) && (i < mnu->n_items); i++){
 			struct menu_item *pp = p->next;
 			release_menu_item(p);
 			p = pp;
@@ -197,7 +198,7 @@ static bool menu_move_end(struct menu *mnu)
 	bool ret = false;
 	if ((mnu != NULL) && (mnu->n_items > 0)){
 		struct menu_item *itm = mnu->tail;
-		for (int i = mnu->n_items; i >= 0; i--){
+		for (int i = mnu->n_items - 1; i >= 0; i--){
 			if (itm->enabled){
 				if (i != mnu->selected){
 					mnu->selected = i;
@@ -215,41 +216,39 @@ static bool draw_menu_items(struct menu *mnu)
 {
 	if (mnu == NULL)
 		return false;
-	struct menu_item *p = mnu->head;
-	int n = 0;
 	int w = mnu->max_len + 2;
 	FontPtr pFont = CreateFont(_("fonts/terminal10x18.fnt"), false);
-	int mh = pFont->max_height+2;
-	int mw = w*pFont->max_width+20;
-	GCPtr pMemGC = CreateMemGC(mw, (mnu->n_items+1)*mh+3);
-	int x = (DISCX-GetCX(pMemGC)-5)/2;
-	int y = (DISCY-GetCY(pMemGC))/2;
-	GCPtr pGC = CreateGC(x, y, mw/*+2*/, (mnu->n_items+1)*mh+3);
+	int mh = pFont->max_height + 2;
+	int mw = w * pFont->max_width + 20;
+	GCPtr pMemGC = CreateMemGC(mw, (mnu->n_items + 1) * mh + 3);
+	int x = (DISCX - GetCX(pMemGC) - 5) / 2;
+	int y = (DISCY - GetCY(pMemGC)) / 2;
+	GCPtr pGC = CreateGC(x, y, mw /*+ 2*/, (mnu->n_items + 1) * mh + 3);
 	
 	ClearGC(pMemGC, clBtnFace);
 	SetFont(pMemGC, pFont);
 	SetTextColor(pMemGC, clNavy);
 	SetBrushColor(pMemGC, RGB(0, 0x80, 0x80));
-	FillBox(pMemGC, 1, 1, mw-2, mh-2);
+	FillBox(pMemGC, 1, 1, mw - 2, mh - 2);
 	DrawText(pMemGC, 0, 0, mw, mh, "Œ…ž (Esc-¢ëå®¤)", 0);
 	DrawBorder(pMemGC, 0, mh, GetCX(pMemGC), 1, 1, 
 		clBtnShadow, clBtnHighlight);
 	
 	
-	while (p != NULL){
-		SetTextColor(pMemGC, p->enabled ? clBlack : clGray);
-		if ((n == mnu->selected) && p->enabled){
+	struct menu_item *itm = mnu->head;
+	for (int i = 0; (itm != NULL) && (i < mnu->n_items); i++, itm = itm->next){
+		SetTextColor(pMemGC, itm->enabled ? clBlack : clGray);
+		if ((i == mnu->selected) && itm->enabled){
 			SetTextColor(pMemGC, clWhite);
 			SetBrushColor(pMemGC, clNavy);
-			DrawBorder(pMemGC, 0, mh+n*mh+2, mw-1, mh-1, 1, clBtnShadow, clBtnHighlight);
-			FillBox(pMemGC, 1, mh+n*mh+3, mw-3, mh-3);
+			DrawBorder(pMemGC, 0, mh + i * mh + 2, mw - 1, mh - 1, 1,
+				clBtnShadow, clBtnHighlight);
+			FillBox(pMemGC, 1, mh + i * mh + 3, mw - 3, mh - 3);
 		}
 		if (mnu->centered)
-			DrawText(pMemGC, 0, mh+n*mh+2, mw, mh, p->text, DT_CENTER);
+			DrawText(pMemGC, 0, mh + i * mh + 2, mw, mh, itm->text, DT_CENTER);
 		else
-			TextOut(pMemGC, 10, mh+n*mh+2, p->text);
-		n++;
-		p=p->next;
+			TextOut(pMemGC, 10, mh + i * mh + 2, itm->text);
 	}
 	DrawBorder(pMemGC, 0, 0, GetCX(pMemGC), GetCY(pMemGC), 1, 
 		clBtnHighlight, clBtnShadow);
