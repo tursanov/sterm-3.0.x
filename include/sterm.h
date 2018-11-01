@@ -151,6 +151,7 @@ enum {
 /* Фискальное приложение */
 	cmd_fa,
 	cmd_reg_fa,
+	cmd_rereg_fa,
 	cmd_open_shift_fa,
 	cmd_close_shift_fa,
 	cmd_cheque_fa,

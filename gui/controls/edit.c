@@ -19,6 +19,7 @@ bool edit_focus(edit_t *edit, bool focus);
 bool edit_handle(edit_t *edit, const struct kbd_event *e);
 bool edit_set_cursor_pos(edit_t *edit, int pos);
 bool edit_get_text(edit_t *edit, form_text_t *text, bool trim);
+bool edit_set_data(edit_t *edit, int what, void *data, size_t data_len);
 
 /* Программный курсор */
 #define CURSOR_BLINK_DELAY	50	/* ссек */
@@ -86,7 +87,8 @@ edit_t* edit_create(int x, int y, int width, int height, form_t *form, form_item
 		(void (*)(struct control_t *))edit_draw,
 		(bool (*)(struct control_t *, bool))edit_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))edit_handle,
-		(bool (*)(struct control_t *, form_text_t *, bool))edit_get_text
+		(bool (*)(struct control_t *, form_text_t *, bool))edit_get_text,
+		(bool (*)(struct control_t *control, int, void *, size_t))edit_set_data
     };
 
     control_init(&edit->control, x, y, width, height, form, &api);
@@ -145,19 +147,9 @@ void edit_draw(edit_t *edit)
 		fgColor = RGB(32, 32, 32);
 	}
 
-	// рамка
-	SetBrushColor(screen, borderColor);
-	SetRop2Mode(screen, R2_COPY);
-	FillBox(screen, edit->control.x, edit->control.y, edit->control.width, BORDER_WIDTH);
-	FillBox(screen, edit->control.x, edit->control.y + edit->control.height - BORDER_WIDTH, edit->control.width, BORDER_WIDTH);
-	FillBox(screen, edit->control.x, edit->control.y + BORDER_WIDTH, BORDER_WIDTH, edit->control.height - BORDER_WIDTH - 1);
-	FillBox(screen, edit->control.x + edit->control.width - BORDER_WIDTH, edit->control.y + BORDER_WIDTH, 
-		BORDER_WIDTH, edit->control.height - BORDER_WIDTH - 1);
-
-	// заполнение
-	SetBrushColor(screen, bgColor);
-	FillBox(screen, edit->control.x + BORDER_WIDTH, edit->control.y + BORDER_WIDTH, 
-		edit->control.width - BORDER_WIDTH * 2, edit->control.height - BORDER_WIDTH * 2);
+	control_fill_rect(edit->control.x, edit->control.y,
+		edit->control.width, edit->control.height, BORDER_WIDTH,
+		borderColor, bgColor);
 
 	if (edit->length > 0) {
 		SetGCBounds(screen, edit->control.x + BORDER_WIDTH, edit->control.y + BORDER_WIDTH,
@@ -356,38 +348,49 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 	if (!e->pressed)
 		return false;
 
-	if (e->ch != 0) {
+	if (e->ch != 0 && e->key != KEY_ESCAPE) {
 		switch (edit->input_type) {
 		case FORM_INPUT_TYPE_NUMBER:
+		case FORM_INPUT_TYPE_DATE:
 			if (!isdigit(e->ch))
-				return false;
+				return true;
 			break;
 		}
 		edit_insert_char(edit, e->ch);
+		if (edit->input_type == FORM_INPUT_TYPE_DATE) {
+			if (edit->cur_pos == 2 || edit->cur_pos == 5)
+				edit_insert_char(edit, '.');
+		}
 	} else {
  		switch (e->key) {
 			case KEY_DEL:
+				if (edit->input_type != FORM_INPUT_TYPE_DATE ||
+					(edit->cur_pos != 2 && edit->cur_pos != 5))
 				edit_remove_char(edit);
-				break;
+				return true;
 			case KEY_BACKSPACE:
 				edit_backspace_char(edit);
-				break;
+				if (edit->input_type == FORM_INPUT_TYPE_DATE) {
+					if (edit->cur_pos == 2 || edit->cur_pos == 5)
+						edit_backspace_char(edit);
+				}
+				return true;
 			case KEY_HOME:
 				edit_set_cursor_pos(edit, 0);
-				break;
+				return true;
 			case KEY_END:
 				edit_set_cursor_pos(edit, edit->length);
-				break;
+				return true;
 			case KEY_RIGHT:
 				edit_set_cursor_pos(edit, edit->cur_pos + 1);
-				break;
+				return true;
 			case KEY_LEFT:
 				edit_set_cursor_pos(edit, edit->cur_pos - 1);
-				break;
+				return true;
 		}
 	}
 
-    return true;
+    return false;
 }
 
 bool edit_get_text(edit_t *edit, form_text_t *form_text, bool trim) {
@@ -412,4 +415,19 @@ bool edit_get_text(edit_t *edit, form_text_t *form_text, bool trim) {
 	form_text->length = l;
 
 	return true;
+}
+
+bool edit_set_data(edit_t *edit, int what, void *data, size_t data_len) {
+	switch (what) {
+	case 0:
+		if (data != NULL) {
+			edit_grow_text(edit, data_len);
+			memcpy(edit->text, data, data_len);
+			edit->text[data_len] = 0;
+		    edit->length = data_len;
+			edit_draw(edit);
+			return true;
+		}
+	}
+	return false;
 }

@@ -8,6 +8,7 @@ typedef struct control_api_t {
 	bool (*focus)(struct control_t *control, bool focus);
 	bool (*handle)(struct control_t *control, const struct kbd_event *e);
 	bool (*get_text)(struct control_t *control, form_text_t *text, bool trim);
+	bool (*set_data)(struct control_t *control, int what, void *data, size_t data_len);
 } control_api_t;
 
 typedef struct control_t {
@@ -29,6 +30,8 @@ void control_draw(control_t *control);
 bool control_focus(control_t *control, bool focus);
 bool control_handle(struct control_t *control, const struct kbd_event *e);
 bool control_get_text(struct control_t *control, form_text_t *text, bool trim);
-
+bool control_set_data(struct control_t *control, int what, void *data, size_t data_len);
+void control_fill_rect(int x, int y, int width, int height, int border_width,
+	Color border_color, int bg_color);
 
 #endif // CONTROL_H

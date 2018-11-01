@@ -1,6 +1,7 @@
 typedef struct button_t {
 	control_t control;
 	char *text;
+	char bitnames[8];
 	bool pressed;
 	int result;
 	form_action_t action;
@@ -19,6 +20,7 @@ button_t* button_create(int x, int y, int width, int height, form_t *form, form_
 		(void (*)(struct control_t *))button_draw,
 		(bool (*)(struct control_t *, bool))button_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))button_handle,
+		NULL,
 		NULL,
     };
 
@@ -55,19 +57,9 @@ void button_draw(button_t *button) {
 		fgColor = RGB(32, 32, 32);
 	}
 
-	// рамка
-	SetBrushColor(screen, borderColor);
-	SetRop2Mode(screen, R2_COPY);
-	FillBox(screen, button->control.x, button->control.y, button->control.width, BORDER_WIDTH);
-	FillBox(screen, button->control.x, button->control.y + button->control.height - BORDER_WIDTH, button->control.width, BORDER_WIDTH);
-	FillBox(screen, button->control.x, button->control.y + BORDER_WIDTH, BORDER_WIDTH, button->control.height - BORDER_WIDTH - 1);
-	FillBox(screen, button->control.x + button->control.width - BORDER_WIDTH, button->control.y + BORDER_WIDTH, 
-		BORDER_WIDTH, button->control.height - BORDER_WIDTH - 1);
-
-	// заполнение
-	SetBrushColor(screen, bgColor);
-	FillBox(screen, button->control.x + BORDER_WIDTH, button->control.y + BORDER_WIDTH, 
-		button->control.width - BORDER_WIDTH * 2, button->control.height - BORDER_WIDTH * 2);
+	control_fill_rect(button->control.x, button->control.y,
+		button->control.width, button->control.height, BORDER_WIDTH,
+		borderColor, bgColor);
 
 	if (button->text) {
 		SetGCBounds(screen, button->control.x + BORDER_WIDTH, button->control.y + BORDER_WIDTH,
@@ -104,9 +96,10 @@ bool button_handle(button_t *button, const struct kbd_event *e) {
 			if (!button->action || button->action(button->control.form))
 				button->control.form->result = button->result;
 			kbd_flush_queue();
+			return true;
 		}
 		break;
 	}
-	return true;
+	return false;
 }
 
