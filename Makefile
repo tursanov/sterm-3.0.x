@@ -53,6 +53,7 @@ GUI_LOG_OBJS =		\
 	pos
 
 KKT_OBJS =		\
+	fdo		\
 	io		\
 	kkt		\
 	parser

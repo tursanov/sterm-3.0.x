@@ -4,6 +4,7 @@ DIR = kkt/
 INCLUDE = ../include
 
 KKT_OBJS =		\
+	fdo		\
 	io		\
 	kkt		\
 	parser

@@ -58,6 +58,7 @@
 #define FDO_REQ_SEND		0x34		/* передать данные в ОФД */
 #define FDO_REQ_RECEIVE		0x35		/* получить данные из ОФД */
 #define FDO_REQ_MESSAGE		0x36		/* сообщение для оператора */
+
 #define KKT_SRV_FDO_DATA	0x33		/* данные, принятые из ОФД (USB) */
 
 /* Управление потоком виртуального COM-порта */

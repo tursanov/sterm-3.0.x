@@ -363,7 +363,7 @@ static void log_draw_rec_data(struct log_gui_context *ctx)
 	for (line = 0; (i < ctx->scr_data_len) &&
 			(line < (LOG_SCREEN_LINES - ctx->nr_head_lines));
 			i++, line++){
-		log_draw_rec_line(ctx, line + 3, i);
+		log_draw_rec_line(ctx, line + ctx->nr_head_lines, i);
 		for (i++; ctx->scr_data[i] && (i < ctx->scr_data_len); i++);
 	}
 	kbd_flush_queue();
