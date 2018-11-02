@@ -52,13 +52,13 @@ bool control_handle(struct control_t *control, const struct kbd_event *e) {
 	return control->api.handle(control, e);
 }
 
-bool control_get_text(struct control_t *control, form_text_t *text, bool trim) {
-	if (control->api.get_text)
-		return control->api.get_text(control, text, trim);
+bool control_get_data(struct control_t *control, int what, form_data_t *data) {
+	if (control->api.get_data)
+		return control->api.get_data(control, what, data);
 	return false;
 }
 
-bool control_set_data(struct control_t *control, int what, void *data, size_t data_len) {
+bool control_set_data(struct control_t *control, int what, const void *data, size_t data_len) {
 	if (control->api.set_data)
 		return control->api.set_data(control, what, data, data_len);
 	return false;

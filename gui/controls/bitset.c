@@ -3,6 +3,7 @@ typedef struct bitset_t {
 	char *text;
 	char **short_items;
 	char **items;
+	int tmp_value;
 	int value;
 	size_t item_count;
 	bool expanded;
@@ -15,7 +16,8 @@ void bitset_destroy(bitset_t *bitset);
 void bitset_draw(bitset_t *bitset);
 bool bitset_focus(bitset_t *bitset, bool focus);
 bool bitset_handle(bitset_t *bitset, const struct kbd_event *e);
-bool bitset_set_data(bitset_t *bitset, int what, void *data, size_t data_len);
+bool bitset_get_data(bitset_t *bitset, int what, form_data_t *data);
+bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_len);
 
 bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
 	form_item_info_t *info)
@@ -26,8 +28,8 @@ bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
 		(void (*)(struct control_t *))bitset_draw,
 		(bool (*)(struct control_t *, bool))bitset_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))bitset_handle,
-		NULL,
-		(bool (*)(struct control_t *control, int, void *, size_t))bitset_set_data
+		(bool (*)(struct control_t *, int, form_data_t *))bitset_get_data,
+		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data
     };
 
     control_init(&bitset->control, x, y, width, height, form, &api);
@@ -106,16 +108,19 @@ static void bitset_draw_normal(bitset_t *bitset) {
 		bitset->control.width, bitset->control.height, BORDER_WIDTH,
 		borderColor, bgColor);
 
+	SetGCBounds(screen, bitset->control.x + BORDER_WIDTH, bitset->control.y + BORDER_WIDTH,
+		bitset->control.width - BORDER_WIDTH * 2, bitset->control.height - BORDER_WIDTH * 2);
+	int y = (bitset->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
 	if (*bitset->text) {
-		SetGCBounds(screen, bitset->control.x + BORDER_WIDTH, bitset->control.y + BORDER_WIDTH,
-			bitset->control.width - BORDER_WIDTH * 2, bitset->control.height - BORDER_WIDTH * 2);
 		int w = TextWidth(form_fnt, bitset->text);
 		int x = (bitset->control.width - w) / 2;
-		int y = (bitset->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
 		SetTextColor(screen, fgColor);
 
 		TextOut(screen, x, y, bitset->text);
 	}
+	SetTextColor(screen, borderColor);
+	TextOut(screen, bitset->control.width - BORDER_WIDTH * 3 - form_fnt->max_width,
+		y + 1, "\x1f");
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
 
@@ -138,11 +143,12 @@ static void bitset_draw_expanded(bitset_t *bitset) {
 		SetTextColor(screen, i == bitset->selected_index ? clWhite : clBlack);
 		FillBox(screen, 0, y, bitset->control.width - BORDER_WIDTH * 2,
 			form_fnt->max_height + BORDER_WIDTH*2);
-		if (bitset->value & (1 << i))
+		if (bitset->tmp_value & (1 << i))
 			TextOut(screen, BORDER_WIDTH, y, "\xfb");
 
 		TextOut(screen, x, y, bitset->items[i]);
 	}
+
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
 
@@ -166,12 +172,14 @@ bool bitset_handle(bitset_t *bitset, const struct kbd_event *e) {
 		if (e->pressed && !e->repeated) {
 			if (!bitset->expanded) {
 				bitset->expanded = true;
+				bitset->tmp_value = bitset->value;
 			} else if (e->key == KEY_SPACE) {
-				if (bitset->value & (1 << bitset->selected_index))
-					bitset->value &= ~(1 << bitset->selected_index);
+				if (bitset->tmp_value & (1 << bitset->selected_index))
+					bitset->tmp_value &= ~(1 << bitset->selected_index);
 				else
-					bitset->value |= (1 << bitset->selected_index);
+					bitset->tmp_value |= (1 << bitset->selected_index);
 			} else if (e->key == KEY_ENTER) {
+				bitset->value = bitset->tmp_value;
 				goto L1;
 			}
 			bitset_draw(bitset);
@@ -206,7 +214,17 @@ L1:
 	return false;
 }
 
-bool bitset_set_data(bitset_t *bitset, int what, void *data, size_t data_len) {
+bool bitset_get_data(bitset_t *bitset, int what, form_data_t *data) {
+	switch (what) {
+	case 0:
+		data->data = (void *)bitset->value;
+		data->size = 4;
+		return true;
+	}
+	return false;
+}
+
+bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_len) {
 	switch (what) {
 	case 0:
 		bitset->value = (int)data;

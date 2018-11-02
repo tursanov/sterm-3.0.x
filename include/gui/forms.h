@@ -17,6 +17,7 @@ typedef enum form_input_type_t {
 	FORM_INPUT_TYPE_TEXT = 0,
 	FORM_INPUT_TYPE_NUMBER,
 	FORM_INPUT_TYPE_DATE,
+	FORM_INPUT_TYPE_MONEY,
 } form_input_type_t;
 
 typedef bool (*form_action_t)(form_t *form);
@@ -55,14 +56,22 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 void form_destroy(form_t *form);
 int form_execute(form_t *form);
 void form_draw(form_t *form);
+bool form_focus(form_t *form, int id);
 
-typedef struct form_text_t {
-	const char *text;
-	size_t length;
-} form_text_t;
+typedef struct form_data_t {
+	const void *data;
+	size_t size;
+} form_data_t;
 
-bool form_get_text(form_t *form, int id, form_text_t *text, bool trim);
-bool form_set_data(form_t *form, int id, int what, void* data, size_t data_len);
+bool form_get_data(form_t *form, int id, int what, form_data_t *data);
+
+static inline int form_get_int_data(form_t *form, int id, int what, int default_value) {
+	form_data_t data;
+	if (form_get_data(form, id, what, &data))
+		return (int)data.data;
+	return default_value;
+}
+bool form_set_data(form_t *form, int id, int what, const void *data, size_t data_size);
 
 #define FORM_EDIT_TEXT_SET_TEXT(form, id, text, text_size) \
 	form_set_data(form, id, 0, text, text_size)

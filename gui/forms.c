@@ -275,16 +275,16 @@ int form_execute(form_t *form)
 	return result;
 }
 
-bool form_get_text(form_t *form, int id, form_text_t *text, bool trim) {
+bool form_get_data(form_t *form, int id, int what, form_data_t *data) {
     for (int i = 0; i < form->item_count; i++) {
     	form_item_t *item = &form->items[i];
     	if (item->id == id)
-    		return control_get_text(item->control, text, trim);
+    		return control_get_data(item->control, what, data);
     }
     return false;
 }
 
-bool form_set_data(form_t *form, int id, int what, void* data, size_t data_len) {
+bool form_set_data(form_t *form, int id, int what, const void* data, size_t data_len) {
     for (int i = 0; i < form->item_count; i++) {
     	form_item_t *item = &form->items[i];
     	if (item->id == id)
@@ -292,4 +292,18 @@ bool form_set_data(form_t *form, int id, int what, void* data, size_t data_len) 
     }
     return false;
 
+}
+
+bool form_focus(form_t *form, int id) {
+    for (int i = 0; i < form->item_count; i++) {
+    	form_item_t *item = &form->items[i];
+    	if (item->id == id) {
+			control_t *active_control = form->items[form->active_index].control;
+			if (control_focus(active_control, false)) {
+				form->active_index = i;
+    			return control_focus(item->control, true);
+    		}
+    	}
+    }
+    return false;
 }

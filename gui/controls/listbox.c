@@ -13,7 +13,8 @@ void listbox_destroy(listbox_t *listbox);
 void listbox_draw(listbox_t *listbox);
 bool listbox_focus(listbox_t *listbox, bool focus);
 bool listbox_handle(listbox_t *listbox, const struct kbd_event *e);
-bool listbox_set_data(listbox_t *listbox, int what, void *data, size_t data_len);
+bool listbox_get_data(listbox_t *listbox, int what, form_data_t *data);
+bool listbox_set_data(listbox_t *listbox, int what, const void *data, size_t data_len);
 
 listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 	form_item_info_t *info)
@@ -24,8 +25,8 @@ listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 		(void (*)(struct control_t *))listbox_draw,
 		(bool (*)(struct control_t *, bool))listbox_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))listbox_handle,
-		NULL,
-		(bool (*)(struct control_t *control, int, void *, size_t))listbox_set_data
+		(bool (*)(struct control_t *, int, form_data_t *))listbox_get_data,
+		(bool (*)(struct control_t *control, int, const void *, size_t))listbox_set_data
     };
 
     control_init(&listbox->control, x, y, width, height, form, &api);
@@ -84,17 +85,20 @@ static void listbox_draw_normal(listbox_t *listbox) {
 		listbox->control.width, listbox->control.height, BORDER_WIDTH,
 		borderColor, bgColor);
 
+	SetGCBounds(screen, listbox->control.x + BORDER_WIDTH, listbox->control.y + BORDER_WIDTH,
+		listbox->control.width - BORDER_WIDTH * 2, listbox->control.height - BORDER_WIDTH * 2);
+	int y = (listbox->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
 	if (listbox->selected_index >= 0 && listbox->selected_index < listbox->item_count) {
-		SetGCBounds(screen, listbox->control.x + BORDER_WIDTH, listbox->control.y + BORDER_WIDTH,
-			listbox->control.width - BORDER_WIDTH * 2, listbox->control.height - BORDER_WIDTH * 2);
 		const char *text = listbox->items[listbox->selected_index];
 		int w = TextWidth(form_fnt, text);
 		int x = (listbox->control.width - w) / 2;
-		int y = (listbox->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
 		SetTextColor(screen, fgColor);
 
 		TextOut(screen, x, y, text);
 	}
+	SetTextColor(screen, borderColor);
+	TextOut(screen, listbox->control.width - BORDER_WIDTH * 3 - form_fnt->max_width,
+		y + 1, "\x1f");
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
 
@@ -179,7 +183,17 @@ bool listbox_handle(listbox_t *listbox, const struct kbd_event *e) {
 	return false;
 }
 
-bool listbox_set_data(listbox_t *listbox, int what, void *data, size_t data_len) {
+bool listbox_get_data(listbox_t *listbox, int what, form_data_t *data) {
+	switch (what) {
+	case 0:
+		data->data = (void *)listbox->selected_index;
+		data->size = 4;
+		return true;
+	}
+	return false;
+}
+
+bool listbox_set_data(listbox_t *listbox, int what, const void *data, size_t data_len) {
 	switch (what) {
 	case 0:
 		listbox->selected_index = (int32_t)data;
