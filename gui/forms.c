@@ -9,7 +9,9 @@
 #include "gui/gdi.h"
 #include "gui/forms.h"
 
-#define	GAP	10
+#define	GAP	5
+#define	SPAN_GAP	10
+
 #define DEFAULT_CAPACITY    256
 #define BORDER_WIDTH		2
 
@@ -41,6 +43,8 @@ static GCPtr screen = NULL;
 
 #include "controls/edit.c"
 #include "controls/button.c"
+#include "controls/listbox.c"
+#include "controls/bitset.c"
 #include "controls/control.c"
 
 static void form_draw_title(form_t *form);
@@ -85,7 +89,7 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 	int max_name_w = (form_fnt->max_width * max_name_len) + GAP*2;
 
 	int control_x = (max_name_w > hw ? hw : max_name_w);
-	int y = form_fnt->max_height + GAP*2;
+	int y = form_fnt->max_height + SPAN_GAP;
 	int x = GAP*2;
    	int w = 200;
 	int h;
@@ -106,6 +110,8 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
     		}
     	}
 
+		SetTextColor(screen, RGB(96, 96, 96));
+
 		if (info->name) {
 			item->name_x = GAP*2;
 			item->name_y = y;
@@ -120,14 +126,14 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 				for (int j = i + 1; j < item_count; j++, count++) {
 					if (items[j].name != NULL)
 						break;
-					int tw = TextWidth(form_fnt, items[j].text) + GAP*2;
+					int tw = TextWidth(form_fnt, items[j].text) + SPAN_GAP*2;
 					if (tw > w)
 						w = tw;
 				}
-				x = (DISCX - ((w + GAP) * count)) / 2;
+				x = (DISCX - ((w + SPAN_GAP) * count)) / 2;
 			}
 
-			h = form_fnt->max_height + GAP;
+			h = form_fnt->max_height + SPAN_GAP;
 		}
 
 		item->control = control_create(x, y, w, h, form, info);
@@ -178,8 +184,10 @@ void form_draw(form_t *form) {
 	form_draw_title(form);
     for (int i = 0; i < form->item_count; i++) {
     	form_item_t *item = &form->items[i];
-		if (item->name)
+		if (item->name) {
+			SetTextColor(screen, RGB(96, 96, 96));
 			TextOut(screen, item->name_x, item->name_y, item->name);
+		}
 		control_draw(item->control);
 	}
 }
@@ -216,29 +224,31 @@ static bool form_process(form_t *form, const struct kbd_event *_e) {
 
 	e.ch = kbd_get_char_ex(e.key);
 
-	if (e.pressed) {
-		switch (e.key) {
-			case KEY_ESCAPE:
-				form->result = 0;
-				return false;
-			case KEY_TAB:
-				control_focus(active_control, false);
-				if (e.shift_state & SHIFT_SHIFT) {
-					form->active_index--;
-					if (form->active_index < 0)
-						form->active_index = form->item_count - 1;
-				} else {
-					form->active_index++;
-					if (form->active_index >= form->item_count)
-						form->active_index = 0;
-				}
-				active_control = form->items[form->active_index].control;
-				control_focus(active_control, true);
-				break;
+	if (!control_handle(active_control, &e)) {
+		if (e.pressed) {
+			switch (e.key) {
+				case KEY_ESCAPE:
+					form->result = 0;
+					return false;
+				case KEY_TAB:
+				case KEY_DOWN:
+				case KEY_UP:
+					control_focus(active_control, false);
+					if (e.key == KEY_UP || e.shift_state & SHIFT_SHIFT) {
+						form->active_index--;
+						if (form->active_index < 0)
+							form->active_index = form->item_count - 1;
+					} else {
+						form->active_index++;
+						if (form->active_index >= form->item_count)
+							form->active_index = 0;
+					}
+					active_control = form->items[form->active_index].control;
+					control_focus(active_control, true);
+					break;
+			}
 		}
 	}
-
-	control_handle(active_control, &e);
 
 	if (form->result >= 0)
 		return false;
@@ -265,11 +275,35 @@ int form_execute(form_t *form)
 	return result;
 }
 
-bool form_get_text(form_t *form, int id, form_text_t *text, bool trim) {
+bool form_get_data(form_t *form, int id, int what, form_data_t *data) {
     for (int i = 0; i < form->item_count; i++) {
     	form_item_t *item = &form->items[i];
     	if (item->id == id)
-    		return control_get_text(item->control, text, trim);
+    		return control_get_data(item->control, what, data);
+    }
+    return false;
+}
+
+bool form_set_data(form_t *form, int id, int what, const void* data, size_t data_len) {
+    for (int i = 0; i < form->item_count; i++) {
+    	form_item_t *item = &form->items[i];
+    	if (item->id == id)
+    		return control_set_data(item->control, what, data, data_len);
+    }
+    return false;
+
+}
+
+bool form_focus(form_t *form, int id) {
+    for (int i = 0; i < form->item_count; i++) {
+    	form_item_t *item = &form->items[i];
+    	if (item->id == id) {
+			control_t *active_control = form->items[form->active_index].control;
+			if (control_focus(active_control, false)) {
+				form->active_index = i;
+    			return control_focus(item->control, true);
+    		}
+    	}
     }
     return false;
 }

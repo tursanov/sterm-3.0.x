@@ -22,6 +22,8 @@ static struct {
 } control_create_func[] = {
 	{ FORM_ITEM_TYPE_EDIT_TEXT, (create_control_func_t)edit_create },
 	{ FORM_ITEM_TYPE_BUTTON, (create_control_func_t)button_create },
+	{ FORM_ITEM_TYPE_LISTBOX, (create_control_func_t)listbox_create },
+	{ FORM_ITEM_TYPE_BITSET, (create_control_func_t)bitset_create },
 };
 
 control_t *control_create(int x, int y, int w, int h, form_t *form, form_item_info_t *info) {
@@ -50,8 +52,34 @@ bool control_handle(struct control_t *control, const struct kbd_event *e) {
 	return control->api.handle(control, e);
 }
 
-bool control_get_text(struct control_t *control, form_text_t *text, bool trim) {
-	if (control->api.get_text)
-		return control->api.get_text(control, text, trim);
+bool control_get_data(struct control_t *control, int what, form_data_t *data) {
+	if (control->api.get_data)
+		return control->api.get_data(control, what, data);
 	return false;
+}
+
+bool control_set_data(struct control_t *control, int what, const void *data, size_t data_len) {
+	if (control->api.set_data)
+		return control->api.set_data(control, what, data, data_len);
+	return false;
+}
+
+void control_fill_rect(int x, int y, int width, int height, int border_width,
+		Color border_color, int bg_color) {
+	// рамка
+	SetBrushColor(screen, border_color);
+	SetRop2Mode(screen, R2_COPY);
+	FillBox(screen, x, y, width, border_width);
+	FillBox(screen, x, y + height - border_width, width, border_width);
+	FillBox(screen, x, y + border_width, border_width, height - border_width - 1);
+	FillBox(screen, x + width - border_width, y + border_width, 
+		border_width, height - border_width - 1);
+
+	// заполнение
+	if (bg_color > 0) {
+		SetBrushColor(screen, bg_color);
+		FillBox(screen, x + border_width, y + border_width, 
+			width - border_width * 2, height - border_width * 2);
+	}
+
 }

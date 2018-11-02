@@ -89,7 +89,7 @@ LOut:
 
 static void set_fn_error(char *s, uint8_t *err_info, size_t err_info_len)
 {
-	s += sprintf(s, "\nкоманда ФН: %.2x, код ошибки: %.2x\n", err_info[0], err_info[1]); 
+	s += sprintf(s, "\nкоманда ФН: %.2x, код ошибки: %.2x\n", err_info[0], err_info[1]);
     switch (err_info[1]) {
         case 0x00: // FS_RET_SUCCESS
             sprintf(s, "%s", "Нет ошибок");
@@ -408,11 +408,12 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 {
 	uint8_t ret;
 	uint8_t err_info[32];
-	size_t err_info_len = sizeof(err_info);
+	size_t err_info_len;
 	uint8_t *pattern;
 	size_t pattern_size;
 	struct kkt_doc_info di;
 
+	err_info_len = sizeof(err_info);
 	if ((ret = kkt_begin_doc(doc_type, err_info, &err_info_len)) != 0) {
 		set_error(ret, err_info, err_info_len);
 		printf("kkt_begin_doc->ret = %.2x\n", ret);
@@ -469,6 +470,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 		return -1;
 	}
 
+	err_info_len = sizeof(err_info);
 	if ((ret = kkt_end_doc(doc_type, pattern, pattern_size, &di, err_info, &err_info_len)) != 0) {
 		set_error(ret, err_info, err_info_len);
 		printf("kkt_end_doc->ret = %.2x, err_info_len = %d\n", ret, err_info_len);

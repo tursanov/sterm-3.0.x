@@ -76,16 +76,19 @@ typedef struct fd_cheque_corr_params_t {
 
 // получение последней ошибки
 int fd_get_last_error(const char **error);
+// формирование фискального документа
+int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t pattern_footer_size);
+
 // регистрация/перерегистрация
-int fd_registration(fd_registration_params_t *params);
+int fd_registration();
 // открытие смены
-int fd_open_shift(fd_shift_params_t *params);
+int fd_open_shift();
 // закрытие смены
-int fd_close_shift(fd_shift_params_t *params);
+int fd_close_shift();
 // отчет о текущих расчетах
 int fd_calc_report();
 // закрытие ФН
-int fd_close_fs(fd_close_fs_params_t *params);
+int fd_close_fs();
 
 
 #endif
