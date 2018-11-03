@@ -32,6 +32,7 @@
 #include "gui/scr.h"
 #include "gui/ssaver.h"
 #include "gui/xchange.h"
+#include "kkt/fdo.h"
 #include "kkt/kkt.h"
 #include "log/express.h"
 #include "log/kkt.h"
@@ -1590,6 +1591,7 @@ static bool create_term(void)
 	check_bank_license();
 	if (!open_logs())
 		return false;
+	fdo_init();
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));
@@ -1614,6 +1616,7 @@ static bool create_term(void)
 
 static void release_term(void)
 {
+	fdo_release();
 	if (devices != NULL){
 		free_dev_lst(devices);
 		devices = NULL;

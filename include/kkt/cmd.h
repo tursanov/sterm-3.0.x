@@ -216,7 +216,6 @@
 /* Результат получения данных, принятых из ОФД (USB) */
 #define FDO_DATA_STATUS_OK		KKT_STATUS_OK2	/* данные успешно приняты */
 #define FDO_DATA_STATUS_FAULT		0x31	/* данные не удалось принять */
-#define FDO_DATA_STATUS_CRC		0x32	/* ошибка контрольной суммы данных */
 
 /* Результат установки управления потоком */
 #define FLOW_CTL_STATUS_OK		KKT_STATUS_OK2	/* управление потоком установлено */

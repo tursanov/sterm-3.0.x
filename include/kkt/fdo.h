@@ -5,4 +5,10 @@
 
 #include "sysdefs.h"
 
+extern bool fdo_init(void);
+extern void fdo_release(void);
+
+extern bool fdo_suspend(void);
+extern bool fdo_resume(void);
+
 #endif		/* KKT_FDO_H */
