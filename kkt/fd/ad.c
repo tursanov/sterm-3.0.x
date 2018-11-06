@@ -9,24 +9,29 @@ static int save_string(FILE *f, char *s) {
     size_t len = s != NULL ? strlen(s) : 0;
     if (fwrite(&len, sizeof(len), 1, f) != 1)
         return -1;
-    if (fwrite(s, len, 1, f) != 1)
+    if (len > 0 && fwrite(s, len, 1, f) != 1)
         return -1;
     return 0;
 }
 
-static int load_string(FILE *f, char **s) {
+static int load_string(FILE *f, char **ret) {
     size_t len;
-    if (fread(&len, sizeof(len), 1, f) != 1 || len == 0)
+    if (fread(&len, sizeof(len), 1, f) != 1)
         return -1;
-    *s = (char *)malloc(len + 1);
-    if (*s == NULL)
-        return -1;
-    
-    if (fread(*s, len, 1, f) != 1) {
-        free(*s);
-        return -1;
-    }
-    *s[len] = 0;
+	if (len > 0) {
+		char *s = (char *)malloc(len + 1);
+		if (s == NULL)
+			return -1;
+
+		if (fread(s, len, 1, f) != 1) {
+			free(s);
+			return -1;
+		}
+		s[len] = 0;
+
+		*ret = s;
+	} else
+		*ret = NULL;
     
     return 0;
 }
@@ -38,12 +43,12 @@ static int save_int(FILE *f, uint64_t v, size_t size) {
 }
 #define SAVE_INT(f, v) save_int((f), (v), sizeof(v))
 
-static int load_int(FILE *f, uint64_t v, size_t size) {
-    if (fread(&v, size, 1, f) != 1)
+static int load_int(FILE *f, uint64_t *v, size_t size) {
+    if (fread(v, size, 1, f) != 1)
         return -1;
     return 0;
 }
-#define LOAD_INT(f, v) load_int((f), (v), sizeof(v))
+#define LOAD_INT(f, v) load_int((f), (uint64_t *)&(v), sizeof(v))
 
 static int save_list(FILE *f, list_t *list, list_item_func_t save_item_func) {
     if (SAVE_INT(f, list->count) < 0 ||
@@ -82,7 +87,7 @@ void L_destroy(L *l) {
     free(l);
 }
 
-int L_save(L *l, FILE *f) {
+int L_save(FILE *f, L *l) {
     if (save_string(f, l->s) < 0 ||
         SAVE_INT(f, l->p) < 0 ||
         SAVE_INT(f, l->r) < 0 ||
@@ -187,7 +192,7 @@ bool K_equalByL(K *k1, K* k2) {
     return list_compare(&k1->llist, &k2->llist, NULL, (list_item_compare_func_t)L_compare) == 0;
 }
 
-int K_save(K *k, FILE *f) {
+int K_save(FILE *f, K *k) {
     if (save_list(f, &k->llist, (list_item_func_t)L_save) < 0 ||
         SAVE_INT(f, k->o) < 0 ||
         SAVE_INT(f, k->d) < 0 ||
@@ -278,7 +283,7 @@ void S_subtractValue(uint8_t m, int64_t value, size_t count, ...) {
     va_end(args);
 }
 
-static int S_save(S *s, FILE *f) {
+static int S_save(FILE *f, S *s) {
     if (SAVE_INT(f, s->a) < 0 ||
         SAVE_INT(f, s->n) < 0 ||
         SAVE_INT(f, s->e) < 0 ||
@@ -287,7 +292,7 @@ static int S_save(S *s, FILE *f) {
     return 0;
 }
 
-static int S_load(S *s, FILE *f) {
+static int S_load(FILE *f, S *s) {
     if (LOAD_INT(f, s->a) < 0 ||
         LOAD_INT(f, s->n) < 0 ||
         LOAD_INT(f, s->e) < 0 ||
@@ -319,13 +324,13 @@ bool C_addK(C *c, K *k) {
     return list_add(&c->klist, k);
 }
 
-int C_save(C *c, FILE *f) {
+int C_save(FILE *f, C *c) {
     if (save_list(f, &c->klist, (list_item_func_t)K_save) < 0 ||
             SAVE_INT(f, c->p) < 0 ||
             save_string(f, c->h) < 0 ||
             SAVE_INT(f, c->t1054) < 0 ||
             SAVE_INT(f, c->t1055) < 0 ||
-            S_save(&c->sum, f) < 0 ||
+            S_save(f, &c->sum) < 0 ||
             save_string(f, c->t1086) < 0 ||
             save_string(f, c->pe) < 0)
         return -1;
@@ -339,7 +344,7 @@ C * C_load(FILE *f) {
             load_string(f, &c->h) < 0 ||
             LOAD_INT(f, c->t1054) < 0 ||
             LOAD_INT(f, c->t1055) < 0 ||
-            S_load(&c->sum, f) < 0 ||
+            S_load(f, &c->sum) < 0 ||
             load_string(f, &c->t1086) < 0 ||
             load_string(f, &c->pe) < 0) {
         C_destroy(c);
@@ -367,7 +372,7 @@ void P1_destroy(P1 *p1) {
     free(p1);
 }
 
-int P1_save(P1 *p1, FILE *f) {
+int P1_save(FILE *f, P1 *p1) {
     if (save_string(f, p1->i) < 0 ||
         save_string(f, p1->p) < 0 ||
         save_string(f, p1->t) < 0 ||
@@ -409,25 +414,32 @@ void AD_destroy() {
     _ad = NULL;
 }
 
-#define FILE_NAME   "~/sterm/ad.bin"
+#define FILE_NAME   "/home/sterm/ad.bin"
 
 int AD_save() {
     int ret = -1;
     FILE *f = fopen(FILE_NAME, "wb");
-    if (f == NULL)
+    
+    if (f == NULL) {
+    	perror("save backet");
         return -1;
+    }
+    
+    printf("begin save backet\n");
     
     if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
-        (_ad->p1 != NULL && P1_save(_ad->p1, f) < 0) ||
+        (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
         SAVE_INT(f, _ad->t1055) < 0 ||
-        S_save(&_ad->sum[0], f) < 0 ||
-        S_save(&_ad->sum[1], f) < 0 ||
-        S_save(&_ad->sum[2], f) < 0 ||
-        S_save(&_ad->sum[3], f) < 0 ||
+        S_save(f, &_ad->sum[0]) < 0 ||
+        S_save(f, &_ad->sum[1]) < 0 ||
+        S_save(f, &_ad->sum[2]) < 0 ||
+        S_save(f, &_ad->sum[3]) < 0 ||
         save_list(f, &_ad->clist, (list_item_func_t)C_save) < 0)
         ret = -1;
     else
         ret = 0;
+
+    printf("end save backet %d\n", ret);
     
     fclose(f);
     return ret;
@@ -447,14 +459,17 @@ int AD_load() {
     if (LOAD_INT(f, hasP1) < 0 ||
         (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
         LOAD_INT(f, _ad->t1055) < 0 ||
-        S_load(&_ad->sum[0], f) < 0 ||
-        S_load(&_ad->sum[1], f) < 0 ||
-        S_load(&_ad->sum[2], f) < 0 ||
-        S_load(&_ad->sum[3], f) < 0 ||
+        S_load(f, &_ad->sum[0]) < 0 ||
+        S_load(f, &_ad->sum[1]) < 0 ||
+        S_load(f, &_ad->sum[2]) < 0 ||
+        S_load(f, &_ad->sum[3]) < 0 ||
         load_list(f, &_ad->clist, (load_item_func_t)C_load) < 0)
         ret = -1;
     else
         ret = 0;
+        
+    printf("AD_load: %d, ad.C.count: %d\n", ret, _ad->clist.count);
+    
     
     fclose(f);
     return ret;
@@ -535,6 +550,9 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     }
     
     list_add(&c->klist, k);
+    
+    printf("AD CH: %d\n", _ad->clist.count);
+    
     return 0;
 }
 
@@ -598,6 +616,7 @@ int AD_processO(K *k) {
 
 int AD_process(K* k) {
     AD_processO(k);
+    AD_save();
     return 0;
 }
 
@@ -714,7 +733,7 @@ static int process_email_value(const char *tag, const char *name,
                                uint32_t mask_value,
                                char **out)
 {
-    size_t len = strlen(val);
+    int len = strlen(val);
     if (len < 3) {
         printf("%s/@%s: неправильная длина", tag, name);
         return ERR_INVALID_VALUE;
@@ -784,10 +803,10 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     for (int i = 0, mask = 1; i < ASIZE(tags); i++, mask <<= 1) {
                         bool required = (REQUIRED_K_MASK & mask) != 0;
                         bool present = (_kMask & mask) != 0;
-                        
+
                         if (i == 1)
                             required = _k->o <= 2;
-                        
+
                         if (required && !present)
                             printf("Обязательный атрибут K/@%c отсутствует\n",
                                    tags[i]);
@@ -802,10 +821,10 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     for (int i = 0, mask = 1; i < ASIZE(tags); i++, mask <<= 1) {
                         bool required = (REQUIRED_L_MASK & mask) != 0;
                         bool present = (_lMask & mask) != 0;
-                        
+
                         if (i == 5 && _l->n <= 4)
                             required = true;
-                        
+
                         if (required && !present)
                             printf("Обязательный атрибут L/@%c отсутствует\n",
                                    tags[i]);
@@ -827,12 +846,12 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     if ((ret = process_int_value("L", name, val, 1, 4,
                                                      &_lMask, 0x02, &v64)) != 0)
                         return ret;
-                    _l->p = v64;
+                    _l->p = (uint8_t)v64;
                 } else if (strcmp(name, "R") == 0) {
                     if ((ret = process_int_value("L", name, val, 1, 4,
                                                  &_lMask, 0x04, &v64)) != 0)
                         return ret;
-                    _l->r = v64;
+                    _l->r = (uint8_t)v64;
                 } else if (strcmp(name, "T") == 0) {
                     if ((ret = process_currency_value("L", name, val,
                                                  &_lMask, 0x08, &_l->t)) != 0)
@@ -841,7 +860,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     if ((ret = process_int_value("L", name, val, 1, 6,
                                                  &_lMask, 0x10, &v64)) != 0)
                         return ret;
-                    _l->n = v64;
+					_l->n = (uint8_t)v64;
                 } else if (strcmp(name, "C") == 0) {
                     if ((ret = process_currency_value("L", name, val,
                                                       &_lMask, 0x20, &_l->c)) != 0)
@@ -852,7 +871,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     if ((ret = process_int_value("K", name, val, 0, 4,
                                                  &_kMask, 0x1, &v64)) != 0)
                         return ret;
-                    _k->o = v64;
+					_k->o = (uint8_t)v64;
                 } else if (strcmp(name, "D") == 0) {
                     if ((ret = check_str_len("K", name, val, 13, 14)) != 0 ||
                         (ret = process_int_value("K", name, val, 0, INT64_MAX,
@@ -879,7 +898,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     if ((ret = process_int_value("K", name, val, 0, 3,
                                                  &_kMask, 0x20, &v64)) != 0)
                         return ret;
-                    _k->m = v64;
+					_k->m = (uint8_t)v64;
                 } else if (strcmp(name, "T") == 0 &&
                           (ret = process_phone_value("K", name, val,
                                                      &_kMask, 0x40, &_k->t)) != 0) {

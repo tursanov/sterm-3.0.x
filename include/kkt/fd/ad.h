@@ -2,7 +2,7 @@
 #define AD_H
 
 #include <stdint.h>
-#include <stdbool.h>
+#include <stdio.h>
 #include "list.h"
 
 // составляющая
@@ -20,7 +20,7 @@ extern L *L_create(void);
 // удаление составляющей
 extern void L_destroy(L *l);
 // запись составляющей в файл
-extern int L_save(L *l, FILE *f);
+extern int L_save(FILE *f, L *l);
 // загрузка составляющей из файла
 extern L *L_load(FILE *f);
 
@@ -50,7 +50,7 @@ extern K *K_divide(K *k, uint8_t p);
 extern bool K_equalByL(K *k1, K *k2);
 
 // запись документа в файл
-extern int K_save(K *k, FILE *f);
+extern int K_save(FILE *f, K *k);
 // загрузка документа из файла
 extern K *K_load(FILE *f);
 
@@ -87,7 +87,7 @@ extern C* C_create(void);
 extern void C_destroy(C *c);
 extern bool C_addK(C *c, K *k);
 
-extern int C_save(C *c, FILE *f);
+extern int C_save(FILE *f, C *c);
 extern C* C_load(FILE *f);
 
 // данные кассира
@@ -100,7 +100,7 @@ typedef struct P1 {
 
 extern P1 *P1_create(void);
 extern void P1_destroy(P1 *p1);
-extern int P1_save(P1 *p1, FILE *f);
+extern int P1_save(FILE *f, P1 *p1);
 extern P1* P1_load(FILE *f);
 
 // Корзина фискального приложения

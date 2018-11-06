@@ -34,6 +34,7 @@
 #include "gui/xchange.h"
 #include "kkt/fdo.h"
 #include "kkt/kkt.h"
+#include "kkt/fd/ad.h"
 #include "log/express.h"
 #include "log/kkt.h"
 #include "log/local.h"
@@ -1592,6 +1593,8 @@ static bool create_term(void)
 	if (!open_logs())
 		return false;
 	fdo_init();
+	/* загрузка корзины фискального приложения */
+	AD_load();
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));
