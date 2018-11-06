@@ -150,7 +150,7 @@ static int fa_tlv_add_string(form_t *form, uint16_t tag, int max_length, bool fi
 	}
 
 	int ret;
-	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data, data.size, fixed)) != 0) {
+	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data, max_length, fixed)) != 0) {
 		form_focus(form, tag);
 		message_box("Ошибка", "Ошибка при добавлении TLV. Обратитесь к разработчикам", dlg_yes, 0, al_center);
 		form_draw(form);

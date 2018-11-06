@@ -1,12 +1,5 @@
-//
-//  list.c
-//  ad
-//
-//  Created by Алексей Попов on 24.09.2018.
-//  Copyright ? 2018 Алексей Попов. All rights reserved.
-//
-
 #include "list.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +11,7 @@ int list_add(list_t *list, void *obj) {
     item->obj = obj;
     item->next = NULL;
     
-    if (list->tail != NULL) {
+    if (list->tail == NULL) {
         list->head = list->tail = item;
     } else {
         list->tail->next = item;
@@ -158,4 +151,19 @@ int list_foreach(list_t *list, void *arg, list_item_func_t func) {
             return ret;
     }
     return 0;
+}
+
+void list_it_remove(list_it_t *it) {
+    list_item_t *tmp = it->i;
+    it->i = it->i->next;
+    if (it->list->delete_func != NULL)
+        it->list->delete_func(tmp->obj);
+    free(tmp);
+    if (it->p != NULL)
+        it->p->next = it->i;
+    if (it->i == NULL)
+        it->list->tail = it->p;
+    if (tmp == it->list->head)
+        it->list->head = it->i;
+    it->list->count--;
 }

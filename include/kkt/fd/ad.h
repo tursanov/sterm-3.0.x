@@ -2,7 +2,6 @@
 #define AD_H
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdbool.h>
 #include "list.h"
 
@@ -68,19 +67,19 @@ extern void S_add(S *dst, S*src);
 // вычесть из dst src
 extern void S_subtract(S* dst, S*src);
 // прибавить значение к сумме (в зависимости от вида расчета)
-extern void S_addValue(uint8_t m, int64_t value, S *sum, size_t count);
+extern void S_addValue(uint8_t m, int64_t value, size_t count, ...);
 // вычесть из суммы значение (в зависимости от вида расчета)
-extern void S_subtractValue(uint8_t m, int64_t value, S *sum, size_t count);
+extern void S_subtractValue(uint8_t m, int64_t value, size_t count, ...);
 
 // чек
 typedef struct C {
     list_t klist;       // список тэгов K
     uint64_t p;     // ИНН переводчика
-    char *s;        // телефон перевозчика
+    char *h;        // телефон перевозчика
     uint8_t t1054;  // признак расчета
     uint8_t t1055;  // применяемая система налогообложения
     S sum;          // сумма
-    uint8_t t1086;  // значение дополнительного реквизита пользователя
+    char * t1086;  // значение дополнительного реквизита пользователя
     char *pe;       // Тел. или e-mail покупателя
 } C;
 
@@ -99,9 +98,14 @@ typedef struct P1 {
     char *s;
 } P1;
 
+extern P1 *P1_create(void);
+extern void P1_destroy(P1 *p1);
+extern int P1_save(P1 *p1, FILE *f);
+extern P1* P1_load(FILE *f);
+
 // Корзина фискального приложения
 typedef struct AD {
-    P1 p1;              // данные кассира
+    P1* p1;              // данные кассира
     uint8_t t1055;
     char * t1086;
 #define MAX_SUM 4
@@ -109,14 +113,16 @@ typedef struct AD {
     list_t clist;           // список чеков
 } AD;
 
-// создание корзины
-extern AD *AD_create(void);
 // удаление корзины
-extern void AD_destroy(AD *ad);
+extern void AD_destroy(void);
 // сохранение корзины на диск
-extern int AD_save(AD *ad, const char *file_name);
-extern int AD_load(const char *file_name, AD **ad);
+extern int AD_save(void);
+// загрузка корзины с диска
+extern int AD_load(void);
 // установка значения для тэга T1086
-extern void AD_setT1086(AD *ad, const char *i, const char *p, const char *t);
+extern void AD_setT1086(const char *i, const char *p, const char *t);
+
+// callback для обработки XML
+extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
 
 #endif // AD_H
