@@ -333,15 +333,18 @@ static int fa_load_cashier_data(cashier_data_t *data) {
 		};
 		int l[] = {
 			sizeof(data->cashier) - 1,
-			sizeof(data->post),
-			sizeof(data->cashier_inn),
-			sizeof(data->cashier_post)
+			sizeof(data->post) - 1,
+			sizeof(data->cashier_inn) - 1,
+			sizeof(data->cashier_post) - 1
 		};
 
-		memset(data, 0 ,sizeof(data));
+		memset(data, 0, sizeof(*data));
 		for (int i = 0; i < 4; i++) {
 			if (!fgets(s[i], l[i], f))
 				break;
+			char *p = s[i] + l[i] - 1;
+			while (*p == 0 || *p == '\n')
+				*p-- = 0;
 		}
 		fclose(f);
 		return 0;
@@ -803,6 +806,10 @@ void fa_cheque() {
 		fa_load_cashier_data(&data);
 		if (data.cashier_post[0])
 			ffd_tlv_add_string(1021, data.cashier_post, 64, false);
+		
+		printf("CashierINN[%d]: %s\n", (uint8_t)data.cashier_inn[0],
+			data.cashier_inn);
+		
 		if (data.cashier_inn[0])
 			ffd_tlv_add_string(1203, data.cashier_inn, 12, true);
 
