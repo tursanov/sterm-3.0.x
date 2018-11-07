@@ -282,6 +282,7 @@
 #define KKT_STATUS_OP_TIMEOUT		0xf1	/* таймаут операции */
 #define KKT_STATUS_COM_ERROR		0xf2	/* ошибка COM-порта */
 #define KKT_STATUS_RESP_FMT_ERROR	0xf3	/* неверный формат ответа */
+#define KKT_STATUS_MUTEX_ERROR		0xf4	/* ошибка получения мьюьекса */
 
 /* Таймауты в сотых сек операций с ККТ */
 #define KKT_DEF_TIMEOUT			100

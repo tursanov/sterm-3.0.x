@@ -452,7 +452,9 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 			cmd = req[2];
 		}
 	}
-	if (status_ok(prefix, cmd, status) &&
+	if ((prefix == KKT_SRV) && (cmd == KKT_SRV_FDO_REQ) && (status == FDO_REQ_NOP))
+		return -1UL;
+	else if (status_ok(prefix, cmd, status) &&
 			((cfg.kkt_log_level == KLOG_LEVEL_WARN) ||
 			 (cfg.kkt_log_level == KLOG_LEVEL_ERR)))
 		return -1UL;

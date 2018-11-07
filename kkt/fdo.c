@@ -2,7 +2,6 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
@@ -11,9 +10,11 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "cfg.h"
 #include "kkt/cmd.h"
@@ -75,15 +76,52 @@ enum {
 /* Состояние потока для работы с ОФД */
 static int fdo_thread_state = fdo_thread_active;
 
+/* Для сигнализации об изменении состояния потока используется механизм сигналов */
+#define SIG_THREAD_STATE_CHANGED	SIGRTMIN
+
+static void sig_handler(int arg /*__attribute__((used))*/)
+{
+	fprintf(stderr, "%s: arg = %d.\n", __func__, arg);
+}
+
+static bool fdo_set_sig_handler(void)
+{
+	struct sigaction sa = {
+		.sa_handler = sig_handler,
+		.sa_flags = 0,
+		.sa_restorer = NULL
+	};
+	sigemptyset(&sa.sa_mask);
+	bool ret = (sigaction(SIG_THREAD_STATE_CHANGED, &sa, NULL) == 0);
+	if (!ret)
+		fprintf(stderr, "%s: ошибка sigaction(): %s.\n", __func__, strerror(errno));
+	return ret;
+}
+
+static bool fdo_reset_sig_handler(void)
+{
+	struct sigaction sa = {
+		.sa_handler = SIG_DFL,
+		.sa_flags = 0,
+		.sa_restorer = NULL
+	};
+	sigemptyset(&sa.sa_mask);
+	bool ret = (sigaction(SIG_THREAD_STATE_CHANGED, &sa, NULL) == 0);
+	if (!ret)
+		fprintf(stderr, "%s: ошибка sigaction(): %s.\n", __func__, strerror(errno));
+	return ret;
+}
+
 static pthread_mutex_t fdo_mtx = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-/* Используется для сигнализации об изменении состояния */
-static int fdo_thread_evt = -1;
-
-static bool fdo_set_thread_event(void)
+bool fdo_lock(void)
 {
-	uint64_t evt = 1;
-	return write(fdo_thread_evt, &evt, sizeof(evt)) == sizeof(evt);
+	return pthread_mutex_lock(&fdo_mtx) == 0;
+}
+
+bool fdo_unlock(void)
+{
+	return (pthread_mutex_unlock(&fdo_mtx) == 0) || (errno == EPERM);
 }
 
 static bool fdo_set_thread_state(int state)
@@ -95,8 +133,12 @@ static bool fdo_set_thread_state(int state)
 		if (state == fdo_thread_active)
 			fdo_reset_rx();
 		pthread_mutex_unlock(&fdo_mtx);
-		fdo_set_thread_event();
-		ret = true;
+		int rc = pthread_kill(fdo_thread, SIG_THREAD_STATE_CHANGED);
+		if (rc == 0)
+			ret = true;
+		else
+			fprintf(stderr, "%s: ошибка pthread_kill(): %s.\n", __func__,
+				strerror(errno));
 	}
 	return ret;
 }
@@ -119,32 +161,25 @@ static void fdo_stop_thread(void)
 
 static bool fdo_sleep(uint32_t ms)
 {
-	struct pollfd pfd = {
-		.fd		= fdo_thread_evt,
-		.events		= POLLOUT,
-		.revents	= 0
-	};
-	int rc = poll(&pfd, 1, ms);
-	return (rc > 0) && ((pfd.revents & POLLIN) == 0);
-}
-
-/* Время последнего опроса ККТ */
-static uint32_t fdo_t0 = 0;
-
-static inline void fdo_set_t0(void)
-{
-	fdo_t0 = u_times();
-}
-
-static inline uint32_t fdo_dt(void)
-{
-	return u_times() - fdo_t0;
+	bool ret = false;
+	if (ms == 0)
+		ret = pthread_yield() == 0;
+	else{
+		struct timespec ts = {
+			.tv_sec = ms / 1000,
+			.tv_nsec = (ms % 1000) * 1000000
+		};
+		ret = nanosleep(&ts, NULL) == 0;
+	}
+	return ret;
 }
 
 /* Таймаут соединения с сервером ОФД */
 #define FDO_CONNECT_TIMEOUT		3000	/* 3 сек */
 /* Таймаут передачи данных ОФД */
 #define FDO_SEND_TIMEOUT		3000	/* 3 сек */
+/* Таймаут приёма данных от ОФД */
+#define FDO_RECV_TIMEOUT		3000	/* 3 сек */
 
 #define get_timeb(t) \
 	struct timeb t; \
@@ -277,34 +312,29 @@ static uint16_t fdo_connect(const uint8_t *data, size_t len)
 			strerror(errno));
 		return FDO_OPEN_ERROR;
 	}
-	struct pollfd fds[] = {
-		{
-			.fd		= fdo_sock,
-			.events		= POLLOUT,
-			.revents	= 0
-		},
-		{
-			.fd		= fdo_thread_evt,
-			.events		= POLLIN,
-			.revents	= 0
-		},
+	struct pollfd fds = {
+		.fd		= fdo_sock,
+		.events		= POLLOUT,
+		.revents	= 0
 	};
 	uint16_t ret = FDO_OPEN_ERROR;
-	int rc = poll(fds, ASIZE(fds), FDO_CONNECT_TIMEOUT);
-	if (rc == -1)
-		fprintf(stderr, "%s: ошибка poll(): %s.\n", __func__, strerror(errno));
-	else if (rc == 0)
+	int rc = poll(&fds, 1, FDO_CONNECT_TIMEOUT);
+	if (rc == -1){
+		if (errno == EINTR)
+			fprintf(stderr, "%s: операция прервана.\n", __func__);
+		else
+			fprintf(stderr, "%s: ошибка poll(): %s.\n", __func__, strerror(errno));
+	}else if (rc == 0)
 		fprintf(stderr, "%s: таймаут соединения.\n", __func__);
-	else if (fds[1].revents & POLLIN)
-		fprintf(stderr, "%s: операция прервана.\n", __func__);
-	else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))
+	else if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
 		fprintf(stderr, "%s: ошибка сокета: %s.\n", __func__,
 			strerror(fdo_get_sock_error()));
-	else{
+	else if (fds.revents & POLLOUT){
 		fprintf(stderr, "%s: соединение с ОФД установлено.\n", __func__);
 		fdo_connected = true;
 		ret = FDO_OPEN_CONNECTED;
-	}
+	}else
+		fprintf(stderr, "%s: revents = 0x%.4hx.\n", __func__, fds.revents);
 	return ret;
 }
 
@@ -338,31 +368,28 @@ static uint16_t fdo_send(const uint8_t *data, size_t len)
 	get_timeb(t0);
 	while (sent_len < len){
 		bool flag = false;
-		struct pollfd fds[] = {
-			{
-				.fd		= fdo_sock,
-				.events		= POLLOUT,
-				.revents	= 0
-			},
-			{
-				.fd		= fdo_thread_evt,
-				.events		= POLLIN,
-				.revents	= 0
-			},
+		struct pollfd fds = {
+			.fd		= fdo_sock,
+			.events		= POLLOUT,
+			.revents	= 0
 		};
-		int rc = poll(fds, ASIZE(fds), FDO_SEND_TIMEOUT - dt);
+		int rc = poll(&fds, 1, FDO_SEND_TIMEOUT - dt);
 		dt = time_diff(&t0);
-		if (rc == -1)
-			fprintf(stderr, "%s: оибка poll(): %s.\n", __func__, strerror(errno));
-		else if (rc == 0)
+		if (rc == -1){
+			if (errno == EINTR)
+				fprintf(stderr, "%s: операция прервана.\n", __func__);
+			else
+				fprintf(stderr, "%s: ошибка poll(): %s.\n", __func__,
+					strerror(errno));
+		}else if (rc == 0)
 			fprintf(stderr, "%s: таймаут передачи.\n", __func__);
-		else if (fds[1].revents & POLLIN)
-			fprintf(stderr, "%s: операция прервана.\n", __func__);
-		else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))
+		else if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
 			fprintf(stderr, "%s: ошибка сокета: %s.\n", __func__,
 				strerror(fdo_get_sock_error()));
-		else
+		else if (fds.revents & POLLOUT)
 			flag = true;
+		else
+			fprintf(stderr, "%s: revents = 0x%.4hx.\n", __func__, fds.revents);
 		if (!flag)
 			break;
 		ssize_t l = send(fdo_sock, data + sent_len, len - sent_len, MSG_NOSIGNAL);
@@ -383,24 +410,46 @@ static uint16_t fdo_send(const uint8_t *data, size_t len)
 }
 
 /* Приём данных из ОФД */
-static ssize_t fdo_recv(uint8_t *data, size_t len)
+static uint16_t fdo_recv(void)
 {
-	if (!fdo_connected || (data == NULL) || (len == 0))
-		return -1;
-	ssize_t ret = recv(fdo_sock, data, len, 0);
-	if (ret == -1){
-		if ((errno == EWOULDBLOCK) || (errno == EAGAIN))
-			ret = 0;
+	uint16_t ret = FDO_RCV_NOT_CONNECTED;
+	if (!fdo_connected)
+		return ret;
+	struct pollfd fds = {
+		.fd		= fdo_sock,
+		.events		= POLLIN,
+		.revents	= 0
+	};
+	int rc = poll(&fds, 1, FDO_RECV_TIMEOUT);
+	if (rc == -1){
+		if (errno == EINTR)
+			fprintf(stderr, "%s: операция прервана.\n", __func__);
 		else
-			fprintf(stderr, "%s: ошибка приёма: %s.\n", __func__,
+			fprintf(stderr, "%s: ошибка poll(): %s.\n", __func__,
 				strerror(errno));
-	}else if (ret == 0){
-		fprintf(stderr, "%s: соединение закрыто со стороны ОФД.\n", __func__);
-		ret = -1;
-	}else
-		fprintf(stderr, "%s: из ОФД получено %d байт.\n", __func__, ret);
-	if (ret == -1)
-		fdo_sock_close();
+	}else if (rc == 0)
+		fprintf(stderr, "%s: ОФД завершил соединение.\n", __func__);
+	else if (fds.revents & (POLLERR | POLLHUP | POLLNVAL))
+		fprintf(stderr, "%s: ошибка сокета: %s.\n", __func__,
+			strerror(fdo_get_sock_error()));
+	else if (fds.revents & POLLIN){
+		ssize_t len = recv(fdo_sock, fdo_rx + fdo_rx_len,
+			sizeof(fdo_rx) - fdo_rx_len, 0);
+		if (len == -1){
+			if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+				ret = FDO_RCV_NO_DATA;
+			else
+				fprintf(stderr, "%s: ошибка recv: %s.\n", __func__,
+					strerror(errno));
+		}else if (len == 0)
+			fprintf(stderr, "%s: ОФД завершил соединение.\n", __func__);
+		else if (len > 0){
+			fprintf(stderr, "%s: из ОФД получено %d байт.\n", __func__, len);
+			fdo_rx_len += len;
+			ret = FDO_RCV_OK;
+		}else
+			fprintf(stderr, "%s: recv() вернул %d.\n", __func__, len);
+	}
 	return ret;
 }
 
@@ -425,22 +474,6 @@ static uint16_t fdo_send_kkt(void)
 	return ret;
 }
 
-static bool fdo_wait_suspend(void)
-{
-	bool ret = false;
-	while (true){
-		uint64_t evt = 0;
-		if (read(fdo_thread_evt, &evt, sizeof(evt)) == sizeof(evt)){
-			if (fdo_thread_state != fdo_thread_suspended){
-				ret = true;
-				break;
-			}
-		}else
-			break;
-	}
-	return ret;
-}
-
 static uint8_t fdo_prev_op = UINT8_MAX;
 static uint16_t fdo_prev_op_status = 0;
 
@@ -454,11 +487,9 @@ static void fdo_poll_kkt(void)
 		fprintf(stderr, "%s: cmd = %.2hhx; data_len = %u.\n", __func__,
 			cmd, data_len);
 		fdo_prev_op = cmd;
-		bool can_pause = false;
 		switch (cmd){
 			case FDO_REQ_NOP:
-			case FDO_REQ_MESSAGE:
-				can_pause = true;
+				fdo_sleep(cfg.fdo_poll_period * 1000);
 				break;
 			case FDO_REQ_OPEN:
 				fdo_prev_op_status = fdo_connect(data, data_len);
@@ -473,37 +504,25 @@ static void fdo_poll_kkt(void)
 				fdo_prev_op_status = fdo_send(data, data_len);
 				break;
 			case FDO_REQ_RECEIVE:
-				fdo_prev_op_status = fdo_send_kkt();
-				can_pause = fdo_prev_op_status != FDO_RCV_OK;
+				fdo_prev_op_status = fdo_recv();
+				if (fdo_prev_op_status == FDO_RCV_OK)
+					fdo_prev_op_status = fdo_send_kkt();
+				break;
+			case FDO_REQ_MESSAGE:
 				break;
 		}
-		if (can_pause)
-			fdo_set_t0();
 	}
 }
 
 static void *fdo_thread_proc(void *arg __attribute__((unused)))
 {
-	uint32_t poll_period = cfg.fdo_poll_period * 100;
 	while (fdo_thread_state != fdo_thread_stopped){
 		if (fdo_thread_state == fdo_thread_suspended)
-			fdo_wait_suspend();
+			pause();
 		else if (fdo_thread_state == fdo_thread_active){
-			uint32_t dt = fdo_dt();
-			if (dt < poll_period){
-				ssize_t rc = fdo_recv(fdo_rx + fdo_rx_len,
-					sizeof(fdo_rx) - fdo_rx_len);
-				if (rc > 0)
-					fdo_rx_len += rc;
-				else{
-					if (rc == -1)
-						fdo_reset_rx();
-					fdo_sleep((poll_period - dt) * 10);
-				}
-			}else if (cfg.has_kkt && (kkt != NULL))
+			if (cfg.has_kkt && (kkt != NULL))
 				fdo_poll_kkt();
-		}else if (fdo_thread_state == fdo_thread_stopped)
-			break;
+		}
 	}
 	return NULL;
 }
@@ -511,9 +530,8 @@ static void *fdo_thread_proc(void *arg __attribute__((unused)))
 bool fdo_init(void)
 {
 	bool ret = false;
-	fdo_thread_evt = eventfd(0, 0);
-	if (fdo_thread_evt == -1)
-		fprintf(stderr, "%s: ошибка eventfd(): %s.\n", __func__, strerror(errno));
+	if (!fdo_set_sig_handler())
+		;
 	else if (pthread_create(&fdo_thread, NULL, fdo_thread_proc, NULL) == 0){
 		fprintf(stderr, "%s: модуль ОФД готов к работе.\n", __func__);
 		ret = true;
@@ -528,10 +546,6 @@ void fdo_release(void)
 	fdo_stop_thread();
 	pthread_mutex_unlock(&fdo_mtx);
 	fdo_sock_close();
-	if (fdo_thread_evt != -1){
-		if (close(fdo_thread_evt) == -1)
-			fprintf(stderr, "%s: ошибка close(fdo_thread_evt): %s.\n",
-				__func__, strerror(errno));
-	}
+	fdo_reset_sig_handler();
 	fprintf(stderr, "%s: модуль ОФД завершил работу.\n", __func__);
 }

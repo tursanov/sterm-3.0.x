@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include "kkt/fdo.h"
 #include "kkt/io.h"
 #include "kkt/kkt.h"
 #include "kkt/parser.h"
@@ -310,13 +311,29 @@ static bool do_cmd(uint8_t prefix, uint8_t cmd, void *param)
 	return ret;
 }
 
+static bool kkt_lock(void)
+{
+	bool ret = fdo_lock();
+	if (!ret)
+		kkt_status = KKT_STATUS_MUTEX_ERROR;
+	return ret;
+}
+
+static inline bool kkt_unlock(void)
+{
+	return fdo_unlock();
+}
+
 /* Установить интерфейс взаимодействия с ОФД */
 uint8_t kkt_set_fdo_iface(int fdo_iface)
 {
-	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_IFACE) && write_byte(fdo_iface + 0x30) &&
-			kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_FDO_IFACE, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_IFACE) && write_byte(fdo_iface + 0x30) &&
+				kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_FDO_IFACE, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -324,10 +341,13 @@ uint8_t kkt_set_fdo_iface(int fdo_iface)
 /* Установить адрес ОФД */
 uint8_t kkt_set_fdo_addr(uint32_t fdo_ip, uint16_t fdo_port)
 {
-	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_ADDR) && write_ip(fdo_ip, true) &&
-			write_port(fdo_port, true) && kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_FDO_ADDR, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_ADDR) && write_ip(fdo_ip, true) &&
+				write_port(fdo_port, true) && kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_FDO_ADDR, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -360,20 +380,23 @@ uint8_t kkt_get_fdo_cmd(uint8_t prev_op, uint16_t prev_op_status, uint8_t *cmd,
 {
 	assert(cmd != NULL);
 	bool ok = false, vset = false;
-	char txt[7];
-	if (prev_op == UINT8_MAX)
-		snprintf(txt, sizeof(txt), "%s", "-:----");
-	else
-		snprintf(txt, sizeof(txt), "%c:%.4hX", prev_op, prev_op_status);
-	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_REQ) && write_str(txt, false) &&
-			kkt_open_dev_if_need()){
-		struct kkt_fdo_cmd fdo_cmd;
-		if (do_transaction(KKT_SRV, KKT_SRV_FDO_REQ, &fdo_cmd)){
-			*cmd = fdo_cmd.cmd;
-			set_var_data(data, data_len, &fdo_cmd.data);
-			ok = vset = true;
+	if (kkt_lock()){
+		char txt[7];
+		if (prev_op == UINT8_MAX)
+			snprintf(txt, sizeof(txt), "%s", "-:----");
+		else
+			snprintf(txt, sizeof(txt), "%c:%.4hX", prev_op, prev_op_status);
+		if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_REQ) && write_str(txt, false) &&
+				kkt_open_dev_if_need()){
+			struct kkt_fdo_cmd fdo_cmd;
+			if (do_transaction(KKT_SRV, KKT_SRV_FDO_REQ, &fdo_cmd)){
+				*cmd = fdo_cmd.cmd;
+				set_var_data(data, data_len, &fdo_cmd.data);
+				ok = vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(data, data_len);
@@ -385,10 +408,13 @@ uint8_t kkt_send_fdo_data(const uint8_t *data, size_t data_len)
 {
 	assert(data != NULL);
 	assert(data_len > 0);
-	if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_DATA) && write_word(data_len) &&
-			write_data(data, data_len) && kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_FDO_DATA, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_FDO_DATA) && write_word(data_len) &&
+				write_data(data, data_len) && kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_FDO_DATA, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -398,20 +424,26 @@ uint8_t kkt_get_rtc(struct kkt_rtc_data *rtc)
 {
 	assert(rtc != NULL);
 	memset(rtc, 0, sizeof(*rtc));
-	do_cmd(KKT_SRV, KKT_SRV_RTC_GET, rtc);
+	if (kkt_lock()){
+		do_cmd(KKT_SRV, KKT_SRV_RTC_GET, rtc);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
 /* Установить часы реального времени */
 uint8_t kkt_set_rtc(time_t t)
 {
-	struct tm *tm = localtime(&t);
-	if (prepare_cmd(KKT_SRV, KKT_SRV_RTC_SET) && write_bcd(tm->tm_year + 1900, 2) &&
-			write_bcd(tm->tm_mon + 1, 1) && write_bcd(tm->tm_mday, 1) &&
-			write_bcd(tm->tm_hour, 1) && write_bcd(tm->tm_min, 1) &&
-			write_bcd(tm->tm_sec, 1) && kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_RTC_SET, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		struct tm *tm = localtime(&t);
+		if (prepare_cmd(KKT_SRV, KKT_SRV_RTC_SET) && write_bcd(tm->tm_year + 1900, 2) &&
+				write_bcd(tm->tm_mon + 1, 1) && write_bcd(tm->tm_mday, 1) &&
+				write_bcd(tm->tm_hour, 1) && write_bcd(tm->tm_min, 1) &&
+				write_bcd(tm->tm_sec, 1) && kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_RTC_SET, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -422,14 +454,17 @@ uint8_t kkt_get_last_doc_info(struct kkt_last_doc_info *ldi, uint8_t *err_info,
 {
 	assert(ldi != NULL);
 	bool vset = false;
-	struct last_doc_info_arg arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_LAST_DOC_INFO) && kkt_open_dev_if_need()){
-		if (do_transaction(KKT_SRV, KKT_SRV_LAST_DOC_INFO, &arg)){
-			*ldi = arg.ldi;
-			set_var_data(err_info, err_info_len, &arg.err_info);
-			vset = true;
+	if (kkt_lock()){
+		struct last_doc_info_arg arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_LAST_DOC_INFO) && kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_LAST_DOC_INFO, &arg)){
+				*ldi = arg.ldi;
+				set_var_data(err_info, err_info_len, &arg.err_info);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -443,16 +478,20 @@ uint8_t kkt_print_last_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_l
 	assert(tmpl != NULL);
 	assert(lpi != NULL);
 	bool vset = false;
-	struct last_printed_info_arg arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_PRINT_LAST) && write_word(doc_type) &&
-			write_word(tmpl_len) &&
-			((tmpl_len == 0) || write_data(tmpl, tmpl_len)) && kkt_open_dev_if_need()){
-		if (do_transaction(KKT_SRV, KKT_SRV_PRINT_LAST, &arg)){
-			*lpi = arg.lpi;
-			set_var_data(err_info, err_info_len, &arg.err_info);
-			vset = true;
+	if (kkt_lock()){
+		struct last_printed_info_arg arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_PRINT_LAST) && write_word(doc_type) &&
+				write_word(tmpl_len) &&
+				((tmpl_len == 0) || write_data(tmpl, tmpl_len)) &&
+				kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_LAST, &arg)){
+				*lpi = arg.lpi;
+				set_var_data(err_info, err_info_len, &arg.err_info);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -463,14 +502,17 @@ uint8_t kkt_print_last_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_l
 uint8_t kkt_begin_doc(uint16_t doc_type, uint8_t *err_info, size_t *err_info_len)
 {
 	bool vset = false;
-	struct kkt_var_data arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_BEGIN_DOC) && write_word(doc_type) &&
-			kkt_open_dev_if_need()){
-		if (do_transaction(KKT_SRV, KKT_SRV_BEGIN_DOC, &arg)){
-			set_var_data(err_info, err_info_len, &arg);
-			vset = true;
+	if (kkt_lock()){
+		struct kkt_var_data arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_BEGIN_DOC) && write_word(doc_type) &&
+				kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_BEGIN_DOC, &arg)){
+				set_var_data(err_info, err_info_len, &arg);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -484,14 +526,17 @@ uint8_t kkt_send_doc_data(const uint8_t *data, size_t len, uint8_t *err_info,
 	assert(data != NULL);
 	assert(len > 0);
 	bool vset = false;
-	struct kkt_var_data arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_SEND_DOC) && write_word(len) &&
-			write_data(data, len) && kkt_open_dev_if_need()){
-		if (do_transaction(KKT_SRV, KKT_SRV_SEND_DOC, &arg)){
-			set_var_data(err_info, err_info_len, &arg);
-			vset = true;
+	if (kkt_lock()){
+		struct kkt_var_data arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_SEND_DOC) && write_word(len) &&
+				write_data(data, len) && kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_SEND_DOC, &arg)){
+				set_var_data(err_info, err_info_len, &arg);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -506,16 +551,19 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 	assert(tmpl_len > 0);
 	assert(di != NULL);
 	bool vset = false;
-	struct doc_info_arg arg;
-	if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(doc_type) &&
-			write_word(tmpl_len) && write_data(tmpl, tmpl_len) &&
-			kkt_open_dev_if_need()){
-		if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg)){
-			*di = arg.di;
-			set_var_data(err_info, err_info_len, &arg.err_info);
-			vset = true;
+	if (kkt_lock()){
+		struct doc_info_arg arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(doc_type) &&
+				write_word(tmpl_len) && write_data(tmpl, tmpl_len) &&
+				kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg)){
+				*di = arg.di;
+				set_var_data(err_info, err_info_len, &arg.err_info);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(err_info, err_info_len);
@@ -525,11 +573,14 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 /* Настроить сетевой интерфейс ККТ */
 uint8_t kkt_set_eth_cfg(uint32_t ip, uint32_t netmask, uint32_t gw)
 {
-	if (prepare_cmd(KKT_SRV, KKT_SRV_NET_SETTINGS) && write_ip(ip, true) &&
-			write_ip(netmask, true) && write_ip(gw, true) &&
-			kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_NET_SETTINGS, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_NET_SETTINGS) && write_ip(ip, true) &&
+				write_ip(netmask, true) && write_ip(gw, true) &&
+				kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_NET_SETTINGS, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -537,11 +588,14 @@ uint8_t kkt_set_eth_cfg(uint32_t ip, uint32_t netmask, uint32_t gw)
 /* Настроить GPRS в ККТ */
 uint8_t kkt_set_gprs_cfg(const char *apn, const char *user, const char *password)
 {
-	if (prepare_cmd(KKT_SRV, KKT_SRV_GPRS_SETTINGS) && write_str(apn, true) &&
-			write_str(user, true) && write_str(password, true) &&
-			kkt_open_dev_if_need()){
-		do_transaction(KKT_SRV, KKT_SRV_GPRS_SETTINGS, NULL);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_GPRS_SETTINGS) && write_str(apn, true) &&
+				write_str(user, true) && write_str(password, true) &&
+				kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_GPRS_SETTINGS, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -553,19 +607,15 @@ uint8_t kkt_set_cfg(void)
 	kkt_begin_batch_mode();
 	do {
 		ret = kkt_set_fdo_iface(cfg.fdo_iface);
-		printf("%s: kkt_set_fdo_iface: 0x%.2hhx\n", __func__, ret);
 		if (ret != FDO_IFACE_STATUS_OK)
 			break;
 		ret = kkt_set_fdo_addr(cfg.fdo_ip, cfg.fdo_port);
-		printf("%s: kkt_set_fdo_addr: 0x%.2hhx\n", __func__, ret);
 		if (ret != FDO_ADDR_STATUS_OK)
 			break;
 		ret = kkt_set_eth_cfg(cfg.kkt_ip, cfg.kkt_netmask, cfg.kkt_gw);
-		printf("%s: kkt_set_eth_cfg: 0x%.2hhx\n", __func__, ret);
 		if (ret != NET_SETTINGS_STATUS_OK)
 			break;
 		ret = kkt_set_gprs_cfg(cfg.kkt_gprs_apn, cfg.kkt_gprs_user, cfg.kkt_gprs_passwd);
-		printf("%s: kkt_set_gprs_cfg: 0x%.2hhx\n", __func__, ret);
 	} while (false);
 	kkt_end_batch_mode();
 	return ret;
@@ -577,8 +627,11 @@ uint8_t kkt_get_fs_status(struct kkt_fs_status *fs_status)
 {
 	assert(fs_status != NULL);
 	memset(fs_status, 0, sizeof(*fs_status));
-	do_cmd(KKT_FS, KKT_FS_STATUS, fs_status);
-	set_fs_nr((kkt_status == KKT_STATUS_OK) ? fs_status->nr : NULL);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_STATUS, fs_status);
+		set_fs_nr((kkt_status == KKT_STATUS_OK) ? fs_status->nr : NULL);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -587,8 +640,11 @@ uint8_t kkt_get_fs_nr(char *fs_nr)
 {
 	assert(fs_nr != NULL);
 	memset(fs_nr, 0, KKT_FS_NR_LEN);
-	do_cmd(KKT_FS, KKT_FS_NR, fs_nr);
-	set_fs_nr(kkt_status == KKT_STATUS_OK ? fs_nr : NULL);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_NR, fs_nr);
+		set_fs_nr(kkt_status == KKT_STATUS_OK ? fs_nr : NULL);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -597,7 +653,10 @@ uint8_t kkt_get_fs_lifetime(struct kkt_fs_lifetime *lt)
 {
 	assert(lt != NULL);
 	memset(lt, 0, sizeof(*lt));
-	do_cmd(KKT_FS, KKT_FS_LIFETIME, lt);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_LIFETIME, lt);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -606,7 +665,10 @@ uint8_t kkt_get_fs_version(struct kkt_fs_version *ver)
 {
 	assert(ver != NULL);
 	memset(ver, 0, sizeof(*ver));
-	do_cmd(KKT_FS, KKT_FS_VERSION, ver);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_VERSION, ver);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -615,11 +677,14 @@ uint8_t kkt_get_fs_last_error(uint8_t *err_info, size_t *err_info_len)
 {
 	assert(err_info != NULL);
 	assert(err_info_len != NULL);
-	struct kkt_var_data data;
-	if (do_cmd(KKT_FS, KKT_FS_LAST_ERROR, &data))
-		set_var_data(err_info, err_info_len, &data);
-	else
-		clr_var_data(err_info, err_info_len);
+	if (kkt_lock()){
+		struct kkt_var_data data;
+		if (do_cmd(KKT_FS, KKT_FS_LAST_ERROR, &data))
+			set_var_data(err_info, err_info_len, &data);
+		else
+			clr_var_data(err_info, err_info_len);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -628,7 +693,10 @@ uint8_t kkt_get_fs_shift_state(struct kkt_fs_shift_state *ss)
 {
 	assert(ss != NULL);
 	memset(ss, 0, sizeof(*ss));
-	do_cmd(KKT_FS, KKT_FS_SHIFT_PARAMS, ss);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_SHIFT_PARAMS, ss);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -637,7 +705,10 @@ uint8_t kkt_get_fs_transmission_state(struct kkt_fs_transmission_state *ts)
 {
 	assert(ts != NULL);
 	memset(ts, 0, sizeof(*ts));
-	do_cmd(KKT_FS, KKT_FS_TRANSMISSION_STATUS, ts);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_TRANSMISSION_STATUS, ts);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -650,15 +721,18 @@ uint8_t kkt_find_fs_doc(uint32_t nr, bool need_print,
 	assert(data_len != NULL);
 	bool vset = false;
 	memset(fdi, 0, sizeof(*fdi));
-	if (prepare_cmd(KKT_FS, KKT_FS_FIND_DOC) && write_dword(nr) &&
-			write_byte(need_print) && kkt_open_dev_if_need()){
-		struct find_doc_info_arg arg;
-		if (do_transaction(KKT_FS, KKT_FS_FIND_DOC, &arg)){
-			*fdi = arg.fdi;
-			set_var_data(data, data_len, &arg.data);
-			vset = true;
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_FS, KKT_FS_FIND_DOC) && write_dword(nr) &&
+				write_byte(need_print) && kkt_open_dev_if_need()){
+			struct find_doc_info_arg arg;
+			if (do_transaction(KKT_FS, KKT_FS_FIND_DOC, &arg)){
+				*fdi = arg.fdi;
+				set_var_data(data, data_len, &arg.data);
+				vset = true;
+			}
+			kkt_close_dev();
 		}
-		kkt_close_dev();
+		kkt_unlock();
 	}
 	if (!vset)
 		clr_var_data(data, data_len);
@@ -670,10 +744,13 @@ uint8_t kkt_find_fdo_ack(uint32_t nr, bool need_print, struct kkt_fs_fdo_ack *fd
 {
 	assert(fdo_ack != NULL);
 	memset(fdo_ack, 0, sizeof(*fdo_ack));
-	if (prepare_cmd(KKT_FS, KKT_FS_FIND_FDO_ACK) && write_dword(nr) &&
-			write_byte(need_print) && kkt_open_dev_if_need()){
-		do_transaction(KKT_FS, KKT_FS_FIND_FDO_ACK, fdo_ack);
-		kkt_close_dev();
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_FS, KKT_FS_FIND_FDO_ACK) && write_dword(nr) &&
+				write_byte(need_print) && kkt_open_dev_if_need()){
+			do_transaction(KKT_FS, KKT_FS_FIND_FDO_ACK, fdo_ack);
+			kkt_close_dev();
+		}
+		kkt_unlock();
 	}
 	return kkt_status;
 }
@@ -683,7 +760,10 @@ uint8_t kkt_get_unconfirmed_docs_nr(uint32_t *nr_docs)
 {
 	assert(nr_docs != NULL);
 	*nr_docs = 0;
-	do_cmd(KKT_FS, KKT_FS_UNCONFIRMED_DOC_CNT, nr_docs);
+	if (kkt_lock()){
+		do_cmd(KKT_FS, KKT_FS_UNCONFIRMED_DOC_CNT, nr_docs);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
 
@@ -692,10 +772,12 @@ uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len)
 {
 	assert(data != NULL);
 	assert(data_len != NULL);
-	struct kkt_var_data arg;
-	if (do_cmd(KKT_FS, KKT_FS_LAST_REG_DATA, &arg))
-		set_var_data(data, data_len, &arg);
-	else
-		clr_var_data(data, data_len);
+	clr_var_data(data, data_len);
+	if (kkt_lock()){
+		struct kkt_var_data arg;
+		if (do_cmd(KKT_FS, KKT_FS_LAST_REG_DATA, &arg))
+			set_var_data(data, data_len, &arg);
+		kkt_unlock();
+	}
 	return kkt_status;
 }
