@@ -20,6 +20,8 @@
 #include "prn/aux.h"
 #include "prn/express.h"
 #include "prn/local.h"
+#include "kkt/kkt.h"
+#include "kkt/fd/ad.h"
 #include "gd.h"
 #include "hex.h"
 #include "iplir.h"
@@ -117,7 +119,7 @@ static struct hint_entry main_hints[NR_HINTS]={
 	{"Ctrl+Л",	"КЛ Экспр.",		_("pict/log.bmp")},
 	{"Ctrl+Ч",	"КЛ ИПТ",		_("pict/log.bmp")},
 	{"Ctrl+Б",	"ИПТ",			_("pict/bank.bmp")},
-	{"",		"DialUp [PPP]",		_("pict/dialup.bmp")},
+	{"Ctrl+Щ",		"ККТ",		_("pict/kkt.bmp")},
 };
 
 /* Подсказки пригородного режима */
@@ -138,7 +140,7 @@ static struct hint_entry local_hints[NR_HINTS]={
 	{"Ctrl+Ь",	"КЛ приг.",		_("pict/log.bmp")},
 	{"Ctrl+Г",	"Печ. обр.",		_("pict/local/images.bmp")},
 	{"Ctrl+Я",	"Номер",		_("pict/local/number.bmp")},
-	{"",		"DialUp [PPP]",		_("pict/dialup.bmp")},
+	{"Ctrl+Щ",		"ККТ",		_("pict/kkt.bmp")},
 };
 
 /* Геометрия экрана 80x20 */
@@ -859,11 +861,14 @@ bool show_hints(void)
 		SetPenColor(pMemGC, clBlack);
 		
 		for (i = 0; i < NR_HINTS; i++){
-			if ((i == (NR_HINTS - 1)) &&
-					(!cfg.use_ppp || (ppp_state != ppp_ready)))
-				glyphs[i] = NULL;
-			else
-				glyphs[i] = CreateBitmap(hints[i].glyph);
+			const char *glyph = hints[i].glyph;
+			if ((i == (NR_HINTS - 1))) {
+				if (!cfg.has_kkt)
+					glyph = NULL;
+				else if (!kkt)
+					glyph = _("pict/kkt_err.bmp");
+			}
+			glyphs[i] = glyph ? CreateBitmap(glyph) : NULL;
 		}
 		for (i = j = x = 0, hint_w = (DISCX-2)/8; i < NR_HINTS1; i++, j++, x += hint_w) {
 			DrawBorder(pMemGC, x, 0, hint_w - 1, hint_h, 1, 
@@ -877,6 +882,7 @@ bool show_hints(void)
 			DrawText(pMemGC, x+33, 0, hint_w-33, hint_h/2, 
 				hints[j].key, DT_LEFT | DT_VCENTER);
 			SetTextColor(pMemGC, clBlack);
+
 			DrawText(pMemGC, x+33, hint_h/2, hint_w-33, hint_h/2, 
 				hints[j].descr, DT_LEFT | DT_VCENTER);
 			DrawBitmap(pMemGC, glyphs[j], x, 1, 32, 32, true, FROM_BMP);
@@ -893,9 +899,18 @@ bool show_hints(void)
 			SetTextColor(pMemGC, clMaroon);
 			DrawText(pMemGC, ofs+x+33, hint_h+4, hint_w-33, hint_h/2, 
 				hints[j].key, DT_LEFT | DT_VCENTER);
+				
+			const char *descr = hints[j].descr;			
+			char descr_tmp[256];
+			
+			if ((i == (NR_HINTS2 - 1) && _ad != NULL && AD_doc_count() > 0)) {
+				sprintf(descr_tmp, "ККТ (%d)", AD_doc_count());
+				descr = descr_tmp;
+			}
+				
 			SetTextColor(pMemGC, clBlack);
 			DrawText(pMemGC, ofs+x+33, hint_h+hint_h/2+4, hint_w-33, hint_h/2, 
-				hints[j].descr, DT_LEFT | DT_VCENTER);
+				descr, DT_LEFT | DT_VCENTER);
 			DrawBitmap(pMemGC, glyphs[j], ofs+x, hint_h+4, 32, 32, true, FROM_BMP);	
 		}
 		

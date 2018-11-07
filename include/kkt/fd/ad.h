@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "sysdefs.h"
 #include "list.h"
 
 // составляющая
@@ -103,6 +104,20 @@ extern void P1_destroy(P1 *p1);
 extern int P1_save(FILE *f, P1 *p1);
 extern P1* P1_load(FILE *f);
 
+// массив 64-битных величин
+typedef struct {
+	int64_t *values;
+	size_t capacity;
+	size_t count;
+} int64_array_t;
+#define INIT_INT64_ARRAY { NULL, 0, 0 }
+
+extern int int64_array_init(int64_array_t *array);
+extern int int64_array_clear(int64_array_t *array);
+extern int int64_array_free(int64_array_t *array);
+// добавить значение (unique - добавить только то, значение, которое отсутствует в списке
+extern int int64_array_add(int64_array_t *array, int64_t v, bool unique);
+
 // Корзина фискального приложения
 typedef struct AD {
     P1* p1;              // данные кассира
@@ -110,19 +125,24 @@ typedef struct AD {
     char * t1086;
 #define MAX_SUM 4
     S sum[MAX_SUM];     // сумма
-    list_t clist;           // список чеков
+    list_t clist;       // список чеков
+	int64_array_t docs;	// список документов
 } AD;
+
+// ссылка на текущую корзину
+extern AD* _ad;
 
 // удаление корзины
 extern void AD_destroy(void);
 // сохранение корзины на диск
 extern int AD_save(void);
 // загрузка корзины с диска
-extern int AD_load(void);
+extern int AD_load(uint8_t t1055);
 // установка значения для тэга T1086
 extern void AD_setT1086(const char *i, const char *p, const char *t);
+#define AD_doc_count() (_ad ? _ad->docs.count : 0)
 
 // callback для обработки XML
-extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
+//extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
 
 #endif // AD_H

@@ -434,11 +434,11 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 			if (tlv == end || tlv_buf_size + tlv->length > MAX_SEND_SIZE) {
 				err_info_len = sizeof(err_info);
 
-				printf("tlv_buf_size = %d\n", tlv_buf_size);
+//				printf("tlv_buf_size = %d\n", tlv_buf_size);
 
 				if ((ret = kkt_send_doc_data(tlv_buf, tlv_buf_size, err_info, &err_info_len)) != 0) {
 					set_error(ret, err_info, err_info_len);
-					printf("kkt_send_doc_data->ret = %.2x\n", ret);
+//					printf("kkt_send_doc_data->ret = %.2x\n", ret);
 
 					if (ret == 0x80 || ret == 0x8c) {
 						if (err_info_len > 0) {
@@ -457,12 +457,24 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 
 				tlv_buf_size = 0;
 				tlv_buf = (uint8_t *)tlv;
-			} 
+			}
+			
+/*			printf("tlv->tag: %d\n", tlv->tag);
+			printf("tlv->length: %d\n", tlv->length);
+			printf("  asString: %.*s\n", tlv->length, FFD_TLV_DATA_AS_STRING(tlv));
+			printf("  as8: %d\n", FFD_TLV_DATA_AS_UINT8(tlv));
+			if (tlv->length > 1)
+				printf("  as16: %d\n", FFD_TLV_DATA_AS_UINT16(tlv));
+			if (tlv->length > 3)
+				printf("  as32: %d\n", FFD_TLV_DATA_AS_UINT32(tlv));*/
+			
 			tlv_buf_size += FFD_TLV_SIZE(tlv);
 			tlv = FFD_TLV_NEXT(tlv);
 		}
 
 	}
+	
+	printf("------------------------------------\n");
 
    	if ((pattern = load_pattern(doc_type, pattern_footer,
 				   	pattern_footer_size, &pattern_size)) == NULL) {

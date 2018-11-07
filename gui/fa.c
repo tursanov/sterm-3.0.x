@@ -20,6 +20,7 @@
 #include "gui/menu.h"
 #include "gui/scr.h"
 #include "gui/forms.h"
+#include "gui/cheque.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fd/tlv.h"
@@ -66,6 +67,31 @@ static bool fa_set_group(int n)
 }
 
 
+static uint8_t rereg_data[2048];
+static size_t rereg_data_len = sizeof(rereg_data);
+static int64_t user_inn = 0;
+
+static int fa_get_reregistration_data() {
+	int ret;
+	rereg_data_len = sizeof(rereg_data);
+	if ((ret = kkt_get_last_reg_data(rereg_data, &rereg_data_len)) == 0 && rereg_data_len > 0) {
+		for (const ffd_tlv_t *tlv = (ffd_tlv_t *)rereg_data,
+				*end = (ffd_tlv_t *)(rereg_data + rereg_data_len);
+				tlv < end;
+				tlv = FFD_TLV_NEXT(tlv)) {
+			switch (tlv->tag) {
+				case 1018:
+					user_inn = atoll(FFD_TLV_DATA_AS_STRING(tlv));
+					break;
+			}
+		}
+		return 0;
+	}
+
+	return ret;
+}
+
+
 bool init_fa(void)
 {
 	fa_active = true;
@@ -78,6 +104,8 @@ bool init_fa(void)
 
 	fa_create_menu();
 	fa_set_group(FAPP_GROUP_MENU);
+
+	fa_get_reregistration_data();
 
 	return true;
 }
@@ -507,14 +535,13 @@ static size_t get_trim_string_size(const ffd_tlv_t *tlv) {
 }
 
 static int fa_fill_reregistration_form(form_t *form) {
-	uint8_t data[2048];
-	size_t data_len = sizeof(data);
 	uint8_t modes = 0;
 
-	int ret;
-	if ((ret = kkt_get_last_reg_data(data, &data_len)) == 0 && data_len > 0) {
-		for (const ffd_tlv_t *tlv = (ffd_tlv_t *)data, *end = (ffd_tlv_t *)(data + data_len);
-			tlv < end; tlv = FFD_TLV_NEXT(tlv)) {
+	if (rereg_data_len > 0) {
+		for (const ffd_tlv_t *tlv = (ffd_tlv_t *)rereg_data,
+				*end = (ffd_tlv_t *)(rereg_data + rereg_data_len);
+				tlv < end;
+				tlv = FFD_TLV_NEXT(tlv)) {
 			switch (tlv->tag) {
 			case 1048:
 				FORM_EDIT_TEXT_SET_TEXT(form, tlv->tag, FFD_TLV_DATA_AS_STRING(tlv), tlv->length);
@@ -580,7 +607,7 @@ static int fa_fill_reregistration_form(form_t *form) {
 		}
 		FORM_BITSET_SET_VALUE(form, 9999, modes);
 	}
-	return ret;
+	return 0;
 }
 
 void fa_reregistration() {
@@ -732,6 +759,104 @@ void fa_cheque_corr() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+static size_t get_phone(char *src, char *dst) {
+	if (src == NULL)
+		return 0;
+	char ch = *src;
+	size_t len = 0;
+	if (ch == '8') {
+		*dst++ = '+';
+		*dst++ = '7';
+		len += 2;
+		src++;
+	} else if (isdigit(ch)) {
+		*dst++ = '+';
+		len++;
+	}
+	
+	while (*src) {
+		*dst++ = *src++;
+		len++;
+	}
+	*dst = 0;
+		
+	return len;
+}
+
+void fa_cheque() {
+	C *c;
+	cheque_init();
+
+	while ((c = cheque_execute())) {
+		ffd_tlv_reset();
+		cashier_data_t data = { "", "", "", "" };
+		fa_load_cashier_data(&data);
+		if (data.cashier_post[0])
+			ffd_tlv_add_string(1021, data.cashier_post, 64, false);
+		if (data.cashier_inn[0])
+			ffd_tlv_add_string(1203, data.cashier_inn, 12, true);
+
+		ffd_tlv_add_uint8(1054, c->t1054);
+		ffd_tlv_add_uint8(1055, c->t1055);
+		if (c->pe)
+			ffd_tlv_add_string(1008, c->pe, 64, false);
+		ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
+		ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
+		ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
+		ffd_tlv_add_vln(1216, 0);
+		ffd_tlv_add_vln(1217, 0);
+		
+		if (c->p != user_inn) {
+			ffd_tlv_add_uint8(1057, 1 << 6);
+			char phone[19+1];
+			size_t size = get_phone(c->h, phone);
+			
+			ffd_tlv_add_string(1171, phone, size, false);
+		}
+		
+		if (c->t1086 != NULL) {
+			ffd_tlv_stlv_begin(1084, 320);
+			ffd_tlv_add_string(1085, "’…Œˆ€‹", 64, false);
+			ffd_tlv_add_string(1086, c->t1086, 256, false);
+			ffd_tlv_stlv_end();
+		}
+		for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
+			K *k = LIST_ITEM(i1, K);
+			for (list_item_t *i2 = k->llist.head; i2; i2 = i2->next) {
+				L *l = LIST_ITEM(i2, L);
+				ffd_tlv_stlv_begin(1059, 1024);
+				ffd_tlv_add_uint8(1214, l->r);
+				char s1030[256];
+				sprintf(s1030, "%s\n\r¤®ªã¬¥­â \xfc%lld", l->s, k->d);
+				ffd_tlv_add_string(1030, s1030, 128, false);
+				ffd_tlv_add_vln(1079, l->t);
+				ffd_tlv_add_fvln(1023, 1, 0);
+				if (l->n == 0)
+					l->n = 6;
+				ffd_tlv_add_vln(1199, l->n);
+				if (l->n >= 1 && l->n <= 4) {
+					ffd_tlv_add_vln(1198, l->c);
+					ffd_tlv_add_vln(1200, l->c);
+				}
+				ffd_tlv_stlv_end();
+			}
+		}
+		
+		if (fd_create_doc(CHEQUE, NULL, 0) != 0) {
+			const char *error;
+			fd_get_last_error(&error);
+			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
+			kbd_flush_queue();
+			cheque_draw();
+		} else {
+			list_remove(&_ad->clist, c);
+			AD_save();
+			cheque_draw();
+		}
+	}
+
+	fa_set_group(FAPP_GROUP_MENU);
+}
 
 bool process_fa(const struct kbd_event *e)
 {
@@ -760,6 +885,9 @@ bool process_fa(const struct kbd_event *e)
 					break;
 				case cmd_cheque_corr_fa:
 					fa_cheque_corr();
+					break;
+				case cmd_cheque_fa:
+					fa_cheque();
 					break;
 				/*case cmd_sys_fa:
 					fa_set_group(OPTN_GROUP_SYSTEM);

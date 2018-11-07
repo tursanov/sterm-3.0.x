@@ -31,6 +31,7 @@ BASE_OBJS =		\
 GUI_OBJS =		\
 	adv_calc	\
 	calc		\
+	cheque		\
 	dialog		\
 	exgdi		\
 	fa		\

@@ -222,6 +222,9 @@ K *K_load(FILE *f) {
         K_destroy(k);
         return NULL;
     }
+    
+    int64_array_add(&_ad->docs, k->i, true);
+    
     return k;
 }
 
@@ -391,13 +394,58 @@ P1* P1_load(FILE *f) {
     return p1;
 }
 
-static AD* _ad = NULL;
+int int64_array_init(int64_array_t *array) {
+#define DEFAULT_CAPACITY	32
+	array->capacity = DEFAULT_CAPACITY;
+	array->values = (int64_t *)malloc(array->capacity * sizeof(int64_t));
+	array->count = 0;
 
-int AD_create(void) {
+	return array->values != NULL ? 0 : -1;
+}
+
+int int64_array_clear(int64_array_t *array) {
+	array->count = 0;
+	return 0;
+}
+
+int int64_array_free(int64_array_t *array) {
+	if (array->values)
+		free(array->values);
+	array->values = NULL;
+	array->capacity = array->count = 0;
+	return 0;
+}
+
+int int64_array_add(int64_array_t *array, int64_t v, bool unique) {
+	if (unique) {
+		int64_t *p = array->values;
+		for (size_t i = 0; i < array->count; i++, p++)
+			if (*p == v)
+				return 0;
+	}
+	if (array->count == array->capacity) {
+		array->capacity *= 2;
+		array->values = (int64_t *)realloc(array->values, array->capacity);
+		if (array->values == NULL)
+			return -1;
+	}
+	array->values[array->count] = v;
+	array->count++;
+	return 1;
+}
+
+AD* _ad = NULL;
+
+int AD_create(uint8_t t1055) {
     _ad = (AD *)malloc(sizeof(AD));
     if (_ad == NULL)
         return -1;
     memset(_ad, 0, sizeof(AD));
+    
+	if (int64_array_init(&_ad->docs) != 0)
+		return -1;
+		
+	_ad->t1055 = t1055;
     
     _ad->clist.delete_func = (list_item_delete_func_t)C_destroy;
     
@@ -410,6 +458,7 @@ void AD_destroy() {
         P1_destroy(_ad->p1);
     if (_ad->t1086 != NULL)
         free(_ad->t1086);
+    int64_array_free(&_ad->docs);
     free(_ad);
     _ad = NULL;
 }
@@ -429,7 +478,6 @@ int AD_save() {
     
     if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
         (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
-        SAVE_INT(f, _ad->t1055) < 0 ||
         S_save(f, &_ad->sum[0]) < 0 ||
         S_save(f, &_ad->sum[1]) < 0 ||
         S_save(f, &_ad->sum[2]) < 0 ||
@@ -445,10 +493,10 @@ int AD_save() {
     return ret;
 }
 
-int AD_load() {
+int AD_load(uint8_t t1055) {
     if (_ad != NULL)
         AD_destroy();
-    if (AD_create() < 0)
+    if (AD_create(t1055) < 0)
         return -1;
     FILE *f = fopen(FILE_NAME, "rb");
     if (f == NULL)
@@ -458,7 +506,6 @@ int AD_load() {
     
     if (LOAD_INT(f, hasP1) < 0 ||
         (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
-        LOAD_INT(f, _ad->t1055) < 0 ||
         S_load(f, &_ad->sum[0]) < 0 ||
         S_load(f, &_ad->sum[1]) < 0 ||
         S_load(f, &_ad->sum[2]) < 0 ||
@@ -468,8 +515,8 @@ int AD_load() {
     else
         ret = 0;
         
-    printf("AD_load: %d, ad.C.count: %d\n", ret, _ad->clist.count);
-    
+    printf("AD_load: %d, ad.C.count: %d, ad.docs.count: %d\n", ret, _ad->clist.count,
+    	_ad->docs.count);
     
     fclose(f);
     return ret;
@@ -550,6 +597,7 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     }
     
     list_add(&c->klist, k);
+    int64_array_add(&_ad->docs, k->i, true);
     
     printf("AD CH: %d\n", _ad->clist.count);
     
@@ -619,6 +667,7 @@ int AD_process(K* k) {
     AD_save();
     return 0;
 }
+
 
 #define REQUIRED_K_MASK 0x39
 #define REQUIRED_L_MASK 0x1F

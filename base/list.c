@@ -27,7 +27,7 @@ int list_remove(list_t *list, void *obj) {
     for (list_item_t *item = list->head, *prev = NULL; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
-        if (item->obj == obj) {
+        if (tmp->obj == obj) {
             if (list->delete_func != NULL)
                 list->delete_func(tmp->obj);
             free(tmp);
