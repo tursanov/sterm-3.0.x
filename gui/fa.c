@@ -325,15 +325,25 @@ typedef struct {
 static int fa_load_cashier_data(cashier_data_t *data) {
 	FILE *f = fopen("/home/sterm/cashier.txt", "r");
 	if (f != NULL) {
-		int ret = fscanf(f, "%s\n%s\n%s\n%s\n",
+		char *s[] = {
 			data->cashier,
 			data->post,
 			data->cashier_inn,
-			data->cashier_post);
-		fclose(f);
+			data->cashier_post
+		};
+		int l[] = {
+			sizeof(data->cashier) - 1,
+			sizeof(data->post),
+			sizeof(data->cashier_inn),
+			sizeof(data->cashier_post)
+		};
 
-		if (ret != 4)
-			return -1;
+		memset(data, 0 ,sizeof(data));
+		for (int i = 0; i < 4; i++) {
+			if (!fgets(s[i], l[i], f))
+				break;
+		}
+		fclose(f);
 		return 0;
 	}
 
