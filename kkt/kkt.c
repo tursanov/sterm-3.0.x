@@ -772,11 +772,12 @@ uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len)
 {
 	assert(data != NULL);
 	assert(data_len != NULL);
-	clr_var_data(data, data_len);
 	if (kkt_lock()){
 		struct kkt_var_data arg;
 		if (do_cmd(KKT_FS, KKT_FS_LAST_REG_DATA, &arg))
 			set_var_data(data, data_len, &arg);
+		else
+			clr_var_data(data, data_len);
 		kkt_unlock();
 	}
 	return kkt_status;

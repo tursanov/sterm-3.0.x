@@ -1165,6 +1165,7 @@ static bool test_kkt(void)
 /* Получение информации об опрашиваемых устройствах */
 static void init_devices(void)
 {
+	fdo_suspend();
 	release_devices();
 	devices = poll_devices();
 	if (devices != NULL){
@@ -1175,6 +1176,7 @@ static void init_devices(void)
 //			test_kkt();
 		}
 	}
+	fdo_resume();
 }
 
 /* Инициализация терминала */
