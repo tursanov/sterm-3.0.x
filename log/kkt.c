@@ -2,6 +2,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -17,6 +18,9 @@
 #include "sterm.h"
 #include "tki.h"
 
+/* Используется для разграничения доступа к ККЛ */
+pthread_mutex_t klog_mtx = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+
 #define KLOG_MAP_MAX_SIZE	(KLOG_MAX_SIZE / sizeof(struct klog_rec_header))
 static struct map_entry_t klog_map[KLOG_MAP_MAX_SIZE];
 
@@ -24,6 +28,41 @@ static struct map_entry_t klog_map[KLOG_MAP_MAX_SIZE];
 struct klog_header klog_hdr;
 /* Заголовок текущей записи контрольной ленты */
 struct klog_rec_header klog_rec_hdr;
+
+/*
+ * Запись на ККЛ может происходить как из основного потока, так и из потока
+ * работы с ОФД. При этом необходимо сохранить данные, находящиеся в log_data
+ * на момент начала записи. Для этого они помещаются в буфер, а по окончании
+ * записи восстанавливаются.
+ */
+static struct klog_rec_header klog_rec_hdr_orig;
+static uint8_t klog_data[sizeof(log_data)];
+static uint32_t klog_data_len = 0;
+static uint32_t klog_data_index = 0;
+
+static bool klog_data_stored = false;
+
+static void klog_push_data(void)
+{
+	klog_rec_hdr_orig = klog_rec_hdr;
+	if (log_data_len > 0)
+		memcpy(klog_data, log_data, log_data_len);
+	klog_data_len = log_data_len;
+	klog_data_index = log_data_index;
+	klog_data_stored = true;
+}
+
+static void klog_pop_data(void)
+{
+	if (klog_data_stored){
+		klog_rec_hdr = klog_rec_hdr_orig;
+		if (klog_data_len > 0)
+			memcpy(log_data, klog_data, klog_data_len);
+		log_data_len = klog_data_len;
+		log_data_index = klog_data_index;
+		klog_data_stored = false;
+	}
+}
 
 /* Инициализация заголовка контрольной ленты (используется при ее создании) */
 static void klog_init_hdr(struct log_handle *hlog)
@@ -82,12 +121,68 @@ static uint32_t klog_rec_crc32(void)
 	return crc32 ^= 0xffffffff;
 }
 
+/* Последняя запись ККЛ -- пустая инструкция ОФД */
+static bool last_is_fdo_empty = false;
+
+/* Является ли запись пустой инструкцией ОФД */
+static inline bool is_fdo_empty(uint32_t stream, uint8_t cmd, uint8_t status)
+{
+	return	(stream == KLOG_STREAM_FDO) && (cmd == KKT_SRV_FDO_REQ) &&
+		(status == FDO_REQ_NOP);
+}
+
+/* Код предыдущей операции в пустой инструкции ОФД */
+static uint8_t fdo_empty_prev_op = UINT8_MAX;
+/* Код завершения предыдущей операции в пустой инструкции ОФД */
+static uint16_t fdo_empty_prev_op_status = 0;
+
+/* Чтение данных инструкции ОФД */
+static bool fdo_read_empty_data(const uint8_t *data, uint8_t *op, uint16_t *status)
+{
+	assert(data != NULL);
+	assert(op != NULL);
+	assert(status != NULL);
+	bool ret = true, dash = (*data == 0x2d);
+	*op = 0;
+	*status = 0;
+	uint8_t _op = 0;
+	uint16_t _status = 0;
+	for (int i = 0; i < 6; i++){
+		uint8_t b = data[i];
+		if (i == 0)
+			_op = dash ? FDO_REQ_NOP : b;
+		else if (i == 1){
+			if (b != 0x3a){
+				ret = false;
+				break;
+			}
+		}else if (dash){
+			if (b != 0x2d){
+				ret = false;
+				break;
+			}
+		}else if ((b >= 0x30) && (b <= 0x39)){
+			_status *= 10;
+			_status += b - 0x30;
+		}else{
+			ret = false;
+			break;
+		}
+	}
+	if (ret){
+		*op = _op;
+		*status = _status;
+	}
+	return ret;
+}
+
 /* Заполнение карты контрольной ленты */
 static bool klog_fill_map(struct log_handle *hlog)
 {
 	struct klog_header *hdr = (struct klog_header *)hlog->hdr;
 	memset(hlog->map, 0, hlog->map_size * sizeof(*hlog->map));
 	hlog->map_head = 0;
+	last_is_fdo_empty = false;
 	if (hdr->n_recs > KLOG_MAP_MAX_SIZE){
 		fprintf(stderr, "Слишком много записей на %s; "
 			"должно быть не более " _s(KLOG_MAP_MAX_SIZE) ".\n",
@@ -114,7 +209,7 @@ static bool klog_fill_map(struct log_handle *hlog)
 		hlog->map[i].offset = offs;
 		hlog->map[i].number = klog_rec_hdr.number;
 		hlog->map[i].dt = klog_rec_hdr.dt;
-		hlog->map[i].tag = klog_rec_hdr.stream;
+		hlog->map[i].tag = KLOG_STREAM(klog_rec_hdr.stream);
 		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
 		log_data_len = klog_rec_hdr.len;
 		if (log_data_len > 0)
@@ -128,6 +223,16 @@ static bool klog_fill_map(struct log_handle *hlog)
 		}
 		klog_rec_hdr.crc32 = crc;
 		offs = log_inc_index(hlog, offs, klog_rec_hdr.len);
+		if ((i + 1) == hdr->n_recs){
+			last_is_fdo_empty = is_fdo_empty(KLOG_STREAM(klog_rec_hdr.stream),
+					klog_rec_hdr.cmd, klog_rec_hdr.status) &&
+				(klog_rec_hdr.req_len == 9) && 
+				fdo_read_empty_data(log_data + 3, &fdo_empty_prev_op,
+					&fdo_empty_prev_op_status);
+			printf("%s: последняя запись %s -- пустой опрос ОФД "
+				"(op = %.2hhx; status = %.4u).\n", __func__,
+				hlog->log_type, fdo_empty_prev_op, fdo_empty_prev_op_status);
+		}
 	}
 	return true;
 }
@@ -428,110 +533,230 @@ static int get_kkt_stream(uint8_t prefix, uint8_t cmd)
 	return ret;
 }
 
+static uint32_t adjust_last_empty_rec(struct log_handle *hlog)
+{
+	uint32_t ret = -1UL;
+	uint32_t rec_idx = hlog->hdr->n_recs - 1;
+	if (!klog_read_rec(hlog, rec_idx)){
+		fprintf(stderr, "%s: ошибка чтения записи #%u.\n", __func__, rec_idx);
+		return ret;
+	}else if (KLOG_STREAM(klog_rec_hdr.stream) == KLOG_STREAM_FDO){
+		struct timeb t0 = {
+			.time		= date_time_to_time_t(&klog_rec_hdr.dt),
+			.millitm	= klog_rec_hdr.ms
+		};
+		uint32_t op_time = get_op_time(&t0);
+		if ((op_time > klog_rec_hdr.op_time) &&
+				((klog_rec_hdr.stream & ~KLOG_STREAM_MASK) != ~KLOG_STREAM_MASK)){
+			klog_rec_hdr.stream += KLOG_STREAM_MASK + 1;
+			klog_rec_hdr.op_time = op_time;
+			klog_rec_hdr.crc32 = 0;
+			klog_rec_hdr.crc32 = klog_rec_crc32();
+			if (log_begin_write(hlog)){
+				uint32_t offs = hlog->map[(hlog->map_head + rec_idx) %
+					hlog->map_size].offset;
+				if (log_write(hlog, offs, (uint8_t *)&klog_rec_hdr,
+						sizeof(klog_rec_hdr)))
+					ret = klog_rec_hdr.number;
+				else
+					fprintf(stderr, "%s: ошибка записи по смещению 0x%.8x.\n",
+						__func__, offs);
+			}else
+				fprintf(stderr, "%s: невозможно начать запись на %s.\n",
+					__func__, hlog->log_type);
+			log_end_write(hlog);
+		}else
+			fprintf(stderr, "%s: op_time = %u; rec_op_time = %u,\n",
+				__func__, op_time, klog_rec_hdr.op_time);
+	}else
+			fprintf(stderr, "%s: stream = 0x%.8x.\n", __func__, klog_rec_hdr.stream);
+	return ret;
+}
+
+/* Добавление на ККЛ информации о пустом опросе ОФД */
+static uint32_t klog_write_fdo_empty(struct log_handle *hlog, const uint8_t *req)
+{
+	uint8_t prev_op = 0;
+	uint16_t prev_op_status = 0;
+	if (fdo_read_empty_data(req + 3, &prev_op, &prev_op_status)){
+		if (last_is_fdo_empty && (prev_op == fdo_empty_prev_op) &&
+				(prev_op_status == fdo_empty_prev_op_status)){
+			printf("%s: Обнаружен повторный пустой опрос ОФД.\n", __func__);
+			uint32_t n_rec = adjust_last_empty_rec(hlog);
+			if (n_rec == -1UL)
+				printf("%s: Не удалось скорректировать "
+					"заголовок последней записи.\n", __func__);
+			else{
+				printf("%s: Скорректирован заголовок "
+					"последней записи.\n", __func__);
+				return n_rec;
+			}
+		}
+		last_is_fdo_empty = true;
+		fdo_empty_prev_op = prev_op;
+		fdo_empty_prev_op_status = prev_op_status;
+	}
+	return -1UL;
+}
 
 /* Занесение записи на ККЛ. Возвращает номер записи */
 uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	const uint8_t *req, uint16_t req_len,
 	uint8_t status, const uint8_t *resp, uint16_t resp_len)
 {
+	uint32_t ret = -1UL;
 	if ((hlog == NULL) || (t0 == NULL) || (req == NULL) || (req_len < 2))
-		return -1UL;
-	size_t len = req_len + resp_len;
-	if (len > sizeof(log_data)){
-		fprintf(stderr, "Переполнение буфера данных при записи на %s (%u байт).\n",
-			hlog->log_type, len);
-		return -1UL;
-	}else if (cfg.kkt_log_level == KLOG_LEVEL_OFF)
-		return -1UL;
-	uint8_t cmd = req[1], prefix = KKT_NUL;
-	if ((cmd == KKT_POLL) || (cmd == KKT_SRV) || (cmd == KKT_FS)){
-		if (req_len < 3)
-			return -1UL;
-		else{
-			prefix = cmd;
-			cmd = req[2];
+		return ret;
+	int rc = pthread_mutex_lock(&klog_mtx);
+	if (rc != 0){
+		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+			__func__, hlog->log_type, strerror(rc));
+		return ret;
+	}
+	klog_push_data();
+	do {
+		size_t len = req_len + resp_len;
+		if (len > sizeof(log_data)){
+			fprintf(stderr, "Переполнение буфера данных при записи на %s (%u байт).\n",
+				hlog->log_type, len);
+			break;
+		}else if (cfg.kkt_log_level == KLOG_LEVEL_OFF)
+			break;
+		uint8_t cmd = req[1], prefix = KKT_NUL;
+		if ((cmd == KKT_POLL) || (cmd == KKT_SRV) || (cmd == KKT_FS)){
+			if (req_len < 3)
+				break;
+			else{
+				prefix = cmd;
+				cmd = req[2];
+			}
 		}
-	}
-	if ((prefix == KKT_SRV) && (cmd == KKT_SRV_FDO_REQ) && (status == FDO_REQ_NOP))
-		return -1UL;
-	else if (status_ok(prefix, cmd, status) &&
-			((cfg.kkt_log_level == KLOG_LEVEL_WARN) ||
-			 (cfg.kkt_log_level == KLOG_LEVEL_ERR)))
-		return -1UL;
-	int stream = get_kkt_stream(prefix, cmd);
-	log_data_len = log_data_index = 0;
-	klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
-	if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
-		memcpy(log_data, req, req_len);
-		if ((resp != NULL) && (resp_len > 0))
-			memcpy(log_data + req_len, resp, resp_len);
-		log_data_len = len;
-		klog_rec_hdr.len = len;
-		klog_rec_hdr.req_len = req_len;
-		klog_rec_hdr.resp_len = resp_len;
-	}
-	klog_rec_hdr.stream = stream;
-	klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
-	klog_rec_hdr.status = status;
-	if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
-		memcpy(log_data, req, req_len);
-		if ((resp != NULL) && (resp_len > 0))
-			memcpy(log_data + req_len, resp, resp_len);
-		log_data_len = len;
-		klog_rec_hdr.len = len;
-		klog_rec_hdr.req_len = req_len;
-		klog_rec_hdr.resp_len = resp_len;
-	}
-	klog_rec_hdr.crc32 = klog_rec_crc32();
-	return klog_add_rec(hlog) ? klog_rec_hdr.number : -1UL;
+		if (status_ok(prefix, cmd, status) &&
+				((cfg.kkt_log_level == KLOG_LEVEL_WARN) ||
+				 (cfg.kkt_log_level == KLOG_LEVEL_ERR)))
+			break;
+		uint32_t stream = get_kkt_stream(prefix, cmd);
+		if (is_fdo_empty(stream, cmd, status) && (req_len == 9)){
+			ret = klog_write_fdo_empty(hlog, req);
+			if (ret != -1UL)
+				break;
+		}else
+			last_is_fdo_empty = false;
+		log_data_len = log_data_index = 0;
+		klog_init_rec_hdr(hlog, &klog_rec_hdr, t0);
+		if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
+			memcpy(log_data, req, req_len);
+			if ((resp != NULL) && (resp_len > 0))
+				memcpy(log_data + req_len, resp, resp_len);
+			log_data_len = len;
+			klog_rec_hdr.len = len;
+			klog_rec_hdr.req_len = req_len;
+			klog_rec_hdr.resp_len = resp_len;
+		}
+		klog_rec_hdr.stream = stream;
+		klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
+		klog_rec_hdr.status = status;
+		if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
+			memcpy(log_data, req, req_len);
+			if ((resp != NULL) && (resp_len > 0))
+				memcpy(log_data + req_len, resp, resp_len);
+			log_data_len = len;
+			klog_rec_hdr.len = len;
+			klog_rec_hdr.req_len = req_len;
+			klog_rec_hdr.resp_len = resp_len;
+		}
+		klog_rec_hdr.crc32 = klog_rec_crc32();
+		if (klog_add_rec(hlog))
+			ret = klog_rec_hdr.number;
+		if (ret == -1UL)
+			last_is_fdo_empty = false;
+	} while (false);
+	klog_pop_data();
+	if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
+		fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+			hlog->log_type, strerror(rc));
+	return ret;
 }
 
 /* Чтение заданной записи контрольной ленты */
 bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 {
-	if (index >= hlog->hdr->n_recs)
-		return false;
-	log_data_len = log_data_index = 0;
-	uint32_t offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
-	if (!log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)))
-		return false;
-	if (klog_rec_hdr.len > sizeof(log_data)){
-		fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
-				hlog->log_type, index, klog_rec_hdr.len);
-		return false;
+	bool ret = false;
+	int rc = pthread_mutex_lock(&klog_mtx);
+	if (rc != 0){
+		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+			__func__, hlog->log_type, strerror(rc));
+		return ret;
 	}
-	offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
-	if ((klog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data, klog_rec_hdr.len))
-		return false;
-	uint32_t crc = klog_rec_hdr.crc32;
-	klog_rec_hdr.crc32 = 0;
-	if (klog_rec_crc32() != crc){
-		fprintf(stderr, "Несовпадение контрольной суммы для записи %s #%u.\n",
-				hlog->log_type, index);
-		return false;
-	}
-	klog_rec_hdr.crc32 = crc;
-	log_data_len = klog_rec_hdr.len;
-	return true;
+	do {
+		if (index >= hlog->hdr->n_recs)
+			break;
+		log_data_len = log_data_index = 0;
+		uint32_t offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
+		if (!log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)))
+			break;
+		if (klog_rec_hdr.len > sizeof(log_data)){
+			fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
+					hlog->log_type, index, klog_rec_hdr.len);
+			break;
+		}
+		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
+		if ((klog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data, klog_rec_hdr.len))
+			break;
+		uint32_t crc = klog_rec_hdr.crc32;
+		klog_rec_hdr.crc32 = 0;
+		if (klog_rec_crc32() != crc){
+			fprintf(stderr, "Несовпадение контрольной суммы для записи %s #%u.\n",
+					hlog->log_type, index);
+			break;
+		}
+		klog_rec_hdr.crc32 = crc;
+		log_data_len = klog_rec_hdr.len;
+		ret = true;
+	} while (false);
+	if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
+		fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+			hlog->log_type, strerror(rc));
+	return ret;
 }
 
 /* Вывод заголовка распечатки ККЛ */
 bool klog_print_header(void)
 {
-	try_fn(prn_write_str("\x1eНАЧАЛО ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
-		"(РАБОТА С ККТ) "));
-	try_fn(prn_write_cur_date_time());
-	return prn_write_str("\x1c\x0b") && prn_write_eol();
+	bool ret = false;
+	int rc = pthread_mutex_lock(&klog_mtx);
+	if (rc == 0){
+		try_fn(prn_write_str("\x1eНАЧАЛО ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
+			"(РАБОТА С ККТ) "));
+		try_fn(prn_write_cur_date_time());
+		ret = prn_write_str("\x1c\x0b") && prn_write_eol();
+		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
+			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+				hklog->log_type, strerror(rc));
+	}else
+		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+			__func__, hklog->log_type, strerror(rc));
+	return ret;
 }
 
 /* Вывод концевика распечатки контрольной ленты */
 bool klog_print_footer(void)
 {
-	log_reset_prn_buf();
-	try_fn(prn_write_str("\x1e\x10\x0bКОНЕЦ ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
-		"(РАБОТА С ККТ) "));
-	try_fn(prn_write_cur_date_time());
-	return prn_write_str("\x1c\x0b") && prn_write_eol();
+	bool ret = false;
+	int rc = pthread_mutex_lock(&klog_mtx);
+	if (rc == 0){
+		log_reset_prn_buf();
+		try_fn(prn_write_str("\x1e\x10\x0bКОНЕЦ ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
+			"(РАБОТА С ККТ) "));
+		try_fn(prn_write_cur_date_time());
+		ret = prn_write_str("\x1c\x0b") && prn_write_eol();
+		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
+			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+				hklog->log_type, strerror(rc));
+	}else
+		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+			__func__, hklog->log_type, strerror(rc));
+	return ret;
 }
 
 /* Вывод заголовка записи на печать */
@@ -622,20 +847,30 @@ static bool klog_print_data_header(const char *title)
 /* Вывод записи контрольной ленты на печать */
 bool klog_print_rec(void)
 {
-	log_reset_prn_buf();
-	try_fn(klog_print_rec_header());
-	bool recode = false; //klog_rec_hdr.stream != KLOG_STREAM_PRN;
-	if (klog_rec_hdr.req_len > 0){
-		try_fn(klog_print_data_header("ЗАПРОС:"));
-		for (log_data_index = 0; log_data_index < klog_rec_hdr.req_len;
-				log_data_index += 16)
-			try_fn(klog_print_line(recode));
-	}
-	if (klog_rec_hdr.resp_len > 0){
-		try_fn(klog_print_data_header("ОТВЕТ:"));
-		for (log_data_index = klog_rec_hdr.req_len; log_data_index < log_data_len;
-				log_data_index += 16)
-			try_fn(klog_print_line(recode));
-	}
-	return prn_write_eol();
+	bool ret = false;
+	int rc = pthread_mutex_lock(&klog_mtx);
+	if (rc == 0){
+		log_reset_prn_buf();
+		try_fn(klog_print_rec_header());
+		bool recode = false; //klog_rec_hdr.stream != KLOG_STREAM_PRN;
+		if (klog_rec_hdr.req_len > 0){
+			try_fn(klog_print_data_header("ЗАПРОС:"));
+			for (log_data_index = 0; log_data_index < klog_rec_hdr.req_len;
+					log_data_index += 16)
+				try_fn(klog_print_line(recode));
+		}
+		if (klog_rec_hdr.resp_len > 0){
+			try_fn(klog_print_data_header("ОТВЕТ:"));
+			for (log_data_index = klog_rec_hdr.req_len; log_data_index < log_data_len;
+					log_data_index += 16)
+				try_fn(klog_print_line(recode));
+		}
+		ret = prn_write_eol();
+		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
+			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+				hklog->log_type, strerror(rc));
+	}else
+		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+			__func__, hklog->log_type, strerror(rc));
+	return ret;
 }

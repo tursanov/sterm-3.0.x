@@ -37,9 +37,9 @@ struct log_gui_context {
 /* Чтение записи по индексу */
 	bool (*read_rec)(struct log_handle *hlog, uint32_t index);
 /* Получение заданной строки заголовка */
-	char *(*get_head_line)(uint32_t n);
+	const char *(*get_head_line)(uint32_t n);
 /* Получение строки подсказки */
-	char *(*get_hint_line)(uint32_t n);
+	const char *(*get_hint_line)(uint32_t n);
 /* Заполнение экранного буфера */
 	void (*fill_scr_data)(struct log_gui_context *ctx);
 /* Обработчик событий клавиатуры */

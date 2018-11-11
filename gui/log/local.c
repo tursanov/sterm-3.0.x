@@ -344,7 +344,7 @@ static void llog_fill_scr_data(struct log_gui_context *ctx)
 }
 
 /* Первая строка заголовка записи */
-static char *llog_get_head_line1(char *buf)
+static const char *llog_get_head_line1(char *buf)
 {
 	if (hllog->hdr->n_recs == 0)
 		*buf = 0;
@@ -364,7 +364,7 @@ static char *llog_get_head_line1(char *buf)
 }
 
 /* Вторая строка заголовка */
-static char *llog_get_head_line2(char *buf)
+static const char *llog_get_head_line2(char *buf)
 {
 	if (hllog->hdr->n_recs == 0)
 		sprintf(buf, "                                  На контрольной ленте нет записей");
@@ -387,7 +387,7 @@ static char *llog_get_head_line2(char *buf)
 }
 
 /* Третья строка заголовка */
-static char *llog_get_head_line3(char *buf)
+static const char *llog_get_head_line3(char *buf)
 {
 	if (hllog->hdr->n_recs == 0)
 		*buf = 0;
@@ -402,10 +402,10 @@ static char *llog_get_head_line3(char *buf)
 }
 
 /* Получение заданной строки заголовка записи ПКЛ */
-static char *llog_get_head_line(uint32_t n)
+static const char *llog_get_head_line(uint32_t n)
 {
 	static char buf[128];
-	char *(*fn[])(char *) = {
+	const char *(*fn[])(char *) = {
 		llog_get_head_line1,
 		llog_get_head_line2,
 		llog_get_head_line3,
@@ -414,7 +414,7 @@ static char *llog_get_head_line(uint32_t n)
 }
 
 /* Получение строки подсказки */
-static char *llog_get_hint_line(uint32_t n)
+static const char *llog_get_hint_line(uint32_t n)
 {
 	static char *hints[] = {
 		"\x1b/\x1a - пред./след. запись  Ctrl+\x1b/\x1a - быстрое перемещение",

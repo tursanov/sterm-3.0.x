@@ -173,6 +173,20 @@ struct date_time *time_t_to_date_time(time_t t, struct date_time *dt)
 	return dt;
 }
 
+time_t date_time_to_time_t(const struct date_time *dt)
+{
+	struct tm tm = {
+		.tm_sec		= dt->sec,
+		.tm_min		= dt->min,
+		.tm_hour	= dt->hour,
+		.tm_mday	= dt->day,
+		.tm_mon		= dt->mon - 1,
+		.tm_year	= dt->year + 100,
+		.tm_isdst	= -1
+	};
+	return mktime(&tm);
+}
+
 /* Поиск заданной последовательности */
 uint8_t *memfind(uint8_t *mem, size_t mem_len, const uint8_t *tmpl, size_t tmpl_len)
 {

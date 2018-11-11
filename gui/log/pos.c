@@ -121,7 +121,7 @@ static void plog_fill_scr_data(struct log_gui_context *ctx)
 }
 
 /* Первая строка заголовка записи */
-static char *plog_get_head_line1(char *buf)
+static const char *plog_get_head_line1(char *buf)
 {
 	if (hplog->hdr->n_recs == 0)
 		*buf = 0;
@@ -139,7 +139,7 @@ static char *plog_get_head_line1(char *buf)
 }
 
 /* Вторая строка заголовка */
-static char *plog_get_head_line2(char *buf)
+static const char *plog_get_head_line2(char *buf)
 {
 	if (hplog->hdr->n_recs == 0)
 		sprintf(buf, "                                  На контрольной ленте нет записей");
@@ -160,10 +160,10 @@ static char *plog_get_head_line2(char *buf)
 }
 
 /* Получение заданной строки заголовка записи БКЛ */
-static char *plog_get_head_line(uint32_t n)
+static const char *plog_get_head_line(uint32_t n)
 {
 	static char buf[128];
-	char *(*fn[])(char *) = {
+	const char *(*fn[])(char *) = {
 		plog_get_head_line1,
 		plog_get_head_line2,
 	};
@@ -171,7 +171,7 @@ static char *plog_get_head_line(uint32_t n)
 }
 
 /* Получение строки подсказки */
-static char *plog_get_hint_line(uint32_t n)
+static const char *plog_get_hint_line(uint32_t n)
 {
 	static char *hints[] = {
 		"\x1b/\x1a - пред./след. запись  Ctrl+\x1b/\x1a - быстрое перемещение",
