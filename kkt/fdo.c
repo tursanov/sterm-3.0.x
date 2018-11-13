@@ -477,11 +477,12 @@ static uint16_t fdo_recv(void)
 static uint16_t fdo_send_kkt(void)
 {
 	uint16_t ret = FDO_RCV_OK;
-/*	if (!fdo_connected)
-		ret = FDO_RCV_NOT_CONNECTED;
-	else*/ if (fdo_rx_len == 0)
-		ret = FDO_RCV_NO_DATA;
-	else{
+	if (fdo_rx_len == 0){
+		if (fdo_connected)
+			ret = FDO_RCV_NO_DATA;
+		else
+			ret = FDO_RCV_NOT_CONNECTED;
+	}else{
 		uint8_t status = kkt_send_fdo_data(fdo_rx, fdo_rx_len);
 		if (status == FDO_DATA_STATUS_OK){
 			dbg("в ККТ передано %u байт.", fdo_rx_len);
@@ -537,10 +538,11 @@ static void *fdo_thread_proc(void *arg __attribute__((unused)))
 	while (fdo_thread_state != fdo_thread_stopped){
 		if (fdo_thread_state == fdo_thread_suspended)
 			pause();
-		else if (fdo_thread_state == fdo_thread_active){
-			if (cfg.has_kkt && (kkt != NULL))
-				fdo_poll_kkt();
-		}
+		else if ((fdo_thread_state == fdo_thread_active) &&
+				cfg.has_kkt && (kkt != NULL))
+			fdo_poll_kkt();
+		else
+			pthread_yield();
 	}
 	return NULL;
 }

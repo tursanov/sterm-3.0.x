@@ -140,20 +140,35 @@ static const char *klog_get_head_line2(char *buf)
 			"На контрольной ленте нет записей [%s]",
 			get_stream_name(cfg.kkt_log_stream));*/
 	}else{
-		char rep[20];
+		char rep[20], dt[128];
 		uint32_t n = klog_rec_hdr.stream >> 3;
-		if (n > 0)
+		if (n > 0){
 			snprintf(rep, sizeof(rep), "x%u", n + 1);
-		else
+			uint64_t interval = date_time_to_time_t(&klog_rec_hdr.dt);
+			interval = interval * 1000 + klog_rec_hdr.ms + klog_rec_hdr.op_time;
+			time_t t1 = interval / 1000;
+//			uint32_t ms = interval % 1000;
+			struct tm *tm = localtime(&t1);
+			snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d -- "
+				"%.2d.%.2d.%.4d %.2d:%.2d:%.2d",
+				klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+				klog_rec_hdr.dt.year + 2000,
+				klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+				tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900,
+				tm->tm_hour, tm->tm_min, tm->tm_sec);
+		}else{
 			rep[0] = 0;
-		sprintf(buf, "Запись %u [%s%s] от %.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3hu "
+			snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3d",
+				klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+				klog_rec_hdr.dt.year + 2000,
+				klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+				klog_rec_hdr.ms);
+		}
+		sprintf(buf, "Запись %u [%s%s] от %s "
 			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
 			klog_rec_hdr.number + 1,
-			get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep,
-			klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
-			klog_rec_hdr.dt.year + 2000,
-			klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
-			klog_rec_hdr.ms, ds_key_char(klog_rec_hdr.ds_type),
+			get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt,
+			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
 			klog_rec_hdr.dsn[4], klog_rec_hdr.dsn[3],

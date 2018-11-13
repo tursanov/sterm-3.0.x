@@ -179,8 +179,8 @@ time_t date_time_to_time_t(const struct date_time *dt)
 		.tm_sec		= dt->sec,
 		.tm_min		= dt->min,
 		.tm_hour	= dt->hour,
-		.tm_mday	= dt->day,
-		.tm_mon		= dt->mon - 1,
+		.tm_mday	= dt->day + 1,
+		.tm_mon		= dt->mon,
 		.tm_year	= dt->year + 100,
 		.tm_isdst	= -1
 	};
