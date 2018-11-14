@@ -57,7 +57,6 @@ static bool fa_set_group(int n)
 	bool ret = false;
 	fa_cm = cmd_none;
 	fa_active_group = n;
-	fa_active_item = 0;
 	if (n == FAPP_GROUP_MENU){
 		ClearScreen(clBlack);
 		draw_menu(fa_menu);
@@ -103,6 +102,11 @@ bool init_fa(void)
 	ClearScreen(clBlack);
 
 	fa_create_menu();
+	if (_ad->clist.count > 0) {
+		fa_active_item = 4;
+		fa_menu->selected = fa_active_item;
+		printf("fa_active_item = %d\n", fa_active_item);
+	}
 	fa_set_group(FAPP_GROUP_MENU);
 
 	fa_get_reregistration_data();
@@ -143,6 +147,7 @@ void release_fa(void)
 		form_destroy(close_fs_form);
 		close_fs_form = NULL;
 	}
+	cheque_release();
 	release_menu(fa_menu,false);
 	online = true;
 	pop_term_info();
@@ -325,28 +330,15 @@ typedef struct {
 static int fa_load_cashier_data(cashier_data_t *data) {
 	FILE *f = fopen("/home/sterm/cashier.txt", "r");
 	if (f != NULL) {
-		char *s[] = {
+		int ret = fscanf(f, "%s\n%s\n%s\n%s\n",
 			data->cashier,
 			data->post,
 			data->cashier_inn,
-			data->cashier_post
-		};
-		int l[] = {
-			sizeof(data->cashier) - 1,
-			sizeof(data->post) - 1,
-			sizeof(data->cashier_inn) - 1,
-			sizeof(data->cashier_post) - 1
-		};
-
-		memset(data, 0, sizeof(*data));
-		for (int i = 0; i < 4; i++) {
-			if (!fgets(s[i], l[i], f))
-				break;
-			char *p = s[i] + l[i] - 1;
-			while (*p == 0 || *p == '\n')
-				*p-- = 0;
-		}
+			data->cashier_post);
 		fclose(f);
+
+		if (ret != 4)
+			return -1;
 		return 0;
 	}
 
@@ -806,10 +798,6 @@ void fa_cheque() {
 		fa_load_cashier_data(&data);
 		if (data.cashier_post[0])
 			ffd_tlv_add_string(1021, data.cashier_post, 64, false);
-		
-		printf("CashierINN[%d]: %s\n", (uint8_t)data.cashier_inn[0],
-			data.cashier_inn);
-		
 		if (data.cashier_inn[0])
 			ffd_tlv_add_string(1203, data.cashier_inn, 12, true);
 
