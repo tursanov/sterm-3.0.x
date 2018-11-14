@@ -4,6 +4,7 @@
 #define LOG_KKT_H
 
 #include <sys/timeb.h>
+#include <pthread.h>
 #include <time.h>
 #include "kkt/kkt.h"
 #include "log/generic.h"
@@ -35,13 +36,15 @@ struct klog_header {
 #define KLOG_STREAM_PRN		2	/* команды печати */
 #define KLOG_STREAM_FDO		4	/* обмен с ОФД */
 #define KLOG_STREAM_ALL		(KLOG_STREAM_CTL | KLOG_STREAM_PRN | KLOG_STREAM_FDO)
+#define KLOG_STREAM_MASK	KLOG_STREAM_ALL
+#define KLOG_STREAM(s)		((s) & KLOG_STREAM_MASK)
 
 /* Заголовок записи ККЛ */
 struct klog_rec_header {
 	uint32_t tag;		/* признак заголовка записи */
 #define KLOG_REC_TAG	0x4345524b	/* KREC */
 	uint32_t number;	/* номер записи */
-	uint32_t stream;	/* идентификатор потока */
+	uint32_t stream;	/* идентификатор потока, а также счётчик пустых запросов ОФД */
 	uint32_t len;		/* длина записи без учета заголовка */
 	uint16_t req_len;	/* длина переданных данных */
 	uint16_t resp_len;	/* длина принятых данных */
@@ -59,6 +62,8 @@ struct klog_rec_header {
 	uint8_t status;		/* статус завершения операции */
 	uint32_t crc32;		/* контрольная сумма записи вместе с заголовком */
 } __attribute__((__packed__));
+
+extern pthread_mutex_t klog_mtx;
 
 extern struct log_handle *hklog;
 

@@ -32,6 +32,7 @@ struct date_time {
 } __attribute__((__packed__));
 
 extern struct date_time *time_t_to_date_time(time_t t, struct date_time *dt);
+extern time_t date_time_to_time_t(const struct date_time *dt);
 
 /* Перекодировка KOI7 <--> CP866 */
 extern int	recode(uint8_t c);

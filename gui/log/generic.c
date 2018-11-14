@@ -386,9 +386,6 @@ static void log_draw_rec_data(struct log_gui_context *ctx)
 /* Рисование поля справки */
 static void log_draw_hints(struct log_gui_context *ctx)
 {
-	char *s, buf[2] = " ", c;
-	int i, j, l, n, cx, cy, txt_h, x, y;
-	bool key, key_start;
 	GCPtr gc = CreateGC(HINT_XOFFS,
 		DISCY - (HINT_YOFFS + HINT_FIELD_HEIGHT),
 		HINT_FIELD_WIDTH, HINT_FIELD_HEIGHT);
@@ -396,21 +393,21 @@ static void log_draw_hints(struct log_gui_context *ctx)
 	FontPtr fnt = CreateFont(HINT_FONT, false);
 	
 	SetFont(mgc, fnt);
-	cx = fnt->max_width;
-	cy = fnt->max_height;
-	txt_h = ctx->nr_hint_lines * cy;
-	y = (HINT_FIELD_HEIGHT - txt_h) / 2;
+	int cx = fnt->max_width;
+	int cy = fnt->max_height;
+	int txt_h = ctx->nr_hint_lines * cy;
+	int y = (HINT_FIELD_HEIGHT - txt_h) / 2;
 	ClearGC(mgc, HINT_FIELD_COLOR);
 	DrawBorder(mgc, 0, 0, HINT_FIELD_WIDTH, HINT_FIELD_HEIGHT,
 		HINT_FRAME_WIDTH, HINT_FRAME_COLOR, HINT_FRAME_COLOR);
 	
-	for (i = n = 0; i < ctx->nr_hint_lines; i++){
-		key = key_start = true;
-		s = ctx->get_hint_line(i);
-		l = strlen(s);
-		x = (HINT_FIELD_WIDTH - l * cx) / 2;
-		for (j = 0; s[j]; j++){
-			c = s[j];
+	for (int i = 0, n = 0; i < ctx->nr_hint_lines; i++){
+		bool key = true, key_start = true;
+		const char *s = ctx->get_hint_line(i);
+		int l = strlen(s);
+		int x = (HINT_FIELD_WIDTH - l * cx) / 2;
+		for (int j = 0; s[j]; j++){
+			char c = s[j];
 			if (key){
 				if (c == ' '){
 					if (!key_start){
@@ -426,7 +423,7 @@ static void log_draw_hints(struct log_gui_context *ctx)
 			}else
 				n = 0;
 			SetTextColor(mgc, key ? HINT_KEY_COLOR : HINT_TEXT_COLOR);
-			buf[0] = c;
+			char buf[] = {c, 0};
 			TextOut(mgc, x + j * cx, y + i * cy, buf);
 		}
 	}

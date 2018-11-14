@@ -4289,7 +4289,7 @@ static bool process_term(void)
 		if (need_handle_resp())
 			on_response();
 /*		else
-			usleep(10);*/
+			usleep(1000);*/
 	}
 	return true;
 }

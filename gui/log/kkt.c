@@ -69,7 +69,7 @@ static bool klog_show_data(struct log_gui_context *ctx, const uint8_t *data, siz
 /* Занесение в экранный буфер записи ККЛ */
 static bool klog_fill_scr_normal(struct log_gui_context *ctx)
 {
-	ctx->asis = klog_rec_hdr.stream != KLOG_STREAM_PRN;
+	ctx->asis = KLOG_STREAM(klog_rec_hdr.stream) != KLOG_STREAM_PRN;
 	static char title[LOG_SCREEN_COLS + 1];
 	if (klog_rec_hdr.cmd != KKT_NUL){
 		snprintf(title, sizeof(title), "ЗАПРОС (%.2hhX):", klog_rec_hdr.cmd);
@@ -83,12 +83,15 @@ static bool klog_fill_scr_normal(struct log_gui_context *ctx)
 /* Заполнение экранного буфера */
 static void klog_fill_scr_data(struct log_gui_context *ctx)
 {
-	log_clear_ctx(ctx);
-	klog_fill_scr_normal(ctx);
+	if (pthread_mutex_lock(&klog_mtx) == 0){
+		log_clear_ctx(ctx);
+		klog_fill_scr_normal(ctx);
+		pthread_mutex_unlock(&klog_mtx);
+	}
 }
 
 /* Первая строка заголовка записи */
-static char *klog_get_head_line1(char *buf)
+static const char *klog_get_head_line1(char *buf)
 {
 	if ((hklog->hdr->n_recs == 0) ||
 			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index))
@@ -124,7 +127,7 @@ static const char *get_stream_name(int stream)
 }
 
 /* Вторая строка заголовка */
-static char *klog_get_head_line2(char *buf)
+static const char *klog_get_head_line2(char *buf)
 {
 	if ((hklog->hdr->n_recs == 0) ||
 			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index)){
@@ -137,13 +140,35 @@ static char *klog_get_head_line2(char *buf)
 			"На контрольной ленте нет записей [%s]",
 			get_stream_name(cfg.kkt_log_stream));*/
 	}else{
-		sprintf(buf, "Запись %u [%s] от %.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3hu "
+		char rep[20], dt[128];
+		uint32_t n = klog_rec_hdr.stream >> 3;
+		if (n > 0){
+			snprintf(rep, sizeof(rep), "x%u", n + 1);
+			uint64_t interval = date_time_to_time_t(&klog_rec_hdr.dt);
+			interval = interval * 1000 + klog_rec_hdr.ms + klog_rec_hdr.op_time;
+			time_t t1 = interval / 1000;
+//			uint32_t ms = interval % 1000;
+			struct tm *tm = localtime(&t1);
+			snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d -- "
+				"%.2d.%.2d.%.4d %.2d:%.2d:%.2d",
+				klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+				klog_rec_hdr.dt.year + 2000,
+				klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+				tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900,
+				tm->tm_hour, tm->tm_min, tm->tm_sec);
+		}else{
+			rep[0] = 0;
+			snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3d",
+				klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+				klog_rec_hdr.dt.year + 2000,
+				klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+				klog_rec_hdr.ms);
+		}
+		sprintf(buf, "Запись %u [%s%s] от %s "
 			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
-			klog_rec_hdr.number + 1, get_stream_name(klog_rec_hdr.stream),
-			klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
-			klog_rec_hdr.dt.year + 2000,
-			klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
-			klog_rec_hdr.ms, ds_key_char(klog_rec_hdr.ds_type),
+			klog_rec_hdr.number + 1,
+			get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt,
+			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
 			klog_rec_hdr.dsn[4], klog_rec_hdr.dsn[3],
@@ -153,25 +178,37 @@ static char *klog_get_head_line2(char *buf)
 }
 
 /* Получение заданной строки заголовка записи ККЛ */
-static char *klog_get_head_line(uint32_t n)
+static const char *klog_get_head_line(uint32_t n)
 {
-	static char buf[128];
-	char *(*fn[])(char *) = {
-		klog_get_head_line1,
-		klog_get_head_line2,
-	};
-	return (n < ASIZE(fn)) ? fn[n](buf) : NULL;
+	const char *ret = NULL;
+	if (pthread_mutex_lock(&klog_mtx) == 0){
+		static char buf[128];
+		const char *(*fn[])(char *) = {
+			klog_get_head_line1,
+			klog_get_head_line2,
+		};
+		if (n < ASIZE(fn))
+			ret = fn[n](buf);
+		pthread_mutex_unlock(&klog_mtx);
+	}
+	return ret;
 }
 
 /* Получение строки подсказки */
-static char *klog_get_hint_line(uint32_t n)
+static const char *klog_get_hint_line(uint32_t n)
 {
-	static char *hints[] = {
+	static const char *hints[] = {
 		"\x1b/\x1a - пред./след. запись  Ctrl+\x1b/\x1a - быстрое перемещение",
 		"Ctrl+Home/End - начало/конец записи  PgUp/PgDn - пред./след. стр.",
 		"Home/End - первая/последняя запись  F2 - меню  Esc - выход",
 	};
-	return (n < ASIZE(hints)) ? hints[n] : NULL;
+	const char *ret = NULL;
+	if (pthread_mutex_lock(&klog_mtx) == 0){
+		if (n < ASIZE(hints))
+			ret = hints[n];
+		pthread_mutex_unlock(&klog_mtx);
+	}
+	return ret;
 }
 
 /* Печать текущей записи */
