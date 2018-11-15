@@ -1177,6 +1177,8 @@ static void init_devices(void)
 		}
 	}
 	fdo_resume();
+
+	kkt = (struct dev_info *)malloc(sizeof(struct dev_info));
 }
 
 /* Инициализация терминала */

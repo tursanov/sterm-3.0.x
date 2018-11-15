@@ -4,6 +4,7 @@
 #include "kkt/fd/ad.h"
 
 int cheque_init(void);
+void cheque_release(void);
 int cheque_draw(void);
 C* cheque_execute(void);
 
