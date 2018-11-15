@@ -229,9 +229,9 @@ static bool klog_fill_map(struct log_handle *hlog)
 				(klog_rec_hdr.req_len == 9) && 
 				fdo_read_empty_data(log_data + 3, &fdo_empty_prev_op,
 					&fdo_empty_prev_op_status);
-			printf("%s: последняя запись %s -- пустой опрос ОФД "
+/*			printf("%s: последняя запись %s -- пустой опрос ОФД "
 				"(op = %.2hhx; status = %.4u).\n", __func__,
-				hlog->log_type, fdo_empty_prev_op, fdo_empty_prev_op_status);
+				hlog->log_type, fdo_empty_prev_op, fdo_empty_prev_op_status);*/
 		}
 	}
 	return true;
@@ -581,14 +581,14 @@ static uint32_t klog_write_fdo_empty(struct log_handle *hlog, const uint8_t *req
 	if (fdo_read_empty_data(req + 3, &prev_op, &prev_op_status)){
 		if (last_is_fdo_empty && (prev_op == fdo_empty_prev_op) &&
 				(prev_op_status == fdo_empty_prev_op_status)){
-			printf("%s: Обнаружен повторный пустой опрос ОФД.\n", __func__);
+//			printf("%s: Обнаружен повторный пустой опрос ОФД.\n", __func__);
 			uint32_t n_rec = adjust_last_empty_rec(hlog);
 			if (n_rec == -1UL)
-				printf("%s: Не удалось скорректировать "
-					"заголовок последней записи.\n", __func__);
+/*				printf("%s: Не удалось скорректировать "
+					"заголовок последней записи.\n", __func__)*/;
 			else{
-				printf("%s: Скорректирован заголовок "
-					"последней записи.\n", __func__);
+/*				printf("%s: Скорректирован заголовок "
+					"последней записи.\n", __func__);*/
 				return n_rec;
 			}
 		}
@@ -720,12 +720,30 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 	return ret;
 }
 
+const char *klog_get_stream_name(int stream)
+{
+	const char *ret = "???";
+	switch (stream){
+		case KLOG_STREAM_CTL:
+			ret = "УПР";
+			break;
+		case KLOG_STREAM_PRN:
+			ret = "ПЕЧ";
+			break;
+		case KLOG_STREAM_FDO:
+			ret = "ОФД";
+			break;
+	}
+	return ret;
+}
+
 /* Вывод заголовка распечатки ККЛ */
 bool klog_print_header(void)
 {
 	bool ret = false;
 	int rc = pthread_mutex_lock(&klog_mtx);
 	if (rc == 0){
+		log_reset_prn_buf();
 		try_fn(prn_write_str("\x1eНАЧАЛО ПЕЧАТИ КОНТРОЛЬНОЙ ЛЕНТЫ "
 			"(РАБОТА С ККТ) "));
 		try_fn(prn_write_cur_date_time());
@@ -762,6 +780,30 @@ bool klog_print_footer(void)
 /* Вывод заголовка записи на печать */
 static bool klog_print_rec_header(void)
 {
+	char rep[20], dt[128];
+	uint32_t n = klog_rec_hdr.stream >> 3;
+	if (n > 0){
+		snprintf(rep, sizeof(rep), ":%u", n + 1);
+		uint64_t interval = date_time_to_time_t(&klog_rec_hdr.dt);
+		interval = interval * 1000 + klog_rec_hdr.ms + klog_rec_hdr.op_time;
+		time_t t1 = interval / 1000;
+		struct tm *tm = localtime(&t1);
+		snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d -- "
+			"%.2d.%.2d.%.4d %.2d:%.2d:%.2d",
+			klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+			klog_rec_hdr.dt.year + 2000,
+			klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+			tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900,
+			tm->tm_hour, tm->tm_min, tm->tm_sec);
+	}else{
+		rep[0] = 0;
+		snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d.%.3d",
+			klog_rec_hdr.dt.day + 1, klog_rec_hdr.dt.mon + 1,
+			klog_rec_hdr.dt.year + 2000,
+			klog_rec_hdr.dt.hour, klog_rec_hdr.dt.min, klog_rec_hdr.dt.sec,
+			klog_rec_hdr.ms);
+	}
+
 	return 	prn_write_str_fmt("\x1e%.2hhX%.2hhX (\"ЭКСПРЕСС-2А-К\" "
 			"%hhu.%hhu.%hhu %.4hX %.*s) ККТ=%.*s",
 			klog_rec_hdr.addr.gaddr, klog_rec_hdr.addr.iaddr,
@@ -772,10 +814,9 @@ static bool klog_print_rec_header(void)
 			sizeof(klog_rec_hdr.tn), klog_rec_hdr.tn,
 			sizeof(klog_rec_hdr.kkt_nr), klog_rec_hdr.kkt_nr) &&
 		prn_write_eol() &&
-		prn_write_str_fmt("ЗАПИСЬ %u ОТ ", klog_rec_hdr.number + 1) &&
-		prn_write_date_time(&klog_rec_hdr.dt) &&
-		prn_write_str_fmt(".%.3u", klog_rec_hdr.ms) &&
-		prn_write_str_fmt(" ЖЕТОН %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
+		prn_write_str_fmt("ЗАПИСЬ %u [%s%s] ОТ %s ", klog_rec_hdr.number + 1,
+			klog_get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt) &&
+		prn_write_str_fmt("ЖЕТОН %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
 			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],

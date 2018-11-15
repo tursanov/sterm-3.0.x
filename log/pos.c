@@ -358,6 +358,7 @@ bool plog_read_rec(struct log_handle *hlog, uint32_t index)
 /* ‚ë¢®¤ § £®«®¢ª  à á¯¥ç âª¨ Š‹ */
 bool plog_print_header(void)
 {
+	log_reset_prn_buf();
 	try_fn(prn_write_str("\x1e\x1e€—€‹ …—€’ˆ Š’‹œ‰ ‹…’› "
 		"(€’€ ‘ ˆ’) "));
 	try_fn(prn_write_cur_date_time());
