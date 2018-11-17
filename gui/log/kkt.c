@@ -278,7 +278,7 @@ static void klog_init_gui_ctx(struct log_gui_context *ctx)
 static bool klog_can_show_rec(struct log_handle *hlog, uint32_t index)
 {
 	return	(cfg.kkt_log_stream == KLOG_STREAM_ALL) ||
-		(hlog->map[index].tag == cfg.kkt_log_stream);
+		(hlog->map[(hlog->map_head + index) % hlog->map_size].tag == cfg.kkt_log_stream);
 }
 
 static struct log_gui_context _klog_gui_ctx = {
