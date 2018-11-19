@@ -1177,6 +1177,8 @@ static void init_devices(void)
 		}
 	}
 	fdo_resume();
+
+	//kkt = (struct dev_info *)malloc(sizeof(struct dev_info));
 }
 
 /* Инициализация терминала */
@@ -2181,7 +2183,6 @@ static int handle_klog(struct kbd_event *e)
 		ClearScreen(clBtnFace);
 		redraw_term(true, main_title);
 		set_term_astate(ast_none);
-		fdo_resume();
 		return cmd_none;
 	}
 	return cm;
@@ -2694,7 +2695,6 @@ static void show_klog(void)
 		online = false;
 		guess_term_state();
 		push_term_info();
-		fdo_suspend();
 		log_init_view(klog_gui_ctx);
 	}
 }

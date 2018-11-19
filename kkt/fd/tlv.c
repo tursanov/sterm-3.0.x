@@ -163,15 +163,11 @@ char *win_dos(char *buffer, size_t size) {
 }
 */
 
-int ffd_tlv_add_string(uint16_t tag, const char* value, size_t size, bool fixed)
+int ffd_tlv_add_string(uint16_t tag, const char* value)
 {
-	if (value == NULL || size == 0)
+	if (value == NULL)
 		return -1;
-	size_t strsize = strlen(value);
-	if (strsize > size)
-		return -1;
-
-	uint16_t tlv_length = (uint16_t)(fixed ? size : strsize);
+	uint16_t tlv_length = strlen(value);
 
 	int curr_tlv_size = ffd_tlv_check_size(tlv_length);
 	if (curr_tlv_size < 0)
@@ -179,13 +175,10 @@ int ffd_tlv_add_string(uint16_t tag, const char* value, size_t size, bool fixed)
 
 	tlv->tag = tag;
 	tlv->length = tlv_length;
-	if (strsize > 0) {
-		memcpy(TLV_DATA(), value, strsize);
+	if (tlv_length > 0) {
+		memcpy(TLV_DATA(), value, tlv_length);
 		//win_dos(TLV_DATA(), strsize);
 	}
-	if (strsize < tlv_length)
-		memset(TLV_DATA() + strsize, ' ', tlv_length - strsize);
-
 	ffd_tlv_commit(curr_tlv_size);
 
 	return 0;
