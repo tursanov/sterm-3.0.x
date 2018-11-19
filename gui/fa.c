@@ -162,7 +162,7 @@ bool draw_fa(void)
     return true;
 }
 
-static int fa_tlv_add_string(form_t *form, uint16_t tag, int max_length, bool fixed, bool required) {
+static int fa_tlv_add_string(form_t *form, uint16_t tag, bool required) {
 	form_data_t data;
 
 	if (!form_get_data(form, tag, 1, &data)) {
@@ -183,7 +183,7 @@ static int fa_tlv_add_string(form_t *form, uint16_t tag, int max_length, bool fi
 	}
 
 	int ret;
-	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data, max_length, fixed)) != 0) {
+	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data)) != 0) {
 		form_focus(form, tag);
 		message_box("Žè¨¡ª ", "Žè¨¡ª  ¯à¨ ¤®¡ ¢«¥­¨¨ TLV. Ž¡à â¨â¥áì ª à §à ¡®âç¨ª ¬", dlg_yes, 0, al_center);
 		form_draw(form);
@@ -317,7 +317,7 @@ static int fa_tlv_add_cashier(form_t *form, bool save) {
 		}
 	}
 
-	return ffd_tlv_add_string(1021, result, length, false);
+	return ffd_tlv_add_string(1021, result);
 }
 
 typedef struct {
@@ -358,7 +358,7 @@ void fa_open_shift() {
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
 		if (fa_tlv_add_cashier(form, true) != 0 ||
-			fa_tlv_add_string(form, 1203, 12, true, false) != 0)
+			fa_tlv_add_string(form, 1203, false) != 0)
 			continue;
 
 		if (fd_create_doc(OPEN_SHIFT, NULL, 0) != 0) {
@@ -393,7 +393,7 @@ void fa_close_shift() {
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
 		if (fa_tlv_add_cashier(form, false) != 0 ||
-			fa_tlv_add_string(form, 1203, 12, true, false) != 0)
+			fa_tlv_add_string(form, 1203, false) != 0)
 			continue;
 
 		if (fd_create_doc(CLOSE_SHIFT, NULL, 0) != 0) {
@@ -439,8 +439,8 @@ void fa_close_fs() {
 
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
-		if (fa_tlv_add_string(form, 1021, 64, false, true) != 0 ||
-			fa_tlv_add_string(form, 1203, 12, true, false) != 0)
+		if (fa_tlv_add_string(form, 1021, true) != 0 ||
+			fa_tlv_add_string(form, 1203, false) != 0)
 			continue;
 
 		if (fd_create_doc(CLOSE_FS, NULL, 0) != 0) {
@@ -467,19 +467,19 @@ static int fa_fill_registration_tlv(form_t *form) {
 	int tax_systems = form_get_int_data(form, 1062, 0, 0);
 	int reg_modes = form_get_int_data(form, 9999, 0, 0);
 
-	if (fa_tlv_add_string(form, 1048, 256, false, true) != 0 ||
-		fa_tlv_add_string(form, 1018, 12, true, true) != 0 ||
-		fa_tlv_add_string(form, 1009, 256, true, false) != 0 ||
-		fa_tlv_add_string(form, 1187, 256, true, false) != 0 ||
+	if (fa_tlv_add_string(form, 1048, true) != 0 ||
+		fa_tlv_add_string(form, 1018, true) != 0 ||
+		fa_tlv_add_string(form, 1009, false) != 0 ||
+		fa_tlv_add_string(form, 1187, false) != 0 ||
 		ffd_tlv_add_uint8(1062, (uint8_t)tax_systems) != 0 ||
-		fa_tlv_add_string(form, 1037, 20, true, true) != 0 ||
-		fa_tlv_add_string(form, 1036, 20, false, (reg_modes & REG_MODE_AUTOMAT) != 0) != 0 ||
-		fa_tlv_add_string(form, 1021, 64, false, true) != 0 ||
-		fa_tlv_add_string(form, 1203, 12, true, false) != 0 ||
-		fa_tlv_add_string(form, 1060, 256, false, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_string(form, 1117, 64, false, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_string(form, 1046, 256, false, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_string(form, 1017, 12, true, (reg_modes & REG_MODE_OFFLINE) == 0) != 0) {
+		fa_tlv_add_string(form, 1037, true) != 0 ||
+		fa_tlv_add_string(form, 1036, (reg_modes & REG_MODE_AUTOMAT) != 0) != 0 ||
+		fa_tlv_add_string(form, 1021, true) != 0 ||
+		fa_tlv_add_string(form, 1203, false) != 0 ||
+		fa_tlv_add_string(form, 1060, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_string(form, 1117, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_string(form, 1046, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_string(form, 1017, (reg_modes & REG_MODE_OFFLINE) == 0) != 0) {
 		return -1;
 	}
 
@@ -726,9 +726,9 @@ void fa_cheque_corr() {
 			ffd_tlv_add_uint8(1173, corr_type) != 0) 
 			continue;
 		if (ffd_tlv_stlv_begin(1174, 292) != 0 ||
-			fa_tlv_add_string(form, 1177, 256, false, false) != 0 ||
+			fa_tlv_add_string(form, 1177, false) != 0 ||
 			fa_tlv_add_unixtime(form, 1178, true) != 0 ||
-			fa_tlv_add_string(form, 1179, 32, false, true) != 0 ||
+			fa_tlv_add_string(form, 1179, true) != 0 ||
 			ffd_tlv_stlv_end() != 0)
 			continue;
 
@@ -749,9 +749,9 @@ void fa_cheque_corr() {
 		cashier_data_t data = { "", "", "", "" };
 		fa_load_cashier_data(&data);
 		if (data.cashier_post[0])
-			ffd_tlv_add_string(1021, data.cashier_post, 64, false);
+			ffd_tlv_add_string(1021, data.cashier_post);
 		if (data.cashier_inn[0])
-			ffd_tlv_add_string(1203, data.cashier_inn, 12, true);
+			ffd_tlv_add_string(1203, data.cashier_inn);
 
 		if (fd_create_doc(CHEQUE_CORR, NULL, 0) != 0) {
 			const char *error;
@@ -797,14 +797,14 @@ void fa_cheque() {
 		cashier_data_t data = { "", "", "", "" };
 		fa_load_cashier_data(&data);
 		if (data.cashier_post[0])
-			ffd_tlv_add_string(1021, data.cashier_post, 64, false);
+			ffd_tlv_add_string(1021, data.cashier_post);
 		if (data.cashier_inn[0])
-			ffd_tlv_add_string(1203, data.cashier_inn, 12, true);
+			ffd_tlv_add_string(1203, data.cashier_inn);
 
 		ffd_tlv_add_uint8(1054, c->t1054);
 		ffd_tlv_add_uint8(1055, c->t1055);
 		if (c->pe)
-			ffd_tlv_add_string(1008, c->pe, 64, false);
+			ffd_tlv_add_string(1008, c->pe);
 		ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
 		ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
 		ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
@@ -816,13 +816,13 @@ void fa_cheque() {
 			char phone[19+1];
 			size_t size = get_phone(c->h, phone);
 			
-			ffd_tlv_add_string(1171, phone, size, false);
+			ffd_tlv_add_string(1171, phone);
 		}
 		
 		if (c->t1086 != NULL) {
 			ffd_tlv_stlv_begin(1084, 320);
-			ffd_tlv_add_string(1085, "’…Œˆ€‹", 64, false);
-			ffd_tlv_add_string(1086, c->t1086, 256, false);
+			ffd_tlv_add_string(1085, "’…Œˆ€‹");
+			ffd_tlv_add_string(1086, c->t1086);
 			ffd_tlv_stlv_end();
 		}
 		for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
@@ -833,7 +833,7 @@ void fa_cheque() {
 				ffd_tlv_add_uint8(1214, l->r);
 				char s1030[256];
 				sprintf(s1030, "%s\n\r¤®ªã¬¥­â \xfc%lld", l->s, k->d);
-				ffd_tlv_add_string(1030, s1030, 128, false);
+				ffd_tlv_add_string(1030, s1030);
 				ffd_tlv_add_vln(1079, l->t);
 				ffd_tlv_add_fvln(1023, 1, 0);
 				if (l->n == 0)

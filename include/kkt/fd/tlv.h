@@ -46,7 +46,7 @@ int ffd_tlv_add_vln(uint16_t tag, uint64_t value);
 int ffd_tlv_add_fvln(uint16_t tag, uint64_t value, uint8_t dot_pos);
 int ffd_tlv_add_unix_time(uint16_t tag, time_t value);
 int ffd_tlv_add_byte_array(uint16_t tag, uint8_t* value, size_t size);
-int ffd_tlv_add_string(uint16_t tag, const char* value, size_t size, bool fixed/* = false*/);
+int ffd_tlv_add_string(uint16_t tag, const char* value);
 int ffd_tlv_stlv_begin(uint16_t tag, uint16_t max_length);
 int ffd_tlv_stlv_end();
 
