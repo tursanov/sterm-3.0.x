@@ -1306,15 +1306,15 @@ static bool show_usb_msg(void)
 #endif
 static void set_timezone(void)
 {
+#if 0
 	struct timezone tz = {
 		.tz_minuteswest	= -180,	/* GMT+3 */
 		.tz_dsttime	= 0,
 	};
-	time_t t;
-	struct tm *tm;
 	settimeofday(NULL, &tz);
-	t = time(NULL);
-	tm = localtime(&t);
+#endif
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
 	printf("localtime:\t%.2d.%.2d.%.2d %.2d:%.2d:%.2d\n",
 			tm->tm_mday, tm->tm_mon + 1, tm->tm_year % 100,
 			tm->tm_hour, tm->tm_min, tm->tm_sec);
