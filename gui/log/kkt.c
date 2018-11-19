@@ -109,23 +109,6 @@ static const char *klog_get_head_line1(char *buf)
 	return buf;
 }
 
-static const char *get_stream_name(int stream)
-{
-	const char *ret = "???";
-	switch (stream){
-		case KLOG_STREAM_CTL:
-			ret = "УПР";
-			break;
-		case KLOG_STREAM_PRN:
-			ret = "ПЕЧ";
-			break;
-		case KLOG_STREAM_FDO:
-			ret = "ОФД";
-			break;
-	}
-	return ret;
-}
-
 /* Вторая строка заголовка */
 static const char *klog_get_head_line2(char *buf)
 {
@@ -133,21 +116,20 @@ static const char *klog_get_head_line2(char *buf)
 			!klog_gui_ctx->filter(klog_gui_ctx->hlog, klog_gui_ctx->cur_rec_index)){
 		static char msg[LOG_SCREEN_COLS + 1];
 		snprintf(msg, sizeof(msg), "На контрольной ленте нет записей [%s]",
-			get_stream_name(cfg.kkt_log_stream));
+			klog_get_stream_name(cfg.kkt_log_stream));
 		size_t msg_len = strlen(msg);
 		sprintf(buf, "%*s", (LOG_SCREEN_COLS + msg_len) / 2, msg);
 /*		sprintf(buf, "                             "
 			"На контрольной ленте нет записей [%s]",
-			get_stream_name(cfg.kkt_log_stream));*/
+			klog_get_stream_name(cfg.kkt_log_stream));*/
 	}else{
 		char rep[20], dt[128];
 		uint32_t n = klog_rec_hdr.stream >> 3;
 		if (n > 0){
-			snprintf(rep, sizeof(rep), "x%u", n + 1);
+			snprintf(rep, sizeof(rep), ":%u", n + 1);
 			uint64_t interval = date_time_to_time_t(&klog_rec_hdr.dt);
 			interval = interval * 1000 + klog_rec_hdr.ms + klog_rec_hdr.op_time;
 			time_t t1 = interval / 1000;
-//			uint32_t ms = interval % 1000;
 			struct tm *tm = localtime(&t1);
 			snprintf(dt, sizeof(dt), "%.2d.%.2d.%.4d %.2d:%.2d:%.2d -- "
 				"%.2d.%.2d.%.4d %.2d:%.2d:%.2d",
@@ -167,7 +149,7 @@ static const char *klog_get_head_line2(char *buf)
 		sprintf(buf, "Запись %u [%s%s] от %s "
 			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
 			klog_rec_hdr.number + 1,
-			get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt,
+			klog_get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt,
 			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
@@ -296,7 +278,7 @@ static void klog_init_gui_ctx(struct log_gui_context *ctx)
 static bool klog_can_show_rec(struct log_handle *hlog, uint32_t index)
 {
 	return	(cfg.kkt_log_stream == KLOG_STREAM_ALL) ||
-		(hlog->map[index].tag == cfg.kkt_log_stream);
+		(hlog->map[(hlog->map_head + index) % hlog->map_size].tag == cfg.kkt_log_stream);
 }
 
 static struct log_gui_context _klog_gui_ctx = {

@@ -69,6 +69,7 @@ extern struct log_handle *hklog;
 
 extern struct klog_rec_header klog_rec_hdr;
 
+extern const char *klog_get_stream_name(int stream);
 extern uint32_t klog_index_for_number(struct log_handle *hlog, uint32_t number);
 extern bool  klog_can_print_range(struct log_handle *hlog);
 extern bool  klog_can_print(struct log_handle *hlog);

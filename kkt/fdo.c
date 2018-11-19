@@ -503,7 +503,8 @@ static void fdo_poll_kkt(void)
 	uint8_t cmd = 0;
 	if (kkt_get_fdo_cmd(fdo_prev_op, fdo_prev_op_status,
 			&cmd, data, &data_len) == KKT_STATUS_OK){
-		dbg("cmd = %.2hhx; data_len = %u.", cmd, data_len);
+		dbg("%.2hhx:%.4u; cmd = %.2hhx; data_len = %u.",
+			fdo_prev_op, fdo_prev_op_status, cmd, data_len);
 		fdo_prev_op = cmd;
 		switch (cmd){
 			case FDO_REQ_NOP:
