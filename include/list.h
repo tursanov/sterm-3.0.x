@@ -29,7 +29,7 @@ int list_compare(list_t *list1, list_t *list2,
                   void *arg, list_item_compare_func_t func);
 int list_foreach(list_t* list, void *arg, list_item_func_t func);
 
-#define LIST_ITEM(i, type) ((type *)((i)->obj))
+#define LIST_ITEM(i, type) ((i) ? ((type *)((i)->obj)) : NULL)
 
 typedef struct list_it_t {
     list_t *list;

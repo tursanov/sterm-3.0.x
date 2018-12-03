@@ -26,12 +26,12 @@ button_t* button_create(int x, int y, int width, int height, form_t *form, form_
 
     control_init(&button->control, x, y, width, height, form, &api);
 
-	if (info->text != NULL)
-	    button->text = strdup(info->text);
+	if (info->button.text != NULL)
+	    button->text = strdup(info->button.text);
 
 	button->pressed = false;
 	button->result = info->id;
-	button->action = info->action;
+	button->action = info->button.action;
 
     return button;
 }

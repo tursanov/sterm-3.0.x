@@ -184,6 +184,30 @@ int ffd_tlv_add_string(uint16_t tag, const char* value)
 	return 0;
 }
 
+int ffd_tlv_add_fixed_string(uint16_t tag, const char* value, size_t fixed_length)
+{
+	if (value == NULL)
+		return -1;
+	uint16_t length = strlen(value);
+	if (length > fixed_length)
+		length = fixed_length;
+
+	int curr_tlv_size = ffd_tlv_check_size(fixed_length);
+	if (curr_tlv_size < 0)
+		return -1;
+
+	tlv->tag = tag;
+	tlv->length = fixed_length;
+	if (length > 0)
+		memcpy(TLV_DATA(), value, length);
+	if (length < fixed_length)
+		memset(TLV_DATA() + length, ' ', fixed_length - length);
+
+	ffd_tlv_commit(curr_tlv_size);
+
+	return 0;
+}
+
 int ffd_tlv_add_vln(uint16_t tag, uint64_t value)
 {
 	int len;

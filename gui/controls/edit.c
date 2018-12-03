@@ -93,18 +93,18 @@ edit_t* edit_create(int x, int y, int width, int height, form_t *form, form_item
 
     control_init(&edit->control, x, y, width, height, form, &api);
  
-    edit->input_type = info->input_type;
+    edit->input_type = info->edit.input_type;
 
     edit->text_draw_width = width - BORDER_WIDTH * 2;
-    edit->max_length = info->max_length;
+    edit->max_length = info->edit.max_length;
 
     if (edit->max_length <= DEFAULT_CAPACITY)
         edit->capacity = edit->max_length;
     else
         edit->capacity = DEFAULT_CAPACITY;
 
-    if (info->text != NULL) {
-    	size_t len = strlen(info->text);
+    if (info->edit.text != NULL) {
+    	size_t len = strlen(info->edit.text);
     	if (len > edit->max_length)
     		len = edit->max_length;
     	if (len > edit->capacity)
@@ -115,7 +115,7 @@ edit_t* edit_create(int x, int y, int width, int height, form_t *form, form_item
 
     edit->text = (char *)malloc(edit->capacity + 1);
     if (edit->length > 0)
-    	memcpy(edit->text, info->text, edit->length);
+    	memcpy(edit->text, info->edit.text, edit->length);
    	edit->text[edit->length] = 0;
 
    	edit->text_draw_start = edit->text_draw_x = 0;

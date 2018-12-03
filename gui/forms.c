@@ -114,8 +114,8 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 
 		if (info->name) {
 			item->name_x = GAP*2;
-			item->name_y = y;
-			TextOut(screen, GAP*2, y, info->name);
+			item->name_y = y + 3;
+			TextOut(screen, GAP*2, item->name_y, info->name);
 			x = control_x + GAP;
 			w = DISCX - control_x - GAP*3;
 			h = form_fnt->max_height + BORDER_WIDTH*2 + 2;
@@ -126,9 +126,11 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 				for (int j = i + 1; j < item_count; j++, count++) {
 					if (items[j].name != NULL)
 						break;
-					int tw = TextWidth(form_fnt, items[j].text) + SPAN_GAP*2;
-					if (tw > w)
-						w = tw;
+					if (items[j].type == FORM_ITEM_TYPE_BUTTON) {
+						int tw = TextWidth(form_fnt, items[j].button.text) + SPAN_GAP*2;
+						if (tw > w)
+							w = tw;
+					}
 				}
 				x = (DISCX - ((w + SPAN_GAP) * count)) / 2;
 			}

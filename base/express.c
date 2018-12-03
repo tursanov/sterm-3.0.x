@@ -2067,6 +2067,8 @@ bool execute_resp(void)
 	bool jump_next = true;
 	bool has_req = false;
 	bool ndest_shown = false;
+	bool has_kkt_resp = false;
+	
 	set_term_state(st_resp);
 	set_term_led(hbyte = n2hbyte(n));
 	astate_for_req = ast_none;
@@ -2151,6 +2153,7 @@ bool execute_resp(void)
 					break;
 				case dst_kkt:
 					execute_kkt(p, l);	/* pass through */
+					has_kkt_resp = true;
 				default:
 					p->handled = true;
 					n--;
@@ -2232,12 +2235,16 @@ bool execute_resp(void)
 	resp_executing = false;
 	can_reject = false;
 	lprn_error_shown = false;
+
+	if (has_kkt_resp)
+		show_hints();
+
 	if (kt != key_none){
 		if (!is_rstatus_error_msg())
 			set_term_astate(ast_none);
 		if (has_req && resp_handling)
 			send_request();
 		return (p != NULL) ? !p->jump_next : false;
-	}else
+	} else
 		return true;
 }

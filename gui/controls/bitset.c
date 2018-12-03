@@ -34,17 +34,17 @@ bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
 
     control_init(&bitset->control, x, y, width, height, form, &api);
 
-	bitset->value = info->value;
-	bitset->item_count = info->max_length;
+	bitset->value = info->bitset.value;
+	bitset->item_count = info->bitset.item_count;
 	bitset->short_items = (char **)malloc(sizeof(char *) * bitset->item_count);
 	bitset->items = (char **)malloc(sizeof(char *) * bitset->item_count);
 	bitset->expanded = false;
 
 	size_t text_size = 0;
 	for (size_t i = 0; i < bitset->item_count; i++) {
-		bitset->short_items[i] = strdup(info->short_items[i]);
-		bitset->items[i] = strdup(info->items[i]);
-		text_size += strlen(info->short_items[i]) + 1;
+		bitset->short_items[i] = strdup(info->bitset.short_items[i]);
+		bitset->items[i] = strdup(info->bitset.items[i]);
+		text_size += strlen(info->bitset.short_items[i]) + 1;
 	}
 
 	bitset->text = (char *)malloc(text_size + 1);

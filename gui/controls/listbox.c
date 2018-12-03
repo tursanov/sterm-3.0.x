@@ -7,6 +7,7 @@ typedef struct listbox_t {
 	int dropdown_height;
 	int selected_index;
 	int tmp_selected_index;
+	edit_t *edit;
 } listbox_t;
 
 void listbox_destroy(listbox_t *listbox);
@@ -31,12 +32,12 @@ listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 
     control_init(&listbox->control, x, y, width, height, form, &api);
 
-	listbox->item_count = info->max_length;
+	listbox->item_count = info->listbox.item_count;
 	listbox->items = (char **)malloc(sizeof(char *) * listbox->item_count);
 	listbox->expanded = false;
 
 	for (size_t i = 0; i < listbox->item_count; i++)
-		listbox->items[i] = strdup(info->items[i]);
+		listbox->items[i] = strdup(info->listbox.items[i]);
 
 	listbox->dropdown_height = listbox->item_count * (form_fnt->max_height + BORDER_WIDTH * 2) +
 		BORDER_WIDTH * 2;
@@ -49,7 +50,12 @@ listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 			y = listbox->control.y - listbox->dropdown_height + BORDER_WIDTH;
 	}
 	listbox->dropdown_y = y;
-	listbox->selected_index = info->value;
+	listbox->selected_index = info->listbox.value;
+
+	if ((info->listbox.flags & 1) != 0)
+		listbox->edit = edit_create(x, y, width, height, form, info);
+	else
+		listbox->edit = NULL;
 
     return listbox;
 }
@@ -62,6 +68,9 @@ void listbox_destroy(listbox_t *listbox) {
 		}
 		free(listbox->items);
 	}
+
+	if (listbox->edit)
+		edit_destroy(listbox->edit);
 
 	free(listbox);
 }

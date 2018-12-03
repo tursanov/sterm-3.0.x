@@ -118,6 +118,21 @@ extern int int64_array_free(int64_array_t *array);
 // добавить значение (unique - добавить только то, значение, которое отсутствует в списке
 extern int int64_array_add(int64_array_t *array, int64_t v, bool unique);
 
+typedef struct string_array_t {
+	char **values;
+	size_t capacity;
+	size_t count;
+} string_array_t;
+#define INIT_STRING_ARRAY { NULL, 0, 0 }
+
+extern int string_array_init(string_array_t *array);
+extern int string_array_clear(string_array_t *array);
+extern int string_array_free(string_array_t *array);
+// добавить значение (unique - добавить только то, значение, которое отсутствует в списке
+// cnv - 0 - добавить как есть, 1 - преобразовать в нижний регистр, 
+// 2 - преобразовать в верхний регистр)
+extern int string_array_add(string_array_t *array, const char *s, bool unique, int cnv);
+
 // Корзина фискального приложения
 typedef struct AD {
     P1* p1;              // данные кассира
@@ -127,6 +142,8 @@ typedef struct AD {
     S sum[MAX_SUM];     // сумма
     list_t clist;       // список чеков
 	int64_array_t docs;	// список документов
+	string_array_t phones; // список телефонов
+	string_array_t emails; // список e-mail
 } AD;
 
 // ссылка на текущую корзину
@@ -140,6 +157,7 @@ extern int AD_save(void);
 extern int AD_load(uint8_t t1055);
 // установка значения для тэга T1086
 extern void AD_setT1086(const char *i, const char *p, const char *t);
+extern void AD_setP1(P1 *p1);
 #define AD_doc_count() (_ad ? _ad->docs.count : 0)
 
 // callback для обработки XML

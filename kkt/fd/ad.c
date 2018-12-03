@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include "sysdefs.h"
 #include "kkt/fd/ad.h"
@@ -116,7 +117,6 @@ K *K_create(void) {
     K *k = (K *)malloc(sizeof(K));
     memset(k, 0, sizeof(K));
     k->llist.delete_func = (list_item_delete_func_t)L_destroy;
-    
     return k;
 }
 
@@ -153,7 +153,7 @@ static bool K_divide_func(struct K_divide_arg *arg, L *l) {
 K *K_divide(K *k, uint8_t p) {
     K *k1 = (K*)malloc(sizeof(K));
     struct K_divide_arg arg = { &k1->llist, p };
-    
+
     k1->o = k->o;          // Операция
     k1->d = k->d;          // Номер оформляемого документа или КРС при возврате
     k1->r = k->r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
@@ -207,6 +207,16 @@ int K_save(FILE *f, K *k) {
     return 0;
 }
 
+static void K_after_add(K *k) {
+    int64_array_add(&_ad->docs, k->i, true);
+    if (k->t != NULL) {
+	    string_array_add(&_ad->phones, k->t, true, 0);
+	}
+    if (k->e != NULL) {
+	    string_array_add(&_ad->emails, k->e, true, 1);
+	}
+}
+
 K *K_load(FILE *f) {
     K *k = K_create();
     if (load_list(f, &k->llist, (load_item_func_t)L_load) < 0 ||
@@ -222,9 +232,7 @@ K *K_load(FILE *f) {
         K_destroy(k);
         return NULL;
     }
-    
-    int64_array_add(&_ad->docs, k->i, true);
-    
+    K_after_add(k);
     return k;
 }
 
@@ -434,6 +442,62 @@ int int64_array_add(int64_array_t *array, int64_t v, bool unique) {
 	return 1;
 }
 
+int string_array_init(string_array_t *array) {
+#define DEFAULT_CAPACITY	32
+	array->capacity = DEFAULT_CAPACITY;
+	array->values = (char **)malloc(array->capacity * sizeof(char *));
+	array->count = 0;
+
+	return array->values != NULL ? 0 : -1;
+}
+
+int string_array_clear(string_array_t *array) {
+	array->count = 0;
+	return 0;
+}
+
+int string_array_free(string_array_t *array) {
+	for (int i = 0; i < array->count; i++)
+		if (array->values[i])
+			free(array->values[i]);
+
+	if (array->values)
+		free(array->values);
+	array->values = NULL;
+	array->capacity = array->count = 0;
+	return 0;
+}
+
+int string_array_add(string_array_t *array, const char *v, bool unique, int cnv) {
+	if (unique) {
+		char **p = array->values;
+		for (size_t i = 0; i < array->count; i++, p++) {
+			if (strcasecmp(*p, v) == 0)
+				return 0;
+		}
+	}
+	if (array->count == array->capacity) {
+		array->capacity *= 2;
+		array->values = (char **)realloc(array->values, array->capacity);
+		if (array->values == NULL)
+			return -1;
+	}
+	char *str = strdup(v);
+	
+	if (cnv != 0) {
+		for (char *s = str; *s; s++) {
+			if (cnv == 1)
+				s[0] = tolower(s[0]);
+			else
+				s[0] = toupper(s[0]);
+		}
+	}
+	array->values[array->count] = str;
+
+	array->count++;
+	return 1;
+}
+
 AD* _ad = NULL;
 
 int AD_create(uint8_t t1055) {
@@ -443,6 +507,10 @@ int AD_create(uint8_t t1055) {
     memset(_ad, 0, sizeof(AD));
     
 	if (int64_array_init(&_ad->docs) != 0)
+		return -1;
+	if (string_array_init(&_ad->phones) != 0)
+		return -1;
+	if (string_array_init(&_ad->emails) != 0)
 		return -1;
 		
 	_ad->t1055 = t1055;
@@ -459,6 +527,8 @@ void AD_destroy() {
     if (_ad->t1086 != NULL)
         free(_ad->t1086);
     int64_array_free(&_ad->docs);
+    string_array_free(&_ad->phones);
+    string_array_free(&_ad->emails);
     free(_ad);
     _ad = NULL;
 }
@@ -547,6 +617,13 @@ void AD_setT1086(const char *i, const char *p, const char *t) {
     *ptr = 0;
 }
 
+void AD_setP1(P1 *p1) {
+	if (_ad->p1 != NULL)
+		P1_destroy(_ad->p1);
+	_ad->p1 = p1;
+	AD_save();
+}
+
 C* AD_getCheque(K *k, uint8_t t1054, uint8_t t1055) {
     for (list_item_t *i = _ad->clist.head; i != NULL; i = i->next) {
         C *c = (C *)i->obj;
@@ -597,7 +674,7 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     }
     
     list_add(&c->klist, k);
-    int64_array_add(&_ad->docs, k->i, true);
+    K_after_add(k);
     
     printf("AD CH: %d\n", _ad->clist.count);
     
@@ -607,11 +684,9 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
 int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
     for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
         C *c = LIST_IT_OBJ(i1, C);
-        
         if (c->p == k->p && c->h == k->h && c->t1054 == t1054 && c->t1055 == t1055) {
             for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
                 K *k1 = LIST_IT_OBJ(i2, K);
-                
                 if (k1->i == k->r && k1->m == k->m && k1->o == o) {
                     if (K_equalByL(k, k1)) {
                         for (list_item_t *i3 = k1->llist.head; i3; i3 = i3->next) {
@@ -881,9 +956,9 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 }
                 _l = NULL;
             } else if (strcmp(name, "P1") == 0) {
-                _ad->p1 = _p1;
-                _p1 = NULL;
-                AD_save();
+                if (!check) {
+                	AD_setP1(_p1);
+                }
             }
         case 3:
             if (_l != NULL) {
@@ -976,6 +1051,5 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
         case 4:
             break;
     }
-    
     return 0;
 }

@@ -24,6 +24,7 @@ int cheque_init(void) {
     SetFont(screen, fnt);
 	cheque_draw();
 	current_c = NULL;
+
 	return 0;
 }
 
@@ -183,7 +184,7 @@ static void next_focus() {
 			active_item_child = 0;
 			active_button = -1;
 		} else {
-			active_button = 1;
+			active_button = 0;
 		}
 	} else {
 		active_item = active_item->next;
@@ -197,17 +198,32 @@ static void next_focus() {
 static void select_phone_or_email() {
 	C *c = LIST_ITEM(active_item, C);
 	form_t *form = NULL;
-	BEGIN_FORM(form, "Ввод тедефона или e-mail получателя чека")
-		FORM_ITEM_EDIT_TEXT(1008, "Тел. или e-mail:", c->pe, FORM_INPUT_TYPE_TEXT, 64)
+	char title[256];
+	size_t item_count = _ad->phones.count + _ad->emails.count;
+	char **items = (char **)malloc(sizeof(char *) * item_count);
+	size_t n = 0;
+
+	for (size_t i = 0; i < _ad->phones.count; i++, n++)
+		items[n] = _ad->phones.values[i];
+	for (size_t i = 0; i < _ad->emails.count; i++, n++)
+		items[n] = _ad->emails.values[i];
+
+	sprintf(title, "Тел. или e-mail (%d):", item_count);
+
+	BEGIN_FORM(form, "Ввод телефона или e-mail получателя чека")
+		FORM_ITEM_EDIT_LISTBOX(1008, title, c->pe, FORM_INPUT_TYPE_TEXT, 64,
+			(const char **)items, item_count)
 		FORM_ITEM_BUTTON(1, "ОК", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
 	END_FORM()
+	
+	free(items);
 
 	kbd_lang_ex = lng_lat;
 	if (form_execute(form) == 1) {
 		form_data_t data;
 		form_get_data(form, 1008, 1, &data);
-		
+
 		if (c->pe)
 		   free(c->pe);
 		if (data.size > 0)
@@ -216,6 +232,7 @@ static void select_phone_or_email() {
 			c->pe = NULL;
 		AD_save();
 	}
+	
 	cheque_draw();
 	form_destroy(form);
 }
@@ -256,8 +273,7 @@ static bool cheque_process(const struct kbd_event *_e) {
 	return 1;
 }
 
-
-C* cheque_execute(void) {
+bool cheque_execute(void) {
 	struct kbd_event e;
 	int ret;
 
@@ -267,5 +283,5 @@ C* cheque_execute(void) {
 		kbd_get_event(&e);
 	} while ((ret = cheque_process(&e)) > 0);
 
-	return current_c;
+	return current_c != NULL;
 }
