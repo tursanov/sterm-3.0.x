@@ -356,6 +356,7 @@ bool process_dlg(struct dlg_win *dlg, struct kbd_event *e)
 						if (dlg->buttons == dlg_yes_no)
 							flag = dlg->active_btn == DLG_BTN_NO;
 						dlg->active_btn = DLG_BTN_NO;
+						dlg->cmd = get_dlg_cmd(dlg);
 						ret = false;
 					}
 					break;

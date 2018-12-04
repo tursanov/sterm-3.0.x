@@ -31,6 +31,9 @@ static int fa_active_item = -1;
 //static int fa_active_control = -1;
 int fa_cm = cmd_none;
 static struct menu *fa_menu = NULL;
+int fa_arg = cmd_fa;
+
+static bool process_fa_cmd(int cmd);
 
 /* É‡„ØØÎ Ø†‡†¨•‚‡Æ¢ ≠†·‚‡Æ©™® */
 enum {
@@ -55,6 +58,8 @@ static bool fa_create_menu(void)
 
 static bool fa_set_group(int n)
 {
+	if (fa_arg != cmd_fa)
+		return false;
 	bool ret = false;
 	fa_cm = cmd_none;
 	fa_active_group = n;
@@ -91,26 +96,31 @@ static int fa_get_reregistration_data() {
 	return ret;
 }
 
-
-bool init_fa(void)
+bool init_fa(int arg)
 {
+	fa_arg = arg;
 	fa_active = true;
 	hide_cursor();
 	scr_visible = false;
 	scr_visible = false;
 	set_scr_mode(m80x20, true, false);
 	set_term_busy(true);
-	ClearScreen(clBlack);
-
-	fa_create_menu();
-	if (_ad->clist.count > 0) {
-		fa_active_item = 4;
-		fa_menu->selected = fa_active_item;
-		printf("fa_active_item = %d\n", fa_active_item);
-	}
-	fa_set_group(FAPP_GROUP_MENU);
 
 	fa_get_reregistration_data();
+
+	if (arg == cmd_fa) {
+		ClearScreen(clBlack);
+		fa_create_menu();
+		if (_ad->clist.count > 0) {
+			fa_active_item = 4;
+			fa_menu->selected = fa_active_item;
+			printf("fa_active_item = %d\n", fa_active_item);
+		}
+		fa_set_group(FAPP_GROUP_MENU);
+	} else {
+		fa_menu = NULL;
+		process_fa_cmd(arg);
+	}
 
 	return true;
 }
@@ -149,7 +159,8 @@ void release_fa(void)
 		close_fs_form = NULL;
 	}
 	cheque_release();
-	release_menu(fa_menu,false);
+	if (fa_menu)
+		release_menu(fa_menu,false);
 	online = true;
 	pop_term_info();
 	ClearScreen(clBtnFace);
@@ -220,6 +231,16 @@ static int fa_tlv_add_fixed_string(form_t *form, uint16_t tag, size_t fixed_leng
 	return 0;
 }
 
+static uint64_t form_data_to_vln(form_data_t *data) {
+	uint64_t value = 0;
+	uint64_t d = 1;
+	const char *text = (const char *)data->data + data->size - 1;
+	for (int i = 0; i < data->size; i++, text--, d = d * 10) {
+		if (isdigit(*text))
+			value += (*text - '0') * d;
+	}
+	return value;
+}
 
 static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
 	form_data_t data;
@@ -241,13 +262,7 @@ static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
 		return 0;
 	}
 
-	uint64_t value = 0;
-	uint64_t d = 1;
-	const char *text = (const char *)data.data + data.size - 1;
-	for (int i = 0; i < data.size; i++, text--, d = d * 10) {
-		if (isdigit(*text))
-			value += (*text - '0') * d;
-	}
+	uint64_t value = form_data_to_vln(&data);
 
 	int ret;
 	if ((ret = ffd_tlv_add_vln(tag, value)) != 0) {
@@ -823,148 +838,246 @@ static size_t get_phone(char *src, char *dst) {
 }
 
 void fa_cheque() {
+	int64_t sumN = 0;
+	int64_t sumE = 0;
+	int64_t sumI = 0;
+	int64_t sumC = 0;
+
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		if (c->t1054 == 1 || c->t1054 == 4) {
+			sumN += c->sum.n;
+			sumE += c->sum.e;
+		} else {
+			sumN -= c->sum.n;
+			sumE -= c->sum.e;
+		}
+	}
+
 	cheque_init();
 
-	if (cheque_execute()) {
-		fdo_suspend();
-		while (_ad->clist.head) {
-			C *c = LIST_ITEM(_ad->clist.head, C);
-			ffd_tlv_reset();
-			cashier_data_t data = { "", "", "", "" };
-			fa_load_cashier_data(&data);
-			if (data.cashier_post[0])
-				ffd_tlv_add_string(1021, data.cashier_post);
-			printf("CASHIER_INN: %d\n", data.cashier_inn[0]);
-			if (data.cashier_inn[0])
-				ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
-
-			ffd_tlv_add_uint8(1054, c->t1054);
-			ffd_tlv_add_uint8(1055, c->t1055);
-			if (c->pe)
-				ffd_tlv_add_string(1008, c->pe);
-			ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
-			ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
-			ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
-			ffd_tlv_add_vln(1216, 0);
-			ffd_tlv_add_vln(1217, 0);
-
-			if (c->p != user_inn) {
-				ffd_tlv_add_uint8(1057, 1 << 6);
-				char phone[19+1];
-				/*size_t size =*/ get_phone(c->h, phone);
-
-				ffd_tlv_add_string(1171, phone);
-			}
-
-			if (c->t1086 != NULL) {
-				ffd_tlv_stlv_begin(1084, 320);
-				ffd_tlv_add_string(1085, "íÖêåàçÄã");
-				ffd_tlv_add_string(1086, c->t1086);
-				ffd_tlv_stlv_end();
-			}
-			for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
-				K *k = LIST_ITEM(i1, K);
-				for (list_item_t *i2 = k->llist.head; i2; i2 = i2->next) {
-					L *l = LIST_ITEM(i2, L);
-					ffd_tlv_stlv_begin(1059, 1024);
-					ffd_tlv_add_uint8(1214, l->r);
-					char s1030[256];
-					sprintf(s1030, "%s\n\r§Æ™„¨•≠‚ \xfc%lld", l->s, k->d);
-					ffd_tlv_add_string(1030, s1030);
-					ffd_tlv_add_vln(1079, l->t);
-					ffd_tlv_add_fvln(1023, 1, 0);
-					if (l->n == 0)
-						l->n = 6;
-					ffd_tlv_add_vln(1199, l->n);
-					if (l->n >= 1 && l->n <= 4) {
-						ffd_tlv_add_vln(1198, l->c);
-						ffd_tlv_add_vln(1200, l->c);
+	while (true) {
+		if (cheque_execute()) {
+		
+			if (sumN > 0) {
+				form_t *form = NULL;
+		
+				BEGIN_FORM(form, "ê†·Á•‚ ·§†Á®:")
+					FORM_ITEM_EDIT_TEXT(1031, "è‡®≠Ô‚Æ ≠†´®Á≠Î¨®:", "0", FORM_INPUT_TYPE_MONEY, 16)
+					FORM_ITEM_BUTTON(1, "éä", NULL)
+					FORM_ITEM_BUTTON(0, "é‚¨•≠†", NULL)
+				END_FORM()
+				
+				while (1) {
+					int64_t n;
+					if (form_execute(form) == 1) {
+						form_data_t data;
+						form_get_data(form, 1031, 1, &data);
+						n = form_data_to_vln(&data);
+						sumC = n - sumN;
+					} else
+						break;
+						
+					printf("sumI: %lld, sumN: %lld\n", sumI, sumN);
+			
+					if (n < sumN) {
+						message_box("éË®°™†", "ë„¨¨† Ø‡®≠Ô‚ÎÂ Æ‚ Ø†··†¶®‡† §•≠•£ \n"
+							"≠• §Æ´¶≠† °Î‚Ï ¨•≠ÏË• ·„¨¨Î §´Ô ÆØ´†‚Î ≠†´®Á≠Î¨®", dlg_yes, 0, al_center);
+						kbd_flush_queue();
+						form_draw(form);
+					} else {
+						char buffer[1024];
+						int64_t sn = llabs(sumN);
+						sprintf(buffer, "èêàçüíé: %.1lld.%.2lld\n"
+							"%s: %.1lld.%.2lld\n"
+							"ëÑÄóÄ: %.1lld.%.2lld\n",
+							n / 100, n % 100,
+							sumN > 0 ? "ëìååÄ ä èêàÖåì" : "ëìååÄ ä ÇÑÄóÖ",
+							sn / 100, sn % 100,
+							sumC / 100, sumC % 100);
+						if (message_box("ì¢•§Æ¨´•≠®•", buffer, dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
+							kbd_flush_queue();
+							sumI = n;
+							break;
+						} else {
+							form_draw(form);
+							continue;
+						}
 					}
-					ffd_tlv_stlv_end();
+				}
+				form_destroy(form);
+				
+				if (sumI < sumN) {
+					cheque_draw();
+					continue;
 				}
 			}
+		
+		
+			fdo_suspend();
 
-			if (fd_create_doc(CHEQUE, NULL, 0) != 0) {
-				const char *error;
-				fd_get_last_error(&error);
-				message_box("éË®°™†", error, dlg_yes, 0, al_center);
-				kbd_flush_queue();
-				cheque_draw();
-			} else {
-				list_remove(&_ad->clist, c);
-				AD_save();
-				cheque_draw();
+			while (_ad->clist.head) {
+				C *c = LIST_ITEM(_ad->clist.head, C);
+				ffd_tlv_reset();
+				cashier_data_t data = { "", "", "", "" };
+				fa_load_cashier_data(&data);
+				if (data.cashier_post[0])
+					ffd_tlv_add_string(1021, data.cashier_post);
+				printf("CASHIER_INN: %d\n", data.cashier_inn[0]);
+				if (data.cashier_inn[0])
+					ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
+
+				ffd_tlv_add_uint8(1054, c->t1054);
+				ffd_tlv_add_uint8(1055, c->t1055);
+				if (c->pe)
+					ffd_tlv_add_string(1008, c->pe);
+				ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
+				ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
+				ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
+				ffd_tlv_add_vln(1216, 0);
+				ffd_tlv_add_vln(1217, 0);
+
+				if (c->p != user_inn) {
+					ffd_tlv_add_uint8(1057, 1 << 6);
+					char phone[19+1];
+					/*size_t size =*/ get_phone(c->h, phone);
+
+					ffd_tlv_add_string(1171, phone);
+				}
+
+				if (c->t1086 != NULL) {
+					ffd_tlv_stlv_begin(1084, 320);
+					ffd_tlv_add_string(1085, "íÖêåàçÄã");
+					ffd_tlv_add_string(1086, c->t1086);
+					ffd_tlv_stlv_end();
+				}
+				for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
+					K *k = LIST_ITEM(i1, K);
+					for (list_item_t *i2 = k->llist.head; i2; i2 = i2->next) {
+						L *l = LIST_ITEM(i2, L);
+						ffd_tlv_stlv_begin(1059, 1024);
+						ffd_tlv_add_uint8(1214, l->r);
+						char s1030[256];
+						sprintf(s1030, "%s\n\r§Æ™„¨•≠‚ \xfc%lld", l->s, k->d);
+						ffd_tlv_add_string(1030, s1030);
+						ffd_tlv_add_vln(1079, l->t);
+						ffd_tlv_add_fvln(1023, 1, 0);
+						if (l->n == 0)
+							l->n = 6;
+						ffd_tlv_add_vln(1199, l->n);
+						if (l->n >= 1 && l->n <= 4) {
+							ffd_tlv_add_vln(1198, l->c);
+							ffd_tlv_add_vln(1200, l->c);
+						}
+						ffd_tlv_stlv_end();
+					}
+				}
+
+				uint8_t* pattern_footer = NULL;
+				size_t pattern_footer_size = 0;
+				uint8_t pattern_footer_buffer[1024] = { 0 };
+
+				if (_ad->clist.count == 1) {
+					size_t n = 0;
+					pattern_footer = pattern_footer_buffer;
+					char *p = (char *)pattern_footer_buffer;
+					if (sumN != 0) {
+						n += sprintf(p + n, "éèãÄíÄ çÄãàóçåà\r\n");
+						if (sumN > 0)
+							n += sprintf(p + n, "ÇëÖÉé ä èêàÖåì: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumN / 100, sumN % 100);
+						else
+							n += sprintf(p + n, "ÇëÖÉé ä ÇèãÄíÖ: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumN / 100, sumN % 100);
+						if (sumI > 0) {
+							n += sprintf(p + n, "èéãìóÖçé: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumI / 100, sumI % 100);
+							n += sprintf(p + n, "ëÑÄóÄ: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumC / 100, sumC % 100);
+						}
+					}
+
+					if (sumE != 0) {
+						n += sprintf(p + n, "éèãÄíÄ ÅÖáçÄãàóçåà\r\n");
+						if (sumE > 0)
+							n += sprintf(p + n, "ÇëÖÉé ä èêàÖåì: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumE / 100, sumE % 100);
+						else
+							n += sprintf(p + n, "ÇëÖÉé ä ÇèãÄíÖ: \x5%.1lld.%.2lld êìÅ.\r\n",
+								sumE / 100, sumE % 100);
+					}
+
+					pattern_footer_size = n;
+				}
+
+				if (fd_create_doc(CHEQUE, pattern_footer, pattern_footer_size) != 0) {
+					const char *error;
+					fd_get_last_error(&error);
+					message_box("éË®°™†", error, dlg_yes, 0, al_center);
+					kbd_flush_queue();
+					cheque_draw();
+					break;
+				} else {
+					list_remove(&_ad->clist, c);
+					AD_save();
+					cheque_draw();
+				}
 			}
-		}
-		fdo_resume();
+			fdo_resume();
+
+			if (!_ad->clist.head)
+				break;
+		} else
+			break;
 	}
 
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+static bool process_fa_cmd(int cmd) {
+	bool ret = true;
+	switch (cmd){
+		case cmd_reg_fa:
+			fa_registration();
+			break;
+		case cmd_rereg_fa:
+			fa_reregistration();
+			break;
+		case cmd_open_shift_fa:
+			fa_open_shift();
+			break;
+		case cmd_close_shift_fa:
+			fa_close_shift();
+			break;
+		case cmd_calc_report_fa:
+			fa_calc_report();
+			break;
+		case cmd_close_fs_fa:
+			fa_close_fs();
+			break;
+		case cmd_cheque_corr_fa:
+			fa_cheque_corr();
+			break;
+		case cmd_cheque_fa:
+			fa_cheque();
+			break;
+		default:
+			ret = false;
+			break;
+	}
+	return ret;
+}
+
+
 bool process_fa(const struct kbd_event *e)
 {
+	if (fa_arg != cmd_fa)
+		return false;
 	if (!e->pressed)
 		return true;
 	if (fa_active_group == FAPP_GROUP_MENU) {
 		if (process_menu(fa_menu, (struct kbd_event *)e) != cmd_none)
-			switch (get_menu_command(fa_menu)){
-				case cmd_reg_fa:
-					fa_registration();
-					break;
-				case cmd_rereg_fa:
-					fa_reregistration();
-					break;
-				case cmd_open_shift_fa:
-					fa_open_shift();
-					break;
-				case cmd_close_shift_fa:
-					fa_close_shift();
-					break;
-				case cmd_calc_report_fa:
-					fa_calc_report();
-					break;
-				case cmd_close_fs_fa:
-					fa_close_fs();
-					break;
-				case cmd_cheque_corr_fa:
-					fa_cheque_corr();
-					break;
-				case cmd_cheque_fa:
-					fa_cheque();
-					break;
-				/*case cmd_sys_fa:
-					fa_set_group(OPTN_GROUP_SYSTEM);
-					break;
-				case cmd_dev_fa:
-					get_lprn_params();
-					fa_set_group(OPTN_GROUP_DEVICES);
-					break;
-				case cmd_tcpip_fa:
-					fa_set_group(OPTN_GROUP_TCPIP);
-					break;
-				case cmd_ppp_fa:
-					fa_set_group(OPTN_GROUP_PPP);
-					break;
-				case cmd_bank_fa:
-					fa_set_group(OPTN_GROUP_BANK);
-					break;
-				case cmd_kkt_fa:
-					fa_set_group(OPTN_GROUP_KKT);
-					break;
-				case cmd_scr_fa:
-					fa_set_group(OPTN_GROUP_SCR);
-					break;
-				case cmd_kbd_fa:
-					fa_set_group(OPTN_GROUP_KBD);
-					break;
-				case cmd_store_fa:
-					fa_cm = cmd_store_fa;*/	/* fall through */
-				default:
-					return false;
-			}
-		else
-			return true;
+			return process_fa_cmd(get_menu_command(fa_menu));
     }
 	return true;
 }

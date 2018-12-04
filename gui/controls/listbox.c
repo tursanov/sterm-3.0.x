@@ -36,6 +36,11 @@ listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 	listbox->items = (char **)malloc(sizeof(char *) * listbox->item_count);
 	listbox->expanded = false;
 
+	if ((info->listbox.flags & 1) != 0)
+		listbox->edit = edit_create(x, y, width - 20, height, form, info);
+	else
+		listbox->edit = NULL;
+
 	for (size_t i = 0; i < listbox->item_count; i++)
 		listbox->items[i] = strdup(info->listbox.items[i]);
 
@@ -51,11 +56,6 @@ listbox_t* listbox_create(int x, int y, int width, int height, form_t *form,
 	}
 	listbox->dropdown_y = y;
 	listbox->selected_index = info->listbox.value;
-
-	if ((info->listbox.flags & 1) != 0)
-		listbox->edit = edit_create(x, y, width, height, form, info);
-	else
-		listbox->edit = NULL;
 
     return listbox;
 }
@@ -89,6 +89,22 @@ static void listbox_draw_normal(listbox_t *listbox) {
 		bgColor = RGB(200, 200, 200);
 		fgColor = RGB(32, 32, 32);
 	}
+	
+	int y = (listbox->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
+	
+	if (listbox->edit) {
+		edit_draw(listbox->edit);
+		control_fill_rect(listbox->control.x + listbox->control.width - 20 - BORDER_WIDTH,
+			listbox->control.y,
+			20 + BORDER_WIDTH, listbox->control.height, BORDER_WIDTH,
+			borderColor, bgColor);
+		SetTextColor(screen, borderColor);
+		TextOut(screen, listbox->control.x + listbox->control.width - 
+			BORDER_WIDTH * 3 - form_fnt->max_width,
+			listbox->control.y + y + 3, "\x1f");
+		return;
+	}
+	
 
 	control_fill_rect(listbox->control.x, listbox->control.y,
 		listbox->control.width, listbox->control.height, BORDER_WIDTH,
@@ -96,7 +112,7 @@ static void listbox_draw_normal(listbox_t *listbox) {
 
 	SetGCBounds(screen, listbox->control.x + BORDER_WIDTH, listbox->control.y + BORDER_WIDTH,
 		listbox->control.width - BORDER_WIDTH * 2, listbox->control.height - BORDER_WIDTH * 2);
-	int y = (listbox->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
+	//int y = (listbox->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
 	if (listbox->selected_index >= 0 && listbox->selected_index < listbox->item_count) {
 		const char *text = listbox->items[listbox->selected_index];
 		int w = TextWidth(form_fnt, text);
@@ -143,12 +159,27 @@ void listbox_draw(listbox_t *listbox) {
 }
 
 bool listbox_focus(listbox_t *listbox, bool focus) {
+	if (listbox->edit)
+		edit_focus(listbox->edit, focus);
 	listbox->control.focused = focus;
 	listbox_draw(listbox);
 	return true;
 }
 
+static void listbox_sync_edit_text(listbox_t *listbox) {
+	if (listbox->edit) {
+		char *text = listbox->items[listbox->selected_index];
+		int textlen = strlen(text);
+		edit_set_data(listbox->edit, 0, text, (size_t)textlen);
+	}
+}
+
 bool listbox_handle(listbox_t *listbox, const struct kbd_event *e) {
+	if (listbox->edit) {
+		bool ret = edit_handle(listbox->edit, e);
+		if (ret)
+			return ret;
+	}
 	switch (e->key) {
 	case KEY_ENTER:
 	case KEY_SPACE:
@@ -160,6 +191,10 @@ bool listbox_handle(listbox_t *listbox, const struct kbd_event *e) {
 			} else if (e->key == KEY_ENTER) {
 				listbox->selected_index = listbox->tmp_selected_index;
 				listbox->expanded = false;
+
+				if (listbox->edit)
+					listbox_sync_edit_text(listbox);
+
 				form_draw(listbox->control.form);
 			}
 		}
@@ -188,11 +223,33 @@ bool listbox_handle(listbox_t *listbox, const struct kbd_event *e) {
 			listbox_draw(listbox);
 		}
 		return listbox->expanded;
+	case KEY_PGUP:
+		if (e->pressed && !listbox->expanded && listbox->item_count > 0) {
+			listbox->selected_index--;
+			if (listbox->selected_index < 0)
+				listbox->selected_index = listbox->item_count - 1;
+			if (listbox->edit)
+				listbox_sync_edit_text(listbox);
+			return true;
+		}
+		break;
+	case KEY_PGDN:
+		if (e->pressed && !listbox->expanded && listbox->item_count > 0) {
+			listbox->selected_index++;
+			if (listbox->selected_index >= listbox->item_count)
+				listbox->selected_index = 0;
+			if (listbox->edit)
+				listbox_sync_edit_text(listbox);
+			return true;
+		}
+		break;
 	}
 	return false;
 }
 
 bool listbox_get_data(listbox_t *listbox, int what, form_data_t *data) {
+	if (listbox->edit)
+		return edit_get_data(listbox->edit, what, data);
 	switch (what) {
 	case 0:
 		data->data = (void *)listbox->selected_index;
@@ -203,6 +260,8 @@ bool listbox_get_data(listbox_t *listbox, int what, form_data_t *data) {
 }
 
 bool listbox_set_data(listbox_t *listbox, int what, const void *data, size_t data_len) {
+	if (listbox->edit)
+		return edit_set_data(listbox->edit, what, data, data_len);
 	switch (what) {
 	case 0:
 		listbox->selected_index = (int32_t)data;

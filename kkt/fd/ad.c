@@ -329,6 +329,20 @@ void C_destroy(C *c) {
         free(c->pe);
     if (c->t1086 != NULL)
         free(c->t1086);
+
+	int64_array_clear(&_ad->docs);
+	string_array_clear(&_ad->phones);
+	string_array_clear(&_ad->emails);
+
+    for (list_item_t *i = _ad->clist.head; i != NULL; i = i->next) {
+		C *c1 = LIST_ITEM(i, C);
+		if (c1 != c) {
+		    for (list_item_t *j = c1->klist.head; j != NULL; j = j->next) {
+		    	K *k = LIST_ITEM(j, K);
+		    	K_after_add(k);
+		    }
+		}
+    }
 }
 
 bool C_addK(C *c, K *k) {
@@ -452,6 +466,10 @@ int string_array_init(string_array_t *array) {
 }
 
 int string_array_clear(string_array_t *array) {
+	for (int i = 0; i < array->count; i++)
+		if (array->values[i])
+			free(array->values[i]);
+	memset(array->values, 0, sizeof(char *) * array->count);
 	array->count = 0;
 	return 0;
 }
@@ -483,7 +501,7 @@ int string_array_add(string_array_t *array, const char *v, bool unique, int cnv)
 			return -1;
 	}
 	char *str = strdup(v);
-	
+
 	if (cnv != 0) {
 		for (char *s = str; *s; s++) {
 			if (cnv == 1)
@@ -512,11 +530,10 @@ int AD_create(uint8_t t1055) {
 		return -1;
 	if (string_array_init(&_ad->emails) != 0)
 		return -1;
-		
+
 	_ad->t1055 = t1055;
-    
     _ad->clist.delete_func = (list_item_delete_func_t)C_destroy;
-    
+
     return 0;
 }
 
@@ -675,9 +692,9 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     
     list_add(&c->klist, k);
     K_after_add(k);
-    
+
     printf("AD CH: %d\n", _ad->clist.count);
-    
+
     return 0;
 }
 

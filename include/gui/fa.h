@@ -6,7 +6,7 @@
 #include "cfg.h"
 #include "kbd.h"
 
-extern bool	init_fa(void);
+extern bool	init_fa(int arg);
 extern void	release_fa(void);
 extern bool	draw_fa(void);
 extern bool	process_fa(const struct kbd_event *e);

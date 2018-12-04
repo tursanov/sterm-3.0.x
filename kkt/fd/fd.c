@@ -79,7 +79,7 @@ static uint8_t *load_pattern(uint8_t doc_type, const uint8_t *pattern_footer,
 		free(pattern);
 		goto LOut;
 	}
-	memcpy(pattern + pattern_footer_size, pattern_footer, pattern_footer_size);
+	memcpy(pattern + file_size, pattern_footer, pattern_footer_size);
 	*pattern_size = (size_t)file_size + pattern_footer_size;
 
 LOut:

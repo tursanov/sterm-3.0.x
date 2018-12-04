@@ -15,6 +15,8 @@ static int active_button = 0;
 static C *current_c = NULL;
 static list_item_t *active_item = NULL;
 static int active_item_child = 0;
+static int64_t sumN = 0;
+static int64_t sumE = 0;
 
 int cheque_init(void) {
 	if (fnt == NULL)
@@ -22,6 +24,28 @@ int cheque_init(void) {
 	if (screen == NULL)
 	  	screen = CreateGC(0, 0, DISCX, DISCY);
     SetFont(screen, fnt);
+
+	active_item = NULL;
+	active_item_child = 0;
+	if (!_ad->clist.head)
+		active_button = 1;
+	else
+		active_button = 0;
+
+	sumN = 0;
+	sumE = 0;
+
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		if (c->t1054 == 1 || c->t1054 == 4) {
+			sumN += c->sum.n;
+			sumE += c->sum.e;
+		} else {
+			sumN -= c->sum.n;
+			sumE -= c->sum.e;
+		}
+	}
+
 	cheque_draw();
 	current_c = NULL;
 
@@ -155,21 +179,104 @@ static int cheque_draw_cheque(C *c, int start_y) {
 	return y;
 }
 
+static int vln_printf(char *buffer, int64_t v) {
+	return sprintf(buffer, "%.lld.%.2lld", v / 100, v % 100);
+}
+
+static int cheque_draw_sum(int start_y) {
+	char title[2][256] = { {0}, {0} };
+	char value[2][64] = { {0}, {0} };
+	int count = 0;
+	int sw;
+	int w;
+	int y = start_y;
+
+	printf("sumN: %lld, sumE: %lld\n", sumN, sumE);
+
+	if (sumN == 0 && sumE == 0) {
+		sprintf(title[count], "Получение или выдача денежных средств не требуется");
+		count++;
+	} else {
+		if (sumN != 0) {
+			sprintf(title[count], "Сумма наличными к %s:", sumN > 0 ? "получению от пассажира" : 
+				"выдаче пассажиру");
+			vln_printf(value[count], labs(sumN));
+			count++;
+		}
+		if (sumE != 0) {
+			sprintf(title[count], "Сумма безналичными к %s:", sumE > 0 ? "получению от пассажира" : 
+				"выдаче пассажиру");
+			vln_printf(value[count], labs(sumE));
+			count++;
+		}
+	}
+
+/*	sprintf(cheque_title, "Чек (%s)", cheque_type[c->t1054 - 1]);
+	w = TextWidth(fnt, cheque_title);
+	h = fnt->max_height + GAP;
+	x = (DISCX - w - GAP*2);
+	fill_rect(x - GAP, y, w + GAP*2, h, 2, clGray, clSilver);
+	SetTextColor(screen, clBlack);
+	TextOut(screen, x, y + GAP/2, cheque_title);
+	y += GAP;*/
+	
+	y += 4;
+
+	w = 0;
+	sw = 0;
+	for (int i = 0; i < count; i++) {
+		int tw = TextWidth(fnt, title[i]);
+		if (tw > w)
+			w = tw;
+		tw = TextWidth(fnt, value[i]);
+		if (tw > sw)
+			sw = tw;
+	}
+
+	for (int i = 0; i < count; i++) {
+		SetTextColor(screen, clBlack);
+		TextOut(screen, GAP*2, y, title[i]);
+		if (value[i][0] != 0)
+			TextOut(screen, GAP*3 + w, y, value[i]);
+		y += fnt->max_height;
+	}
+	y += 4;
+
+	fill_rect(10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
+	y += GAP;
+
+	return y;
+}
+
 int cheque_draw() {
 	ClearGC(screen, clSilver);
 
 	int x;
-	int y = 0;
-	for (list_item_t *i1 = _ad->clist.head; i1; i1 = i1->next) {
-		C *c = LIST_ITEM(i1, C);
-		y = cheque_draw_cheque(c, y);
-	}
-
+	int y = 8;
+	if (_ad->clist.head) {
+		for (list_item_t *i1 = _ad->clist.head; i1; i1 = i1->next) {
+			C *c = LIST_ITEM(i1, C);
+			y = cheque_draw_cheque(c, y);
+		}
+		
+		y = cheque_draw_sum(y);
+		
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
-	x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
+		x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
+		draw_button(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
+	} else {
+		const char *text = "Нет документов для печати";
+		SetTextColor(screen, clBlack);
 
-	draw_button(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
+		x = (DISCX - TextWidth(fnt, text)) / 2;
+
+		TextOut(screen, x, y, text);
+
+		x = ((DISCX - BUTTON_WIDTH) / 2) - BUTTON_WIDTH + GAP;
+		y += fnt->max_height + 8;
+	}
+
 	draw_button(x + BUTTON_WIDTH + GAP, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Отмена", active_button == 1);
 
 	return 0;
@@ -183,9 +290,9 @@ static void next_focus() {
 			active_item = _ad->clist.head;
 			active_item_child = 0;
 			active_button = -1;
-		} else {
+		} /*else {
 			active_button = 0;
-		}
+		}*/
 	} else {
 		active_item = active_item->next;
 		active_item_child = 0;
@@ -216,7 +323,7 @@ static void select_phone_or_email() {
 		FORM_ITEM_BUTTON(1, "ОК", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
 	END_FORM()
-	
+
 	free(items);
 
 	kbd_lang_ex = lng_lat;
@@ -232,7 +339,7 @@ static void select_phone_or_email() {
 			c->pe = NULL;
 		AD_save();
 	}
-	
+
 	cheque_draw();
 	form_destroy(form);
 }

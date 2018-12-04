@@ -1909,6 +1909,9 @@ static int handle_kbd(struct kbd_event *e, bool check_scr, bool busy)
 		{KEY_F9, cmd_reset},		/* сброс терминала */
 		{KEY_F10, cmd_kkt_info},	/* ККТ и ФН */
 		{KEY_F11, cmd_options},		/* установка параметров */
+	},
+	ctrl_shift_keys[] = {
+		{KEY_O, cmd_cheque_fa},		/* печать чека */
 	};
 	int i;
 	if ((e->key == KEY_NONE) || bad_repeat(e))
@@ -1932,6 +1935,11 @@ static int handle_kbd(struct kbd_event *e, bool check_scr, bool busy)
 				return cmd_shell;
 		}
 		if (e->shift_state & SHIFT_CTRL){
+			if (e->shift_state & SHIFT_SHIFT){
+				for (i = 0; i < ASIZE(ctrl_shift_keys); i++)
+					if (e->key == ctrl_shift_keys[i].key)
+						return ctrl_shift_keys[i].cm;
+			}
 			for (i = 0; i < ASIZE(ctrl_keys); i++)
 				if (e->key == ctrl_keys[i].key)
 					return ctrl_keys[i].cm;
@@ -2800,19 +2808,29 @@ static inline void show_no_kkt(void){
 }
 
 /* Показать окно фискального приложения */
-static void show_fa(void)
-{
+
+static void show_fa_with_arg(int arg) {
 	if (!cfg.has_kkt || (kkt == NULL))
 		show_no_kkt();
 	else if (!fa_active){
 		online = false;
 		guess_term_state();
 		push_term_info();
-		if (!init_fa()) {
+		if (!init_fa(arg)) {
 			online = true;
 			pop_term_info();
 		}
 	}
+}
+
+static void show_fa(void)
+{
+	show_fa_with_arg(cmd_fa);
+}
+
+static void show_cheque_fa(void)
+{
+	show_fa_with_arg(cmd_cheque_fa);
 }
 
 /* Вывод на экран информации о терминале */
@@ -4224,6 +4242,7 @@ static bool process_term(void)
 		{cmd_calculator,	show_calculator,	true},
 		{cmd_ping,		show_ping,		true},
 		{cmd_fa,		show_fa,		true},
+		{cmd_cheque_fa,		show_cheque_fa,		true},
 		{cmd_view_error,	show_error,		true},
 
 		{cmd_edit_iplir, on_edit_iplir, false},
