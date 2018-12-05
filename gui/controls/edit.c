@@ -424,12 +424,12 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 			case KEY_LEFT:
 				edit_set_cursor_pos(edit, edit->cur_pos - 1);
 				return true;
-			case KEY_ENTER:
+/*			case KEY_ENTER:
 			case KEY_NUMENTER:
 				if (edit->control.form->item_count == 3) {
 					edit->control.form->result = 1;
 					kbd_flush_queue();
-				}
+				}*/
 				return true;
 		}
 	}
