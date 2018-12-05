@@ -283,13 +283,32 @@ bool edit_insert_char(edit_t *edit, char ch) {
 	if (x > edit->text_draw_width)
 		edit_calc_draw_params(edit, (int)edit->text_draw_width - 2);
 
+	edit_draw(edit);
 	if (edit->control.focused) {
-		edit_draw(edit);
 		do_cursor_blinking(edit, true);
     	set_cursor_visibility(edit, true);
 	}
 
 	return true;
+}
+
+bool edit_replace_char(edit_t *edit, char ch) {
+	if (edit->cur_pos >= edit->length)
+		return false;
+		
+	if (edit->control.focused)
+    	set_cursor_visibility(edit, false);
+    	
+	edit->text[edit->cur_pos] = ch;
+	
+	edit->cur_pos++;
+
+	edit_draw(edit);
+	if (edit->control.focused) {
+		do_cursor_blinking(edit, true);
+	   	set_cursor_visibility(edit, true);
+   	}
+   	return true;
 }
 
 bool edit_remove_char(edit_t *edit) {
@@ -357,10 +376,16 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 			char *s = strchr(edit->text, '.');
 			if (s != NULL) {
 				int pos = s - edit->text;
-				if (edit->cur_pos > pos + 2)
+				if (edit->cur_pos > pos && edit->length - pos >= 3) {
+					if (edit->cur_pos < edit->length) {
+						if (isdigit(e->ch)) {
+							edit_replace_char(edit, e->ch);
+						}
+					}
 					return true;
+				}
 			}
-			if (e->ch == '.' && s == NULL)
+			if (e->ch == '.' && s == NULL && edit->cur_pos >= edit->length - 2)
 				break;
 		}
 		case FORM_INPUT_TYPE_NUMBER:
@@ -398,6 +423,13 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 				return true;
 			case KEY_LEFT:
 				edit_set_cursor_pos(edit, edit->cur_pos - 1);
+				return true;
+			case KEY_ENTER:
+			case KEY_NUMENTER:
+				if (edit->control.form->item_count == 3) {
+					edit->control.form->result = 1;
+					kbd_flush_queue();
+				}
 				return true;
 		}
 	}

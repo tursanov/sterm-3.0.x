@@ -199,7 +199,7 @@ static int fa_tlv_add_string(form_t *form, uint16_t tag, bool required) {
 
 	if ((ret = fa_get_string(form, &data, tag, required)) != 0)
 		return ret;
-		
+
 	if (data.size == 0)
 		return 0;
 
@@ -232,13 +232,18 @@ static int fa_tlv_add_fixed_string(form_t *form, uint16_t tag, size_t fixed_leng
 }
 
 static uint64_t form_data_to_vln(form_data_t *data) {
-	uint64_t value = 0;
+	double v = atof(data->data);
+	uint64_t value = (uint64_t)((v + 0.009) * 100.0);
+/*	
 	uint64_t d = 1;
+	
 	const char *text = (const char *)data->data + data->size - 1;
 	for (int i = 0; i < data->size; i++, text--, d = d * 10) {
 		if (isdigit(*text))
 			value += (*text - '0') * d;
-	}
+		else if (*text == '.' || *text == ',') {
+		}
+	}*/
 	return value;
 }
 
@@ -394,6 +399,71 @@ static int fa_load_cashier_data(cashier_data_t *data) {
 	return 0;
 }
 
+typedef void (*update_screen_func_t)(void *arg);
+
+static bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
+		size_t pattern_footer_size, 
+		update_screen_func_t update_func, void *update_func_arg) {
+	uint8_t status;
+
+	if ((status = fd_create_doc(doc_type, pattern_footer, pattern_footer_size)) != 0) {
+		if (status == 0x46) {
+			struct kkt_last_doc_info ldi;
+			uint8_t err_info[32];
+			size_t err_info_len;
+
+			printf("#1 %d\n", doc_type);
+LCheckLastDocNo:
+			status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
+			if (status != 0) {
+				printf("#2: %d\n", status);
+				fd_set_error(status, err_info, err_info_len);
+			} else {
+				printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
+				if (ldi.last_nr != ldi.last_printed_nr) {
+					if (message_box("Žè¨¡ª ", "®á«¥¤­¨© áä®à¬¨à®¢ ­­ë© ¤®ªã¬¥­â ­¥ ¡ë« ­ ¯¥ç â ­.\n"
+							"„«ï ¥£® ¯¥ç â¨ ¢áâ ¢ìâ¥ ¡ã¬ £ã ¢ ŠŠ’ ¨ ­ ¦¬¨â¥ ª­®¯ªã \"„ \"",
+							dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
+						if (update_func)
+							update_func(update_func_arg);
+						status = fd_print_last_doc(ldi.last_type);
+						if (status != 0) {
+							fd_set_error(status, err_info, err_info_len);
+						} else
+							return false;
+					} else {
+						if (update_func)
+							update_func(update_func_arg);
+						return false;
+					}
+				}
+			}
+		}
+	
+		const char *error;
+		fd_get_last_error(&error);
+		message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
+		if (update_func)
+			update_func(update_func_arg);
+
+		if (status == 0x41 || status == 0x42 || status == 0x44)
+			goto LCheckLastDocNo;
+
+		return false;
+	}
+	return true;
+}
+
+static void update_form(void *form) {
+	if (form)
+		form_draw((form_t *)form);
+}
+
+static void update_cheque(void *arg) {
+	kbd_flush_queue();
+	cheque_draw();
+}
+
 void fa_open_shift() {
 	BEGIN_FORM(open_shift_form, "Žâªàëâ¨¥ á¬¥­ë")
 		FORM_ITEM_EDIT_TEXT(1021, "Š áá¨à:", NULL, FORM_INPUT_TYPE_TEXT, 64)
@@ -410,12 +480,7 @@ void fa_open_shift() {
 			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
 			continue;
 
-		if (fd_create_doc(OPEN_SHIFT, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(OPEN_SHIFT, NULL, 0, update_form, form))
 			break;
 	}
 
@@ -445,12 +510,7 @@ void fa_close_shift() {
 			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
 			continue;
 
-		if (fd_create_doc(CLOSE_SHIFT, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(CLOSE_SHIFT, NULL, 0, update_form, form))
 			break;
 	}
 	fa_set_group(FAPP_GROUP_MENU);
@@ -465,12 +525,7 @@ void fa_calc_report() {
 
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
-		if (fd_create_doc(CALC_REPORT, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(CALC_REPORT, NULL, 0, update_form, form))
 			break;
 	}
 	form_destroy(form);
@@ -492,12 +547,7 @@ void fa_close_fs() {
 			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
 			continue;
 
-		if (fd_create_doc(CLOSE_FS, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(CLOSE_FS, NULL, 0, update_form, form))
 			break;
 	}
 	fa_set_group(FAPP_GROUP_MENU);
@@ -564,12 +614,7 @@ void fa_registration() {
 		if (fa_fill_registration_tlv(form) != 0)
 			continue;
 
-		if (fd_create_doc(REGISTRATION, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(REGISTRATION, NULL, 0, update_form, form))
 			break;
 	}
 	fa_set_group(FAPP_GROUP_MENU);
@@ -705,12 +750,7 @@ void fa_reregistration() {
 			continue;
 		}
 
-		if (fd_create_doc(RE_REGISTRATION, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(RE_REGISTRATION, NULL, 0, update_form, form))
 			break;
 	}
 	fa_set_group(FAPP_GROUP_MENU);
@@ -802,12 +842,7 @@ void fa_cheque_corr() {
 		if (data.cashier_inn[0])
 			ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
 
-		if (fd_create_doc(CHEQUE_CORR, NULL, 0) != 0) {
-			const char *error;
-			fd_get_last_error(&error);
-			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-			form_draw(form);
-		} else
+		if (fa_create_doc(CHEQUE_CORR, NULL, 0, update_form, form))
 			break;
 	}
 	fa_set_group(FAPP_GROUP_MENU);
@@ -853,6 +888,7 @@ void fa_cheque() {
 			sumE -= c->sum.e;
 		}
 	}
+	int64_t sn = llabs(sumN);
 
 	cheque_init();
 
@@ -861,9 +897,16 @@ void fa_cheque() {
 		
 			if (sumN > 0) {
 				form_t *form = NULL;
+				char title[256];
+				
+				sprintf(title, " áç¥â á¤ ç¨ (%s: %.1lld.%.2lld “)",
+					sumN > 0 ? "¥®¡å®¤¨¬® ¯®«ãç¨âì ®â ¯ áá ¦¨à " : 
+					"¥®¡å®¤¨¬® ¢ë¤ âì ¯ áá ¦¨àã",
+					sn / 100, sn % 100);
+					
 		
-				BEGIN_FORM(form, " áç¥â á¤ ç¨:")
-					FORM_ITEM_EDIT_TEXT(1031, "à¨­ïâ® ­ «¨ç­ë¬¨:", "0", FORM_INPUT_TYPE_MONEY, 16)
+				BEGIN_FORM(form, title)
+					FORM_ITEM_EDIT_TEXT(1031, "‚¢¥¤¨â¥ áã¬¬ã, ¯à¨­ïâãî ®â ¯ áá ¦¨à :", "", FORM_INPUT_TYPE_MONEY, 16)
 					FORM_ITEM_BUTTON(1, "ŽŠ", NULL)
 					FORM_ITEM_BUTTON(0, "Žâ¬¥­ ", NULL)
 				END_FORM()
@@ -887,12 +930,12 @@ void fa_cheque() {
 						form_draw(form);
 					} else {
 						char buffer[1024];
-						int64_t sn = llabs(sumN);
-						sprintf(buffer, "ˆŸ’Ž: %.1lld.%.2lld\n"
+						sprintf(buffer, "‘“ŒŒ€, Ž‹“—…€Ÿ Ž’ €‘‘€†ˆ€: %.1lld.%.2lld\n"
 							"%s: %.1lld.%.2lld\n"
-							"‘„€—€: %.1lld.%.2lld\n",
+							"‘„€—€: %.1lld.%.2lld\n"
+							"¥ç â âì ç¥ª(¨)?",
 							n / 100, n % 100,
-							sumN > 0 ? "‘“ŒŒ€ Š ˆ…Œ“" : "‘“ŒŒ€ Š ‚„€—…",
+							sumN > 0 ? "…Ž•Ž„ˆŒŽ Ž‹“—ˆ’œ „‹Ÿ Ž‹€’\x9b" : "‘“ŒŒ€ „‹Ÿ ‚\x9b„€—ˆ",
 							sn / 100, sn % 100,
 							sumC / 100, sumC % 100);
 						if (message_box("“¢¥¤®¬«¥­¨¥", buffer, dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
@@ -982,12 +1025,12 @@ void fa_cheque() {
 					pattern_footer = pattern_footer_buffer;
 					char *p = (char *)pattern_footer_buffer;
 					if (sumN != 0) {
-						n += sprintf(p + n, "Ž‹€’€ €‹ˆ—Œˆ\r\n");
+						n += sprintf(p + n, "Ž‹€’€ €‹ˆ—\x9bŒˆ\r\n");
 						if (sumN > 0)
 							n += sprintf(p + n, "‚‘…ƒŽ Š ˆ…Œ“: \x5%.1lld.%.2lld “.\r\n",
 								sumN / 100, sumN % 100);
 						else
-							n += sprintf(p + n, "‚‘…ƒŽ Š ‚‹€’…: \x5%.1lld.%.2lld “.\r\n",
+							n += sprintf(p + n, "‚‘…ƒŽ Š ‚\x9b‹€’…: \x5%.1lld.%.2lld “.\r\n",
 								sumN / 100, sumN % 100);
 						if (sumI > 0) {
 							n += sprintf(p + n, "Ž‹“—…Ž: \x5%.1lld.%.2lld “.\r\n",
@@ -1003,25 +1046,24 @@ void fa_cheque() {
 							n += sprintf(p + n, "‚‘…ƒŽ Š ˆ…Œ“: \x5%.1lld.%.2lld “.\r\n",
 								sumE / 100, sumE % 100);
 						else
-							n += sprintf(p + n, "‚‘…ƒŽ Š ‚‹€’…: \x5%.1lld.%.2lld “.\r\n",
+							n += sprintf(p + n, "‚‘…ƒŽ Š ‚\x9b‹€’…: \x5%.1lld.%.2lld “.\r\n",
 								sumE / 100, sumE % 100);
 					}
 
 					pattern_footer_size = n;
 				}
 
-				if (fd_create_doc(CHEQUE, pattern_footer, pattern_footer_size) != 0) {
-					const char *error;
-					fd_get_last_error(&error);
-					message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-					kbd_flush_queue();
-					cheque_draw();
-					break;
-				} else {
+				if (fa_create_doc(CHEQUE, pattern_footer, pattern_footer_size, update_cheque, NULL)) {
 					list_remove(&_ad->clist, c);
 					AD_save();
 					cheque_draw();
-				}
+				} else
+					break;
+				/*else {
+					kbd_flush_queue();
+					cheque_draw();
+					break;
+				}*/
 			}
 			fdo_resume();
 

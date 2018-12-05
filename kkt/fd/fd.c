@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include "sysdefs.h"
 #include "kkt/fd/tlv.h"
 #include "kkt/fd/fd.h"
@@ -52,31 +53,38 @@ static uint8_t *load_pattern(uint8_t doc_type, const uint8_t *pattern_footer,
 
 	if ((f = fopen(file_name, "rb")) == NULL) {
 		perror("fopen");
+		sprintf(last_error, "Ошибка открытия файла шаблона (%d)", errno);
 		return NULL;
 	}
 
 	if ((ret = fseek(f, 0, SEEK_END)) != 0) {
 		perror("fseek end");
+		sprintf(last_error, "Ошибка позиционyyирования файла шаблона (%d)", errno);
 		goto LOut;
 	}
 	file_size = ftell(f);
 	if (file_size < 0) {
 		perror("ftell");
+		sprintf(last_error, "Ошибка получения длины файла шаблона (%d)", errno);
 		goto LOut;
 	}
 	if ((ret = fseek(f, 0, SEEK_SET)) != 0) {
+		sprintf(last_error, "Ошибка получения длины файла шаблона (%d)", errno);
 		perror("fseek set");
 		goto LOut;
 	}
 	printf("file_size: %ld\n", file_size);
 	if ((pattern = (uint8_t *)malloc(file_size + pattern_footer_size + 1)) == NULL) {
+		sprintf(last_error, "Ошибка выделения памяти для шаблона (%d)", errno);
 		perror("malloc");
 		goto LOut;
 	}
 
 	if ((ret = fread(pattern, file_size, 1, f) != 1)) {
+		sprintf(last_error, "Ошибка чтения файла шаблона (%d)", errno);
 		perror("read");
 		free(pattern);
+		pattern = NULL;
 		goto LOut;
 	}
 	memcpy(pattern + file_size, pattern_footer, pattern_footer_size);
@@ -256,7 +264,7 @@ static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
     }
 }
 
-static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len) 
+void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len) 
 {
 	char *s = last_error;
 	switch (status) {
@@ -280,7 +288,7 @@ static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 			if (err_info_len > 0)
                 set_fn_error(s, err_info, err_info_len);
 			break;
-		case 0x46: //
+		case 0x46: // STATUS_LAST_UNPRINTED
 			sprintf(s, "%s", "последний сформированный документ не отпечатан");
 			break;
 		case 0x48: // STATUS_CUT_ERR
@@ -357,6 +365,12 @@ static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x84: // STATUS_INVALID_STATE
 			sprintf(s, "%s", "неправильное состояние");
 			break;
+		case 0x85: // STATUS_FS_REPLACED
+			sprintf(s, "%s", "Нельзя формировать ФД на другом ФН "
+				"(допускается формирование ФД только на том ФН, "
+				"с которым была проведена процедура регистрации "
+				"(перерегистрации в связи с заменой ФН)");
+			break;
 		case 0x86: // STATUS_SHIFT_NOT_CLOSED
 			sprintf(s, "%s", "Смена не закрыта");
 			break;
@@ -386,11 +400,11 @@ static void set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x8e: // STATUS_SHIFT_ALREADY_OPENED
 			sprintf(s, "%s", "Смена уже открыта");
 			break;
-		case 0x85: // STATUS_FS_REPLACED
-			sprintf(s, "%s", "Нельзя формировать ФД на другом ФН "
-				"(допускается формирование ФД только на том ФН, "
-				"с которым была проведена процедура регистрации "
-				"(перерегистрации в связи с заменой ФН)");
+		case 0x8f: // STATUS_NOT_ALL_DATA_SENDED
+			sprintf(s, "%s", "Не все данные переданы в ОФД");
+			break;
+		case 0x90: // STATUS_SHIFT_NEED_CLOSED
+			sprintf(s, "%s", "Для подолжения необходимо закрыть смену");
 			break;
 		case 0xf1: // STATUS_TIMEOUT
 			sprintf(s, "%s", "Таймаут приема ответа от ФР");
@@ -415,9 +429,9 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 
 	err_info_len = sizeof(err_info);
 	if ((ret = kkt_begin_doc(doc_type, err_info, &err_info_len)) != 0) {
-		set_error(ret, err_info, err_info_len);
+		fd_set_error(ret, err_info, err_info_len);
 		printf("kkt_begin_doc->ret = %.2x\n", ret);
-		return -1;
+		return ret;
 	}
 
 	size_t tlv_size = ffd_tlv_size();
@@ -437,7 +451,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 //				printf("tlv_buf_size = %d\n", tlv_buf_size);
 
 				if ((ret = kkt_send_doc_data(tlv_buf, tlv_buf_size, err_info, &err_info_len)) != 0) {
-					set_error(ret, err_info, err_info_len);
+					fd_set_error(ret, err_info, err_info_len);
 //					printf("kkt_send_doc_data->ret = %.2x\n", ret);
 
 					if (ret == 0x80 || ret == 0x8c) {
@@ -449,7 +463,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 						}
 					}
 
-					return -1;
+					return ret;
 				}
 
 				if (tlv == end)
@@ -484,7 +498,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 
 	err_info_len = sizeof(err_info);
 	if ((ret = kkt_end_doc(doc_type, pattern, pattern_size, &di, err_info, &err_info_len)) != 0) {
-		set_error(ret, err_info, err_info_len);
+		fd_set_error(ret, err_info, err_info_len);
 		printf("kkt_end_doc->ret = %.2x, err_info_len = %d\n", ret, err_info_len);
 
 		if (ret == 0x80 || ret == 0x8c) {
@@ -502,12 +516,50 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 LOut:
 	free(pattern);
 
-	return ret != 0 ? -1 : 0;
+	return ret;
 }
 
-int fd_get_last_error(const char **error)
-{
+int fd_get_last_error(const char **error) {
 	*error = last_error;
 	return 0;
 }
 
+int fd_print_last_doc(uint8_t doc_type) {
+	uint8_t ret;
+	uint8_t err_info[32];
+	size_t err_info_len;
+	uint8_t *pattern;
+	size_t pattern_size;
+	struct kkt_last_printed_info lpi;
+	uint8_t *pattern_footer = NULL;
+	size_t pattern_footer_size = 0;
+
+   	if ((pattern = load_pattern(doc_type, pattern_footer,
+				   	pattern_footer_size, &pattern_size)) == NULL) {
+		printf("load_pattern fail\n");
+		return -1;
+	}
+
+	err_info_len = sizeof(err_info);
+
+	if ((ret = kkt_print_last_doc(doc_type, pattern, pattern_size, &lpi,
+					err_info, &err_info_len)) != 0) {
+		fd_set_error(ret, err_info, err_info_len);
+
+		if (ret == 0x80 || ret == 0x8c) {
+			if (err_info_len > 0) {
+				uint16_t tag = *(uint16_t *)err_info;
+				uint8_t ex_err = err_info[2];
+
+				printf("error in tag %.4d -> %.2x\n", tag, ex_err);
+			}
+		}
+
+		goto LOut;
+	}
+
+LOut:
+	free(pattern);
+
+	return ret;
+}
