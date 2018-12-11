@@ -6,6 +6,18 @@
 #include "sysdefs.h"
 #include "kkt/fd/ad.h"
 
+static int strcmp2(const char *s1, const char *s2) {
+    if (s1 == NULL && s2 == NULL)
+        return 0;
+    else if (s1 == NULL && s2 != NULL)
+        return 1;
+    else if (s1 != NULL && s2 == NULL)
+        return 2;
+    else 
+        return strcmp(s1, s2);
+}
+
+
 static int save_string(FILE *f, char *s) {
     size_t len = s != NULL ? strlen(s) : 0;
     if (fwrite(&len, sizeof(len), 1, f) != 1)
@@ -171,17 +183,8 @@ K *K_divide(K *k, uint8_t p) {
     return k;
 }
 
-// сравнение строк (включает сравнение на NULL)
-static bool strcmpex(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    else if (s2 == NULL)
-        return s1 == NULL;
-    return strcmp(s1, s2) == 0;
-}
-
 static bool L_compare(L *l1, L *l2) {
-    return (strcmpex(l1->s, l2->s) &&
+    return (strcmp2(l1->s, l2->s) == 0 &&
             l1->r == l2->r &&
             l1->t == l2->t &&
             l1->n == l2->n &&
@@ -390,10 +393,10 @@ void P1_destroy(P1 *p1) {
         free(p1->i);
     if (p1->p != NULL)
         free(p1->p);
-    if (p1->s != NULL)
-        free(p1->s);
     if (p1->t != NULL)
         free(p1->t);
+    if (p1->c != NULL)
+        free(p1->c);
     free(p1);
 }
 
@@ -401,7 +404,7 @@ int P1_save(FILE *f, P1 *p1) {
     if (save_string(f, p1->i) < 0 ||
         save_string(f, p1->p) < 0 ||
         save_string(f, p1->t) < 0 ||
-        save_string(f, p1->s) < 0)
+        save_string(f, p1->c) < 0)
         return -1;
     return 0;
 }
@@ -411,8 +414,10 @@ P1* P1_load(FILE *f) {
     if (load_string(f, &p1->i) < 0 ||
         load_string(f, &p1->p) < 0 ||
         load_string(f, &p1->t) < 0 ||
-        load_string(f, &p1->s) < 0)
+        load_string(f, &p1->c) < 0)
         return NULL;
+    printf("P1->i = %s\n, P1->p = %s, P1->t = %s, P1->c = %s\n",
+            p1->i, p1->p, p1->t, p1->c);
     return p1;
 }
 
@@ -557,11 +562,8 @@ int AD_save() {
     FILE *f = fopen(FILE_NAME, "wb");
     
     if (f == NULL) {
-    	perror("save backet");
         return -1;
     }
-    
-    printf("begin save backet\n");
     
     if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
         (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
@@ -574,8 +576,6 @@ int AD_save() {
     else
         ret = 0;
 
-    printf("end save backet %d\n", ret);
-    
     fclose(f);
     return ret;
 }
@@ -644,7 +644,7 @@ void AD_setP1(P1 *p1) {
 C* AD_getCheque(K *k, uint8_t t1054, uint8_t t1055) {
     for (list_item_t *i = _ad->clist.head; i != NULL; i = i->next) {
         C *c = (C *)i->obj;
-        if (c->p == k->p && c->h == k->h && c->t1054 == t1054 && c->t1055 == t1055)
+        if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055)
             return c;
     }
     return NULL;
@@ -658,6 +658,8 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     C* c = AD_getCheque(k, t1054, t1055);
     
     if (c == NULL) {
+    	printf("create new cheque\n");
+    
         char* t1086 = NULL;
 
         if (_ad->p1 != NULL) {
@@ -668,28 +670,32 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
                 l += strlen(_ad->p1->p);
             if (_ad->p1->t)
                 l += strlen(_ad->p1->t);
+
+            printf("l = %d\n", l);
+
             t1086 = (char *)malloc(l + 1);
             sprintf(t1086, "%s%s%s",
                     _ad->p1->i ? _ad->p1->i : "",
                     _ad->p1->p ? _ad->p1->p : "",
                     _ad->p1->t ? _ad->p1->t : "");
         }
-        
+
         c = C_create();
         c->p = k->p;
         c->h = strdup(k->h);
         c->t1054 = t1054;
         c->t1055 = t1055;
         c->t1086 = t1086;
-        
+
         list_add(&_ad->clist, c);
-    }
-    
+    } else
+    	printf("cheque found\n");
+
     for (list_item_t *i = k->llist.head; i; i = i->next) {
         L *l = LIST_ITEM(i, L);
         S_addValue(k->m, l->t, 2, &_ad->sum[t1054 - 1], &c->sum);
     }
-    
+
     list_add(&c->klist, k);
     K_after_add(k);
 
@@ -701,7 +707,13 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
 int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
     for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
         C *c = LIST_IT_OBJ(i1, C);
-        if (c->p == k->p && c->h == k->h && c->t1054 == t1054 && c->t1055 == t1055) {
+        printf("AD_makeOp. check");
+       	printf("  c->p = %lld, k->p = %lld\n", c->p, k->p);
+       	printf("  c->h = %s, k->h = %s (equal: %d)\n", c->h, k->h,
+       		strcmp2(c->h, k->h) == 0);
+       	printf("  c->t1054 = %d, t1054 = %d\n", c->t1054, t1054);
+       	printf("  c->t1055 = %d, t1055 = %d\n", c->t1055, t1055);
+        if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
             for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
                 K *k1 = LIST_IT_OBJ(i2, K);
                 if (k1->i == k->r && k1->m == k->m && k1->o == o) {
@@ -729,6 +741,9 @@ int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
 
 int AD_processO(K *k) {
     K *k1, *k2;
+    
+    printf("process new K. K->o = %d\n", k->o);
+    
     switch (k->o) {
         case 1:
             k->i = k->d;
@@ -823,15 +838,15 @@ static int process_currency_value(const char *tag, const char *name,
 {
     char *endp;
     double v = strtod(val, &endp);
-    
+
     if (endp == NULL || *endp != 0) {
         printf("%s/@%s: Ошибка преобразования к вещественному типу\n", tag, name);
         return ERR_INVALID_VALUE;
     }
-    
+
     *out = (int64_t)((v + 0.009) * 100);
     *mask |= mask_value;
-    
+
     return 0;
 }
 
@@ -853,7 +868,7 @@ static int process_phone_value(const char *tag, const char *name,
         return ERR_INVALID_VALUE;
     }
 
-    
+
     if (f == '8') {
         s = malloc(len + 2);
         s[0] = '+';
@@ -864,7 +879,7 @@ static int process_phone_value(const char *tag, const char *name,
         s = strdup(val);
     *out = s;
     *mask |= mask_value;
-    
+
     return 0;
 }
 
@@ -879,7 +894,7 @@ static int process_email_value(const char *tag, const char *name,
         printf("%s/@%s: неправильная длина", tag, name);
         return ERR_INVALID_VALUE;
     }
-    
+
     int at = -1;
     for (int i = 0; i < len; i++) {
         if (val[i] == '@') {
@@ -894,7 +909,7 @@ static int process_email_value(const char *tag, const char *name,
 
     *out = strdup(val);
     *mask |= mask_value;
-    
+
     return 0;
 }
 
@@ -919,18 +934,18 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
             break;
         case 1:
             if (strcmp(name, "K") == 0) {
-                if (_k != NULL)
-                    K_destroy(_k);
+            	if (_k != NULL)
+            		K_destroy(_k);
                 _k = K_create();
                 _kMask = 0;
             } else if (strcmp(name, "L") == 0) {
-                if (_l != NULL)
-                    L_destroy(_l);
+            	if (_l != NULL)
+            		L_destroy(_l);
                 _l = L_create();
                 _lMask = 0;
             } else if (strcmp(name, "P1") == 0) {
-                if (_p1 != NULL)
-                    P1_destroy(_p1);
+            	if (_p1 != NULL)
+            		P1_destroy(_p1);
                 _p1 = P1_create();
                 _p1Mask = 0;
             }
@@ -952,6 +967,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                             printf("Обязательный атрибут K/@%c отсутствует\n",
                                    tags[i]);
                     }
+                    K_destroy(_k);
                 }
                 _k = NULL;
             } else if (strcmp(name, "L") == 0) {
@@ -970,13 +986,17 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                             printf("Обязательный атрибут L/@%c отсутствует\n",
                                    tags[i]);
                     }
+                    L_destroy(_l);
                 }
                 _l = NULL;
             } else if (strcmp(name, "P1") == 0) {
                 if (!check) {
                 	AD_setP1(_p1);
-                }
+                } else
+                	P1_destroy(_p1);
+               	_p1 = NULL;
             }
+            break;
         case 3:
             if (_l != NULL) {
                 if (strcmp(name, "S") == 0 &&
@@ -1054,13 +1074,13 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     _p1->i = strdup(val);
                     _p1Mask |= 0x01;
                 } else if (strcmp(name, "P") == 0) {
-                    _p1->i = strdup(val);
+                    _p1->p = strdup(val);
                     _p1Mask |= 0x02;
                 } else if (strcmp(name, "T") == 0) {
-                    _p1->i = strdup(val);
+                    _p1->t = strdup(val);
                     _p1Mask |= 0x04;
                 } else if (strcmp(name, "C") == 0) {
-                    _p1->i = strdup(val);
+                    _p1->c = strdup(val);
                     _p1Mask |= 0x08;
                 }
             }

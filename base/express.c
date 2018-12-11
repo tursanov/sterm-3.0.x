@@ -2236,8 +2236,8 @@ bool execute_resp(void)
 	can_reject = false;
 	lprn_error_shown = false;
 
-	if (has_kkt_resp)
-		show_hints();
+/*	if (has_kkt_resp)
+		show_hints();*/
 
 	if (kt != key_none){
 		if (!is_rstatus_error_msg())

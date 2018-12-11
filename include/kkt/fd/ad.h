@@ -96,7 +96,7 @@ typedef struct P1 {
     char *i;
     char *p;
     char *t;
-    char *s;
+    char *c;
 } P1;
 
 extern P1 *P1_create(void);
