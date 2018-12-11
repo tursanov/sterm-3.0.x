@@ -161,6 +161,6 @@ extern void AD_setP1(P1 *p1);
 #define AD_doc_count() (_ad ? _ad->docs.count : 0)
 
 // callback для обработки XML
-//extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
+extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
 
 #endif // AD_H

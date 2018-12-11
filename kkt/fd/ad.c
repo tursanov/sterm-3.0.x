@@ -6,6 +6,11 @@
 #include "sysdefs.h"
 #include "kkt/fd/ad.h"
 
+#ifdef WIN32
+#define strcasecmp _stricmp
+#define strdup _strdup
+#endif
+
 static int strcmp2(const char *s1, const char *s2) {
     if (s1 == NULL && s2 == NULL)
         return 0;
@@ -183,12 +188,14 @@ K *K_divide(K *k, uint8_t p) {
     return k;
 }
 
-static bool L_compare(L *l1, L *l2) {
-    return (strcmp2(l1->s, l2->s) == 0 &&
-            l1->r == l2->r &&
-            l1->t == l2->t &&
-            l1->n == l2->n &&
-            l1->c == l2->c);
+static int L_compare(void *arg, L *l1, L *l2) {
+	if ((strcmp2(l1->s, l2->s) == 0 &&
+		l1->r == l2->r &&
+		l1->t == l2->t &&
+		l1->n == l2->n &&
+		l1->c == l2->c))
+		return 0;
+	return 1;
 }
 
 bool K_equalByL(K *k1, K* k2) {
@@ -471,7 +478,7 @@ int string_array_init(string_array_t *array) {
 }
 
 int string_array_clear(string_array_t *array) {
-	for (int i = 0; i < array->count; i++)
+	for (size_t i = 0; i < array->count; i++)
 		if (array->values[i])
 			free(array->values[i]);
 	memset(array->values, 0, sizeof(char *) * array->count);
@@ -480,7 +487,7 @@ int string_array_clear(string_array_t *array) {
 }
 
 int string_array_free(string_array_t *array) {
-	for (int i = 0; i < array->count; i++)
+	for (size_t i = 0; i < array->count; i++)
 		if (array->values[i])
 			free(array->values[i]);
 
@@ -707,7 +714,7 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
 int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
     for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
         C *c = LIST_IT_OBJ(i1, C);
-        printf("AD_makeOp. check");
+        printf("AD_makeOp. check\n");
        	printf("  c->p = %lld, k->p = %lld\n", c->p, k->p);
        	printf("  c->h = %s, k->h = %s (equal: %d)\n", c->h, k->h,
        		strcmp2(c->h, k->h) == 0);
@@ -720,7 +727,7 @@ int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
                     if (K_equalByL(k, k1)) {
                         for (list_item_t *i3 = k1->llist.head; i3; i3 = i3->next) {
                             L *l1 = LIST_ITEM(i3, L);
-                            S_subtractValue(k1->m, l1->t, 2, _ad->sum[t1054 - 1], &c->sum);
+                            S_subtractValue(k1->m, l1->t, 2, &_ad->sum[t1054 - 1], &c->sum);
                         }
                         list_it_remove(&i2);
                         if (c->klist.count == 0)

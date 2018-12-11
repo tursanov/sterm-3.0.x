@@ -38,7 +38,7 @@ typedef struct list_it_t {
 } list_it_t;
 
 #define LIST_IT(list) { (list), (list)->head, NULL }
-#define LIST_IT_END(it) ((it).i != NULL)
+#define LIST_IT_END(it) ((it).i == NULL)
 #define LIST_IT_OBJ(it, type) ((type *)((it).i->obj))
 static inline void list_it_next(list_it_t *it) {
     it->p = it->i;

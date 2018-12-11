@@ -62,6 +62,8 @@
 #include "tki.h"
 #include "transport.h"
 
+bool kkt_test = false;
+
 /* Режим работы терминала */
 int wm = wm_main;
 /* Необходима блокировка терминала (ошибка работы с ППУ) */
@@ -276,12 +278,14 @@ static bool parse_cmd_line(int argc, char **argv)
 #if defined __FAKE_RESP__
 		"r:"
 #endif
-		"v";
+		"v"
+		"k";
 	const struct option longopts[] = {
 #if defined __FAKE_RESP__
 		{"resp-file",	required_argument,	NULL,	'r'},
 #endif
 		{"version",	no_argument,		NULL,	'v'},
+		{"testkkt",	no_argument,		NULL,	'k'},
 		{NULL,		0,			NULL,	0},
 	};
 	bool loop_flag = true, ret_flag = true;
@@ -296,6 +300,9 @@ static bool parse_cmd_line(int argc, char **argv)
 				dump_config();
 				loop_flag = false;
 				ret_val = RET_VERSION;
+				break;
+			case 'k':
+				kkt_test = true;
 				break;
 			case ':':
 			case '?':
@@ -1177,7 +1184,10 @@ static void init_devices(void)
 		}
 	}
 	fdo_resume();
-	//kkt = (struct dev_info *)malloc(sizeof(struct dev_info));
+	
+	if (kkt_test && kkt == NULL) {
+		kkt = (struct dev_info *)malloc(sizeof(struct dev_info));
+	}
 }
 
 /* Инициализация терминала */
