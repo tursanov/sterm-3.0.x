@@ -958,18 +958,20 @@ void fa_cheque() {
 		
 		
 			fdo_suspend();
+			
+			cashier_data_t data = { "", "", "", "" };
+			fa_load_cashier_data(&data);
 
 			while (_ad->clist.head) {
 				C *c = LIST_ITEM(_ad->clist.head, C);
 				ffd_tlv_reset();
-				cashier_data_t data = { "", "", "", "" };
-				fa_load_cashier_data(&data);
+
 				if (data.cashier_post[0])
 					ffd_tlv_add_string(1021, data.cashier_post);
 				printf("CASHIER_INN: %d\n", data.cashier_inn[0]);
 				if (data.cashier_inn[0])
 					ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
-
+					
 				ffd_tlv_add_uint8(1054, c->t1054);
 				ffd_tlv_add_uint8(1055, c->t1055);
 				if (c->pe)
@@ -1005,12 +1007,19 @@ void fa_cheque() {
 						ffd_tlv_add_string(1030, s1030);
 						ffd_tlv_add_vln(1079, l->t);
 						ffd_tlv_add_fvln(1023, 1, 0);
-						if (l->n == 0)
-							l->n = 6;
-						ffd_tlv_add_vln(1199, l->n);
+						if (l->n > 0)
+							ffd_tlv_add_vln(1199, l->n);
 						if (l->n >= 1 && l->n <= 4) {
 							ffd_tlv_add_vln(1198, l->c);
 							ffd_tlv_add_vln(1200, l->c);
+						}
+						if (c->p != user_inn) {
+							char inn[12+1];
+							if (c->p > 9999999999ll)
+								sprintf(inn, "%.12lld", c->p);
+							else
+								sprintf(inn, "%.10lld", c->p);
+							ffd_tlv_add_fixed_string(1226, inn, 12);
 						}
 						ffd_tlv_stlv_end();
 					}
@@ -1029,9 +1038,11 @@ void fa_cheque() {
 						if (sumN > 0)
 							n += sprintf(p + n, "‚‘…ƒ Š ˆ…Œ“: \x5%.1lld.%.2lld “.\r\n",
 								sumN / 100, sumN % 100);
-						else
+						else {
+							sumN = -sumN;
 							n += sprintf(p + n, "‚‘…ƒ Š ‚\x9b‹€’…: \x5%.1lld.%.2lld “.\r\n",
 								sumN / 100, sumN % 100);
+						}
 						if (sumI > 0) {
 							n += sprintf(p + n, "‹“—…: \x5%.1lld.%.2lld “.\r\n",
 								sumI / 100, sumI % 100);
@@ -1041,7 +1052,7 @@ void fa_cheque() {
 					}
 
 					if (sumE != 0) {
-						n += sprintf(p + n, "‹€’€ …‡€‹ˆ—Œˆ\r\n");
+						n += sprintf(p + n, "‹€’€ …‡€‹ˆ—\x9bŒˆ\r\n");
 						if (sumE > 0)
 							n += sprintf(p + n, "‚‘…ƒ Š ˆ…Œ“: \x5%.1lld.%.2lld “.\r\n",
 								sumE / 100, sumE % 100);

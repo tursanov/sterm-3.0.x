@@ -15,9 +15,9 @@ static int strcmp2(const char *s1, const char *s2) {
     if (s1 == NULL && s2 == NULL)
         return 0;
     else if (s1 == NULL && s2 != NULL)
-        return 1;
+        return -1;
     else if (s1 != NULL && s2 == NULL)
-        return 2;
+        return 1;
     else 
         return strcmp(s1, s2);
 }
@@ -1025,7 +1025,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                                                  &_lMask, 0x08, &_l->t)) != 0)
                         return ret;
                 } else if (strcmp(name, "N") == 0) {
-                    if ((ret = process_int_value("L", name, val, 1, 6,
+                    if ((ret = process_int_value("L", name, val, 0, 6,
                                                  &_lMask, 0x10, &v64)) != 0)
                         return ret;
 					_l->n = (uint8_t)v64;
