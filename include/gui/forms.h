@@ -86,6 +86,9 @@ int form_execute(form_t *form);
 void form_draw(form_t *form);
 bool form_focus(form_t *form, int id);
 
+void draw_title(GCPtr sreeen, FontPtr fnt, const char *title);
+
+
 typedef struct form_data_t {
 	const void *data;
 	size_t size;

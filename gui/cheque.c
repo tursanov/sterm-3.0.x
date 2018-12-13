@@ -1,4 +1,5 @@
 #include "kbd.h"
+#include <sys/param.h>
 #include "paths.h"
 #include "gui/gdi.h"
 #include "gui/cheque.h"
@@ -14,9 +15,13 @@ extern int kbd_get_char_ex(int key);
 static int active_button = 0;
 static C *current_c = NULL;
 static list_item_t *active_item = NULL;
+static int active_item_n = 0;
 static int active_item_child = 0;
 static int64_t sumN = 0;
 static int64_t sumE = 0;
+static list_item_t *first = NULL;
+static int first_n = 0;
+static bool main_view = true;
 
 int cheque_init(void) {
 	if (fnt == NULL)
@@ -26,6 +31,7 @@ int cheque_init(void) {
     SetFont(screen, fnt);
 
 	active_item = NULL;
+	active_item_n = 0;
 	active_item_child = 0;
 	if (!_ad->clist.head)
 		active_button = 1;
@@ -34,6 +40,9 @@ int cheque_init(void) {
 
 	sumN = 0;
 	sumE = 0;
+	first = _ad->clist.head;
+	first_n = 0;
+	main_view = true;
 
 	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
@@ -125,28 +134,94 @@ static int email_or_phone_draw(C *c, int start_y) {
 
 	fill_rect(GAP*2 + tw - 2, y - 2, tw2 + 4, fnt->max_height + 4, 2, selectedColor, 0);
 
+	y += fnt->max_height;
+
+	return y;
+}
+
+static int doc_view_collapsed_draw(C *c, int start_y) {
+	int y = start_y;
+	char text[128];
+	sprintf(text, "Просмотр документов чека (%d)", c->klist.count);
+	int tw = TextWidth(fnt, text);
+	Color selectedColor = (active_item && LIST_ITEM(active_item, C) == c &&
+			active_item_child == 1) ? clRopnetDarkBrown : clSilver;
+
+	SetTextColor(screen, clBlack);
+	TextOut(screen, GAP*2, y, text);
+
+	fill_rect(GAP*2 - 2, y - 2, tw + 4, fnt->max_height + 4, 2, selectedColor, 0);
+
 	y += fnt->max_height + GAP;
 
 	return y;
 }
 
-static int cheque_draw_cheque(C *c, int start_y) {
+static int doc_view_expanded_draw(C *c, int start_y) {
+	int y = start_y;
+	char text[1024];
+
+	SetTextColor(screen, clBlack);
+	
+	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next) {
+		K *k = LIST_ITEM(li1, K);
+		uint64_t sum = 0;
+		
+		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
+			L *l = LIST_ITEM(li2, L);
+			sum += l->t;
+		}
+		
+		sprintf(text, "Документ N%.14lld (СУММА: %.1lld.%.2lld)", k->i, sum / 100, sum % 100);
+		TextOut(screen, GAP*2, y, text);
+		y += fnt->max_height;
+		
+		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
+			const char *svat[] = {
+				"НДС 20%",
+				"НДС 10%",
+				"НДС 20/120",
+				"НДС 10/110",
+			};
+			char *p = text;
+			L *l = LIST_ITEM(li2, L);
+			p += sprintf(p, "%s: %.1lld.%.2lld", l->s, l->t / 100, l->t % 100);
+			if (l->n >= 1 && l->n <= 4) {
+				sprintf(p, " (в т.ч. %s: %.1lld.%.2lld)", svat[l->n - 1],
+					l->c / 100, l->c % 100);
+			}
+			TextOut(screen, GAP*4, y, text);
+			y += fnt->max_height;
+		}
+	}
+	y += GAP;
+
+	return y;
+}
+
+static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_view) {
 	const char *cheque_type[] = { "Приход", "Возврат прихода", "Расход", "Возврат расхода" };
 	const char *payout_kind[] = { "Наличными:", "Безналичными:", "В зачет ранее внесенных средств:", "ИТОГО:" };
 	int64_t s[4] = { c->sum.n, c->sum.e, c->sum.p, c->sum.a };
 	char ss[4][32];
 	char cheque_title[32];
+	char cheque_n[32];
 	int sw;
-	int x, w, h;
+	int x, w, w1, h;
 	int y = start_y;
 
 	sprintf(cheque_title, "Чек (%s)", cheque_type[c->t1054 - 1]);
+	sprintf(cheque_n, "%d", n + 1);
 	w = TextWidth(fnt, cheque_title);
+	w1 = TextWidth(fnt, cheque_n);
 	h = fnt->max_height + GAP;
-	x = (DISCX - w - GAP*2);
-	fill_rect(x - GAP, y, w + GAP*2, h, 2, clGray, clSilver);
+	x = (DISCX - w - GAP*5);
+	fill_rect(x - GAP, y, w + GAP*5, h, 2, clGray, clSilver);
 	SetTextColor(screen, clBlack);
 	TextOut(screen, x, y + GAP/2, cheque_title);
+	SetBrushColor(screen, clGray);
+	FillBox(screen, DISCX - w1 - GAP * 3, y + GAP/2 - 4, 2, h - 3);
+	TextOut(screen, DISCX - w1 - GAP * 2, y + GAP/2, cheque_n);
 	y += GAP;
 
 	w = 0;
@@ -172,6 +247,10 @@ static int cheque_draw_cheque(C *c, int start_y) {
 	}
 
 	y = email_or_phone_draw(c, start_y);
+	if (doc_info_collapsed_view)
+		y = doc_view_collapsed_draw(c, y);
+	else
+		y = doc_view_expanded_draw(c, y);
 
 	fill_rect(10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
 	y += GAP;
@@ -248,15 +327,23 @@ static int cheque_draw_sum(int start_y) {
 	return y;
 }
 
-int cheque_draw() {
-	ClearGC(screen, clSilver);
-
+#define MAX_CHEQUE_PER_PAGE	3
+static int cheque_main_draw() {
 	int x;
 	int y = 8;
-	if (_ad->clist.head) {
-		for (list_item_t *i1 = _ad->clist.head; i1; i1 = i1->next) {
+	if (first) {
+		char title[256];
+		sprintf(title, "Всего чеков: %d текущая страница (с %d по %d чек)",
+			_ad->clist.count, first_n + 1, MIN(first_n + MAX_CHEQUE_PER_PAGE, _ad->clist.count));
+	
+		draw_title(screen, fnt, title);
+		
+		y += 20;
+		
+		size_t n = 0;
+		for (list_item_t *i1 = first; i1 && n < MAX_CHEQUE_PER_PAGE; i1 = i1->next, n++) {
 			C *c = LIST_ITEM(i1, C);
-			y = cheque_draw_cheque(c, y);
+			y = cheque_draw_cheque(c, first_n + n, y, true);
 		}
 		
 		y = cheque_draw_sum(y);
@@ -282,22 +369,60 @@ int cheque_draw() {
 	return 0;
 }
 
+static void cheque_info_draw() {
+	int x = (DISCX - BUTTON_WIDTH) / 2;
+	int y = GAP*2;
+	C *c = LIST_ITEM(active_item, C);
+
+	char title[256];
+	sprintf(title, "Просмотр информации чека %d", active_item_n + 1);
+
+	draw_title(screen, fnt, title);
+
+	y = cheque_draw_cheque(c, active_item_n, y + 2, false);
+
+	draw_button(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+}
+
+int cheque_draw() {
+	ClearGC(screen, clSilver);
+	if (main_view)
+		cheque_main_draw();
+	else
+		cheque_info_draw();
+	return 0;
+}
+
 static void next_focus() {
 	if (active_button == 0)
 		active_button = 1;
 	else if (active_button == 1) {
-		if (_ad->clist.head) {
-			active_item = _ad->clist.head;
+		if (first) {
+			active_item = first;
+			active_item_n = first_n;
 			active_item_child = 0;
 			active_button = -1;
 		} /*else {
 			active_button = 0;
 		}*/
 	} else {
-		active_item = active_item->next;
-		active_item_child = 0;
-		if (active_item == NULL)
-			active_button = 0;
+		if (active_item_child == 0)
+			active_item_child = 1;
+		else {
+			if (++active_item_n >= first_n + MAX_CHEQUE_PER_PAGE ||
+					active_item_n >= _ad->clist.count) {
+				active_item = NULL;
+				active_button = 0;
+			} else {
+				if (active_item != NULL)
+					active_item = active_item->next;
+				else {
+					active_item = first;
+					active_item_n = first_n;
+				}
+				active_item_child = 0;
+			}
+		}
 	}
 	cheque_draw();
 }
@@ -344,6 +469,11 @@ static void select_phone_or_email() {
 	form_destroy(form);
 }
 
+static void show_doc_info() {
+	main_view = false;
+	cheque_draw();
+}
+
 static bool cheque_process(const struct kbd_event *_e) {
 	struct kbd_event e = *_e;
 
@@ -357,23 +487,74 @@ static bool cheque_process(const struct kbd_event *_e) {
 	e.ch = kbd_get_char_ex(e.key);
 
 	if (e.pressed) {
-		switch (e.key) {
-			case KEY_ESCAPE:
-				current_c = NULL;
-				return 0;
-			case KEY_TAB:
-				next_focus();
-				return 1;
-			case KEY_ENTER:
-				if (active_button == 0) {
-					current_c = LIST_ITEM(_ad->clist.head, C);
-					return 0;
-				} else if (active_button == 1) {
+		if (main_view) {
+			switch (e.key) {
+				case KEY_ESCAPE:
 					current_c = NULL;
 					return 0;
-				} else if (active_item_child == 0) {
-					select_phone_or_email();
-				}
+				case KEY_TAB:
+				case KEY_DOWN:
+					next_focus();
+					return 1;
+				case KEY_ENTER:
+					if (active_button == 0) {
+						current_c = LIST_ITEM(_ad->clist.head, C);
+						return 0;
+					} else if (active_button == 1) {
+						current_c = NULL;
+						return 0;
+					} else if (active_item_child == 0) {
+						select_phone_or_email();
+					} else if (active_item_child == 1) {
+						show_doc_info();
+					}
+					break;
+				case KEY_RIGHT:
+				case KEY_PGDN:
+					if (first) {
+						list_item_t *li = first;
+						int li_n = first_n;
+						
+						for (int i = 0; li && i < MAX_CHEQUE_PER_PAGE; i++, li = li->next, li_n++);
+						if (!li)
+							break;
+							
+						first = li;
+						first_n = li_n;
+						if (active_button == -1) {
+							active_item = first;
+							active_item_n = first_n;
+						}
+						cheque_draw();
+					}
+					break;
+				case KEY_LEFT:
+				case KEY_PGUP:
+					if (first) {
+						if (!first_n)
+							break;
+						first_n -= MAX_CHEQUE_PER_PAGE;
+						first = _ad->clist.head;
+						if (first_n < 0)
+							first_n = 0;
+						else
+							for (int i = 0; i < first_n; i++, first = first->next, i++);
+						if (active_button == -1) {
+							active_item = first;
+							active_item_n = first_n;
+						}
+						cheque_draw();
+					}
+					break;
+			}
+		} else {
+			switch (e.key) {
+				case KEY_ESCAPE:
+				case KEY_ENTER:
+					main_view = true;
+					cheque_draw();
+					break;
+			}
 		}
 	}
 

@@ -80,7 +80,6 @@ typedef struct C {
     uint8_t t1054;  // признак расчета
     uint8_t t1055;  // применяемая система налогообложения
     S sum;          // сумма
-    char * t1086;  // значение дополнительного реквизита пользователя
     char *pe;       // Тел. или e-mail покупателя
 } C;
 
@@ -155,8 +154,7 @@ extern void AD_destroy(void);
 extern int AD_save(void);
 // загрузка корзины с диска
 extern int AD_load(uint8_t t1055);
-// установка значения для тэга T1086
-extern void AD_setT1086(const char *i, const char *p, const char *t);
+// установка значения для P1
 extern void AD_setP1(P1 *p1);
 #define AD_doc_count() (_ad ? _ad->docs.count : 0)
 

@@ -155,10 +155,10 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 	return form;
 }
 
-static void form_draw_title(form_t *form) {
-	if (form->name) {
-		int w = TextWidth(form_fnt, form->name) + BORDER_WIDTH*2 + GAP*2;
-		int h = form_fnt->max_height + BORDER_WIDTH*2;
+void draw_title(GCPtr screen, FontPtr fnt, const char *title) {
+	if (title) {
+		int w = TextWidth(fnt, title) + BORDER_WIDTH*2 + GAP*2;
+		int h = fnt->max_height + BORDER_WIDTH*2;
 		int x = (DISCX - w) / 2;
 
 		// рамка
@@ -176,9 +176,13 @@ static void form_draw_title(form_t *form) {
 		SetGCBounds(screen, x + BORDER_WIDTH, BORDER_WIDTH,
 				w - BORDER_WIDTH * 2, h - BORDER_WIDTH * 2);
 		SetTextColor(screen, RGB(64, 64, 64));
-		TextOut(screen, GAP, (h - form_fnt->max_height) / 2 - BORDER_WIDTH*2, form->name);
+		TextOut(screen, GAP, (h - fnt->max_height) / 2 - BORDER_WIDTH*2, title);
 		SetGCBounds(screen, 0, 0, DISCX, DISCY);
 	}
+}
+
+static void form_draw_title(form_t *form) {
+	draw_title(screen, form_fnt, form->name);
 }
 
 void form_draw(form_t *form) {

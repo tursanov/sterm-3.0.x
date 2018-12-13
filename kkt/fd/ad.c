@@ -337,8 +337,6 @@ void C_destroy(C *c) {
         free(c->h);
     if (c->pe != NULL)
         free(c->pe);
-    if (c->t1086 != NULL)
-        free(c->t1086);
 
 	int64_array_clear(&_ad->docs);
 	string_array_clear(&_ad->phones);
@@ -366,7 +364,6 @@ int C_save(FILE *f, C *c) {
             SAVE_INT(f, c->t1054) < 0 ||
             SAVE_INT(f, c->t1055) < 0 ||
             S_save(f, &c->sum) < 0 ||
-            save_string(f, c->t1086) < 0 ||
             save_string(f, c->pe) < 0)
         return -1;
     return 0;
@@ -380,7 +377,6 @@ C * C_load(FILE *f) {
             LOAD_INT(f, c->t1054) < 0 ||
             LOAD_INT(f, c->t1055) < 0 ||
             S_load(f, &c->sum) < 0 ||
-            load_string(f, &c->t1086) < 0 ||
             load_string(f, &c->pe) < 0) {
         C_destroy(c);
         return NULL;
@@ -574,6 +570,7 @@ int AD_save() {
     
     if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
         (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
+        save_string(f, _ad->t1086) < 0 ||
         S_save(f, &_ad->sum[0]) < 0 ||
         S_save(f, &_ad->sum[1]) < 0 ||
         S_save(f, &_ad->sum[2]) < 0 ||
@@ -600,6 +597,7 @@ int AD_load(uint8_t t1055) {
     
     if (LOAD_INT(f, hasP1) < 0 ||
         (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
+        load_string(f, &_ad->t1086) < 0 ||
         S_load(f, &_ad->sum[0]) < 0 ||
         S_load(f, &_ad->sum[1]) < 0 ||
         S_load(f, &_ad->sum[2]) < 0 ||
@@ -616,35 +614,32 @@ int AD_load(uint8_t t1055) {
     return ret;
 }
 
-void AD_setT1086(const char *i, const char *p, const char *t) {
-    if (_ad->t1086 != NULL)
-        free(_ad->t1086);
-    
-    size_t lenI = i != NULL ? strlen(i) : 0;
-    size_t lenP = p != NULL ? strlen(p) : 0;
-    size_t lenT = t != NULL ? strlen(t) : 0;
-    
-    _ad->t1086 = (char *)malloc(lenI + lenP + lenT + 1);
-    char *ptr = _ad->t1086;
-    if (lenI > 0) {
-        memcpy(ptr, i, lenI);
-        ptr += lenI;
-    }
-    if (lenP > 0) {
-        memcpy(ptr, p, lenP);
-        ptr += lenP;
-    }
-    if (lenT > 0) {
-        memcpy(ptr, t, lenT);
-        ptr += lenT;
-    }
-    *ptr = 0;
-}
-
 void AD_setP1(P1 *p1) {
 	if (_ad->p1 != NULL)
 		P1_destroy(_ad->p1);
 	_ad->p1 = p1;
+
+    if (_ad->p1 != NULL) {
+        size_t l = 0;
+        if (_ad->p1->i)
+            l += strlen(_ad->p1->i);
+        if (_ad->p1->p)
+            l += strlen(_ad->p1->p);
+        if (_ad->p1->t)
+            l += strlen(_ad->p1->t);
+
+        printf("l = %d\n", l);
+
+		if (_ad->t1086)
+			free(_ad->t1086);
+        _ad->t1086 = (char *)malloc(l + 1);
+        sprintf(_ad->t1086, "%s%s%s",
+                _ad->p1->i ? _ad->p1->i : "",
+                _ad->p1->p ? _ad->p1->p : "",
+                _ad->p1->t ? _ad->p1->t : "");
+    }
+	
+	
 	AD_save();
 }
 
@@ -666,33 +661,12 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     
     if (c == NULL) {
     	printf("create new cheque\n");
-    
-        char* t1086 = NULL;
-
-        if (_ad->p1 != NULL) {
-            size_t l = 0;
-            if (_ad->p1->i)
-                l += strlen(_ad->p1->i);
-            if (_ad->p1->p)
-                l += strlen(_ad->p1->p);
-            if (_ad->p1->t)
-                l += strlen(_ad->p1->t);
-
-            printf("l = %d\n", l);
-
-            t1086 = (char *)malloc(l + 1);
-            sprintf(t1086, "%s%s%s",
-                    _ad->p1->i ? _ad->p1->i : "",
-                    _ad->p1->p ? _ad->p1->p : "",
-                    _ad->p1->t ? _ad->p1->t : "");
-        }
 
         c = C_create();
         c->p = k->p;
         c->h = strdup(k->h);
         c->t1054 = t1054;
         c->t1055 = t1055;
-        c->t1086 = t1086;
 
         list_add(&_ad->clist, c);
     } else

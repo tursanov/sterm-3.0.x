@@ -990,10 +990,10 @@ void fa_cheque() {
 					ffd_tlv_add_string(1171, phone);
 				}
 
-				if (c->t1086 != NULL) {
+				if (_ad->t1086 != NULL) {
 					ffd_tlv_stlv_begin(1084, 320);
 					ffd_tlv_add_string(1085, "’…Œˆ€‹");
-					ffd_tlv_add_string(1086, c->t1086);
+					ffd_tlv_add_string(1086, _ad->t1086);
 					ffd_tlv_stlv_end();
 				}
 				for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
