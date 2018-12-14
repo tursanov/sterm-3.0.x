@@ -64,7 +64,7 @@ bool control_set_data(struct control_t *control, int what, const void *data, siz
 	return false;
 }
 
-void control_fill_rect(int x, int y, int width, int height, int border_width,
+void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color) {
 	// рамка
 	SetBrushColor(screen, border_color);
@@ -82,4 +82,9 @@ void control_fill_rect(int x, int y, int width, int height, int border_width,
 			width - border_width * 2, height - border_width * 2);
 	}
 
+}
+
+void control_fill_rect(int x, int y, int width, int height, int border_width,
+		Color border_color, int bg_color) {
+	fill_rect(screen, x, y, width, height, border_width, border_color, bg_color);
 }

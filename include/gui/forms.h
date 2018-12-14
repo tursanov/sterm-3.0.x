@@ -110,5 +110,10 @@ bool form_set_data(form_t *form, int id, int what, const void *data, size_t data
 	form_set_data(form, id, 0, (void *)(int)value, 0)
 #define FORM_LISTBOX_SET_SELECTED_INDEX(form, id, selected_index) \
 	form_set_data(form, id, 0, (void *)(int)selected_index, 0)
+	
+void draw_button(GCPtr screen, FontPtr fnt, int x, int y, int width, int height, const char *text, bool focused);
+void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
+		Color border_color, int bg_color);
+	
 
 #endif		/* GUI_FORMS_H */

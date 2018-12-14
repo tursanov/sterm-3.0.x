@@ -35,15 +35,13 @@ typedef struct list_it_t {
     list_t *list;
     list_item_t *i;
     list_item_t *p;
+	int flags;
 } list_it_t;
 
-#define LIST_IT(list) { (list), (list)->head, NULL }
+#define LIST_IT(list) { (list), (list)->head, NULL, 0 }
 #define LIST_IT_END(it) ((it).i == NULL)
 #define LIST_IT_OBJ(it, type) ((type *)((it).i->obj))
-static inline void list_it_next(list_it_t *it) {
-    it->p = it->i;
-    it->i = it->i->next;
-}
+void list_it_next(list_it_t *it);
 void list_it_remove(list_it_t *it);
 
 #endif /* list_h */

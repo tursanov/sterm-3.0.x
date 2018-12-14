@@ -21,6 +21,7 @@
 #include "gui/scr.h"
 #include "gui/forms.h"
 #include "gui/cheque.h"
+#include "gui/cheque_docs.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fdo.h"
@@ -52,6 +53,7 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Чек коррекции", cmd_cheque_corr_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
 	return true;
 }
@@ -159,6 +161,7 @@ void release_fa(void)
 		close_fs_form = NULL;
 	}
 	cheque_release();
+	cheque_docs_release();
 	if (fa_menu)
 		release_menu(fa_menu,false);
 	online = true;
@@ -421,21 +424,19 @@ LCheckLastDocNo:
 			} else {
 				printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
 				if (ldi.last_nr != ldi.last_printed_nr) {
-					if (message_box("Ошибка", "Последний сформированный документ не был напечатан.\n"
-							"Для его печати вставьте бумагу в ККТ и нажмите кнопку \"Да\"",
-							dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
-						if (update_func)
-							update_func(update_func_arg);
-						status = fd_print_last_doc(ldi.last_type);
-						if (status != 0) {
-							fd_set_error(status, err_info, err_info_len);
-						} else
-							return false;
-					} else {
-						if (update_func)
-							update_func(update_func_arg);
-						return false;
-					}
+					message_box("Ошибка", "Последний сформированный документ не был напечатан.\n"
+							"Для его печати вставьте бумагу в ККТ и нажмите Enter",
+							dlg_yes, 0, al_center);
+					if (update_func)
+						update_func(update_func_arg);
+					status = fd_print_last_doc(ldi.last_type);
+
+					printf("LD: status = %d\n", status);
+
+					if (status != 0) {
+						fd_set_error(status, err_info, err_info_len);
+					} else
+						return true;
 				}
 			}
 		}
@@ -894,7 +895,6 @@ void fa_cheque() {
 
 	while (true) {
 		if (cheque_execute()) {
-		
 			if (sumN > 0) {
 				form_t *form = NULL;
 				char title[256];
@@ -949,11 +949,10 @@ void fa_cheque() {
 					}
 				}
 				form_destroy(form);
+				cheque_draw();
 				
-				if (sumI < sumN) {
-					cheque_draw();
+				if (sumI < sumN)
 					continue;
-				}
 			}
 		
 		
@@ -1067,6 +1066,7 @@ void fa_cheque() {
 				if (fa_create_doc(CHEQUE, pattern_footer, pattern_footer_size, update_cheque, NULL)) {
 					list_remove(&_ad->clist, c);
 					AD_save();
+					cheque_sync_first();
 					cheque_draw();
 				} else
 					break;
@@ -1083,6 +1083,13 @@ void fa_cheque() {
 		} else
 			break;
 	}
+
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
+void fa_del_doc() {
+	cheque_docs_init();
+	cheque_docs_execute();
 
 	fa_set_group(FAPP_GROUP_MENU);
 }
@@ -1113,6 +1120,9 @@ static bool process_fa_cmd(int cmd) {
 			break;
 		case cmd_cheque_fa:
 			fa_cheque();
+			break;
+		case cmd_del_doc_fa:
+			fa_del_doc();
 			break;
 		default:
 			ret = false;

@@ -158,6 +158,7 @@ enum {
 	cmd_cheque_corr_fa,
 	cmd_calc_report_fa,
 	cmd_close_fs_fa,
+	cmd_del_doc_fa,
 };
 
 extern int kt;			/* β¨― ͺ«ξη  DS1990A */

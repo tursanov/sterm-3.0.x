@@ -166,4 +166,15 @@ void list_it_remove(list_it_t *it) {
     if (tmp == it->list->head)
         it->list->head = it->i;
     it->list->count--;
+	it->flags = 1;
+}
+
+void list_it_next(list_it_t *it) {
+	if (it->flags)
+		it->flags = 0;
+	else {
+		it->p = it->i;
+		if (it->i != NULL)
+			it->i = it->i->next;
+	}
 }

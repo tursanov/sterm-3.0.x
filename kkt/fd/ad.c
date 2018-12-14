@@ -4,7 +4,11 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include "sysdefs.h"
+#ifdef WIN32
+#include "ad.h"
+#else
 #include "kkt/fd/ad.h"
+#endif
 
 #ifdef WIN32
 #define strcasecmp _stricmp
@@ -558,7 +562,11 @@ void AD_destroy() {
     _ad = NULL;
 }
 
+#ifdef WIN32
+#define FILE_NAME   "ad.bin"
+#else
 #define FILE_NAME   "/home/sterm/ad.bin"
+#endif
 
 int AD_save() {
     int ret = -1;
@@ -594,7 +602,7 @@ int AD_load(uint8_t t1055) {
         return -1;
     int ret;
     uint8_t hasP1 = 0;
-    
+
     if (LOAD_INT(f, hasP1) < 0 ||
         (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
         load_string(f, &_ad->t1086) < 0 ||
@@ -606,10 +614,7 @@ int AD_load(uint8_t t1055) {
         ret = -1;
     else
         ret = 0;
-        
-    printf("AD_load: %d, ad.C.count: %d, ad.docs.count: %d\n", ret, _ad->clist.count,
-    	_ad->docs.count);
-    
+
     fclose(f);
     return ret;
 }
@@ -638,9 +643,39 @@ void AD_setP1(P1 *p1) {
                 _ad->p1->p ? _ad->p1->p : "",
                 _ad->p1->t ? _ad->p1->t : "");
     }
-	
-	
+
 	AD_save();
+}
+
+int AD_delete_doc(int64_t doc) {
+	int count = 0;
+    for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
+        C *c = LIST_IT_OBJ(i1, C);
+		for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
+			K *k = LIST_IT_OBJ(i2, K);
+			if (k->i == doc) {
+				list_it_remove(&i2);
+				count++;
+            }
+        }
+		if (c->klist.count == 0) {
+			list_it_remove(&i1);
+		}
+	}
+
+	_ad->docs.count = 0;
+
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			int64_array_add(&_ad->docs, k->i, true);
+		}
+	}
+	
+    if (count)
+    	AD_save();
+   	return count;
 }
 
 C* AD_getCheque(K *k, uint8_t t1054, uint8_t t1055) {

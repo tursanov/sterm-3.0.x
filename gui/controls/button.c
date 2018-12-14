@@ -42,8 +42,40 @@ void button_destroy(button_t *button) {
 	free(button);
 }
 
-void button_draw(button_t *button) {
+void draw_button(GCPtr screen, FontPtr fnt, int x, int y, int width, int height, const char *text, bool focused) {
 	Color borderColor;
+	Color bgColor;
+	Color fgColor;
+
+	if (focused) {
+		borderColor = clRopnetDarkBrown;
+		bgColor = clRopnetBrown;
+		fgColor = clBlack;
+	} else {
+		borderColor = RGB(184, 184, 184);
+		bgColor = RGB(200, 200, 200);
+		fgColor = RGB(32, 32, 32);
+	}
+
+	fill_rect(screen, x, y, width, height, 2, borderColor, bgColor);
+
+	if (text) {
+		int tw = TextWidth(fnt, text);
+
+		x += (width - tw) / 2;
+		y += (height - fnt->max_height)/2;
+		SetTextColor(screen, fgColor);
+		TextOut(screen, x, y, text);
+	}
+}
+
+
+void button_draw(button_t *button) {
+	draw_button(screen, form_fnt, button->control.x, button->control.y,
+		button->control.width, button->control.height, button->text,
+		button->control.focused);
+
+/*	Color borderColor;
 	Color bgColor;
 	Color fgColor;
 
@@ -76,7 +108,7 @@ void button_draw(button_t *button) {
 
 		TextOut(screen, x, y, button->text);
 	}
-	SetGCBounds(screen, 0, 0, DISCX, DISCY);
+	SetGCBounds(screen, 0, 0, DISCX, DISCY);*/
 }
 
 bool button_focus(button_t *button, bool focus) {

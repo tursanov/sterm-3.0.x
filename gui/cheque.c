@@ -72,49 +72,7 @@ void cheque_release(void) {
 	}
 }
 
-void fill_rect(int x, int y, int width, int height, int border_width,
-		Color border_color, int bg_color) {
-	// рамка
-	SetBrushColor(screen, border_color);
-	SetRop2Mode(screen, R2_COPY);
-	FillBox(screen, x, y, width, border_width);
-	FillBox(screen, x, y + height - border_width, width, border_width);
-	FillBox(screen, x, y + border_width, border_width, height - border_width - 1);
-	FillBox(screen, x + width - border_width, y + border_width, 
-		border_width, height - border_width - 1);
-
-	// заполнение
-	if (bg_color > 0) {
-		SetBrushColor(screen, bg_color);
-		FillBox(screen, x + border_width, y + border_width,
-			width - border_width * 2, height - border_width * 2);
-	}
-}
 #define GAP 10
-
-void draw_button(int x, int y, int width, int height, const char *text, bool focused) {
-	Color borderColor;
-	Color bgColor;
-	Color fgColor;
-
-	if (focused) {
-		borderColor = clRopnetDarkBrown;
-		bgColor = clRopnetBrown;
-		fgColor = clBlack;
-	} else {
-		borderColor = RGB(184, 184, 184);
-		bgColor = RGB(200, 200, 200);
-		fgColor = RGB(32, 32, 32);
-	}
-
-	fill_rect(x, y, width, height, 2, borderColor, bgColor);
-	int tw = TextWidth(fnt, text);
-
-	x += (width - tw) / 2;
-	y += (height - fnt->max_height)/2;
-	SetTextColor(screen, fgColor);
-	TextOut(screen, x, y, text);
-}
 
 #define IR_COLOR	clGray
 
@@ -132,7 +90,7 @@ static int email_or_phone_draw(C *c, int start_y) {
 	TextOut(screen, GAP*2, y, title);
 	TextOut(screen, GAP*2 + tw, y, email_or_phone);
 
-	fill_rect(GAP*2 + tw - 2, y - 2, tw2 + 4, fnt->max_height + 4, 2, selectedColor, 0);
+	fill_rect(screen, GAP*2 + tw - 2, y - 2, tw2 + 4, fnt->max_height + 4, 2, selectedColor, 0);
 
 	y += fnt->max_height;
 
@@ -150,7 +108,7 @@ static int doc_view_collapsed_draw(C *c, int start_y) {
 	SetTextColor(screen, clBlack);
 	TextOut(screen, GAP*2, y, text);
 
-	fill_rect(GAP*2 - 2, y - 2, tw + 4, fnt->max_height + 4, 2, selectedColor, 0);
+	fill_rect(screen, GAP*2 - 2, y - 2, tw + 4, fnt->max_height + 4, 2, selectedColor, 0);
 
 	y += fnt->max_height + GAP;
 
@@ -216,7 +174,7 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 	w1 = TextWidth(fnt, cheque_n);
 	h = fnt->max_height + GAP;
 	x = (DISCX - w - GAP*5);
-	fill_rect(x - GAP, y, w + GAP*5, h, 2, clGray, clSilver);
+	fill_rect(screen, x - GAP, y, w + GAP*5, h, 2, clGray, clSilver);
 	SetTextColor(screen, clBlack);
 	TextOut(screen, x, y + GAP/2, cheque_title);
 	SetBrushColor(screen, clGray);
@@ -252,7 +210,7 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 	else
 		y = doc_view_expanded_draw(c, y);
 
-	fill_rect(10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
+	fill_rect(screen, 10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
 	y += GAP;
 
 	return y;
@@ -321,7 +279,7 @@ static int cheque_draw_sum(int start_y) {
 	}
 	y += 4;
 
-	fill_rect(10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
+	fill_rect(screen, 10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
 	y += GAP;
 
 	return y;
@@ -351,7 +309,7 @@ static int cheque_main_draw() {
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
 		x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
-		draw_button(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
+		draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
 	} else {
 		const char *text = "Нет документов для печати";
 		SetTextColor(screen, clBlack);
@@ -364,7 +322,7 @@ static int cheque_main_draw() {
 		y += fnt->max_height + 8;
 	}
 
-	draw_button(x + BUTTON_WIDTH + GAP, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Отмена", active_button == 1);
+	draw_button(screen, fnt, x + BUTTON_WIDTH + GAP, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Отмена", active_button == 1);
 
 	return 0;
 }
@@ -381,7 +339,7 @@ static void cheque_info_draw() {
 
 	y = cheque_draw_cheque(c, active_item_n, y + 2, false);
 
-	draw_button(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+	draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
 }
 
 int cheque_draw() {
@@ -572,4 +530,10 @@ bool cheque_execute(void) {
 	} while ((ret = cheque_process(&e)) > 0);
 
 	return current_c != NULL;
+}
+
+
+void cheque_sync_first(void) {
+	int i = 0;
+	for (first = _ad->clist.head; first && i < first_n; i++, first = first->next);
 }
