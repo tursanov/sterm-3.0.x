@@ -153,33 +153,38 @@ void K_destroy(K *k) {
 }
 
 bool K_addL(K *k, L* l) {
-    return list_add(&k->llist, l);
+	if (list_add(&k->llist, l) == 0) {
+		return true;
+	}
+	return false;
 }
 
 #define COPYSTR(s) ((s) != NULL ? strdup(s) : NULL)
 
 struct K_divide_arg {
-    list_t *llist;
+    K *k;
     uint8_t p;
 };
 
 static bool K_divide_func(struct K_divide_arg *arg, L *l) {
     if (l->p == arg->p) {
-        list_add(arg->llist, l);
-        return true;
+		if (list_add(&arg->k->llist, l) == 0)
+	        return true;
     }
     return false;
 }
 
 K *K_divide(K *k, uint8_t p) {
     K *k1 = (K*)malloc(sizeof(K));
-    struct K_divide_arg arg = { &k1->llist, p };
+    struct K_divide_arg arg = { k1, p };
 
     k1->o = k->o;          // Операция
     k1->d = k->d;          // Номер оформляемого документа или КРС при возврате
     k1->r = k->r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
-    k1->i = k->i;          // индекс
-    k1->p = k->p;          // ИНН перевозчика
+    k1->i1 = k->i1;          // индекс
+	k1->i2 = k->i2;          // индекс
+	k1->i21 = k->i21;          // индекс
+	k1->p = k->p;          // ИНН перевозчика
 
     k1->h = COPYSTR(k->h); // телефон перевозчика
     k1->m = k->m;          // способ оплаты
@@ -211,8 +216,10 @@ int K_save(FILE *f, K *k) {
         SAVE_INT(f, k->o) < 0 ||
         SAVE_INT(f, k->d) < 0 ||
         SAVE_INT(f, k->r) < 0 ||
-        SAVE_INT(f, k->i) < 0 ||
-        SAVE_INT(f, k->p) < 0 ||
+        SAVE_INT(f, k->i1) < 0 ||
+		SAVE_INT(f, k->i2) < 0 ||
+		SAVE_INT(f, k->i21) < 0 ||
+		SAVE_INT(f, k->p) < 0 ||
         save_string(f, k->h) < 0 ||
         SAVE_INT(f, k->m) < 0 ||
         save_string(f, k->t) < 0 ||
@@ -222,7 +229,7 @@ int K_save(FILE *f, K *k) {
 }
 
 static void K_after_add(K *k) {
-    int64_array_add(&_ad->docs, k->i, true);
+    int64_array_add(&_ad->docs, k->d, true);
     if (k->t != NULL) {
 	    string_array_add(&_ad->phones, k->t, true, 0);
 	}
@@ -237,8 +244,10 @@ K *K_load(FILE *f) {
             LOAD_INT(f, k->o) < 0 ||
             LOAD_INT(f, k->d) < 0 ||
             LOAD_INT(f, k->r) < 0 ||
-            LOAD_INT(f, k->i) < 0 ||
-            LOAD_INT(f, k->p) < 0 ||
+            LOAD_INT(f, k->i1) < 0 ||
+			LOAD_INT(f, k->i2) < 0 ||
+			LOAD_INT(f, k->i21) < 0 ||
+			LOAD_INT(f, k->p) < 0 ||
             load_string(f, &k->h) < 0 ||
             LOAD_INT(f, k->m) < 0 ||
             load_string(f, &k->t) < 0 ||
@@ -250,82 +259,6 @@ K *K_load(FILE *f) {
     return k;
 }
 
-void S_add(S *dst, S*src) {
-    dst->a += src->a;
-    dst->n += src->n;
-    dst->e += src->e;
-    dst->p += src->p;
-}
-
-void S_subtract(S *dst, S*src) {
-    dst->a -= src->a;
-    dst->n -= src->n;
-    dst->e -= src->e;
-    dst->p -= src->p;
-}
-
-void S_addValue(uint8_t m, int64_t value, size_t count, ...) {
-    va_list args;
-    va_start(args, count);
-    
-    for (size_t i = 0; i < count; i++) {
-        S *sum = va_arg(args, struct S *);
-        sum->a += value;
-        switch (m) {
-            case 1:
-                sum->n += value;
-                break;
-            case 2:
-                sum->e += value;
-                break;
-            case 3:
-                sum->p += value;
-                break;
-        }
-    }
-    va_end(args);
-}
-
-void S_subtractValue(uint8_t m, int64_t value, size_t count, ...) {
-    va_list args;
-    va_start(args, count);
-    
-    for (size_t i = 0; i < count; i++) {
-        S *sum = va_arg(args, struct S *);
-        sum->a -= value;
-        switch (m) {
-            case 1:
-                sum->n -= value;
-                break;
-            case 2:
-                sum->e -= value;
-                break;
-            case 3:
-                sum->p -= value;
-                break;
-        }
-    }
-    va_end(args);
-}
-
-static int S_save(FILE *f, S *s) {
-    if (SAVE_INT(f, s->a) < 0 ||
-        SAVE_INT(f, s->n) < 0 ||
-        SAVE_INT(f, s->e) < 0 ||
-        SAVE_INT(f, s->p) < 0)
-        return -1;
-    return 0;
-}
-
-static int S_load(FILE *f, S *s) {
-    if (LOAD_INT(f, s->a) < 0 ||
-        LOAD_INT(f, s->n) < 0 ||
-        LOAD_INT(f, s->e) < 0 ||
-        LOAD_INT(f, s->p) < 0)
-        return -1;
-    return 0;
-
-}
 
 C* C_create(void) {
     C *c = (C *)malloc(sizeof(C));
@@ -358,7 +291,10 @@ void C_destroy(C *c) {
 }
 
 bool C_addK(C *c, K *k) {
-    return list_add(&c->klist, k);
+	if (list_add(&c->klist, k) == 0) {
+		return true;
+	}
+	return false;
 }
 
 int C_save(FILE *f, C *c) {
@@ -367,7 +303,6 @@ int C_save(FILE *f, C *c) {
             save_string(f, c->h) < 0 ||
             SAVE_INT(f, c->t1054) < 0 ||
             SAVE_INT(f, c->t1055) < 0 ||
-            S_save(f, &c->sum) < 0 ||
             save_string(f, c->pe) < 0)
         return -1;
     return 0;
@@ -380,7 +315,6 @@ C * C_load(FILE *f) {
             load_string(f, &c->h) < 0 ||
             LOAD_INT(f, c->t1054) < 0 ||
             LOAD_INT(f, c->t1055) < 0 ||
-            S_load(f, &c->sum) < 0 ||
             load_string(f, &c->pe) < 0) {
         C_destroy(c);
         return NULL;
@@ -579,10 +513,6 @@ int AD_save() {
     if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
         (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
         save_string(f, _ad->t1086) < 0 ||
-        S_save(f, &_ad->sum[0]) < 0 ||
-        S_save(f, &_ad->sum[1]) < 0 ||
-        S_save(f, &_ad->sum[2]) < 0 ||
-        S_save(f, &_ad->sum[3]) < 0 ||
         save_list(f, &_ad->clist, (list_item_func_t)C_save) < 0)
         ret = -1;
     else
@@ -602,19 +532,20 @@ int AD_load(uint8_t t1055) {
         return -1;
     int ret;
     uint8_t hasP1 = 0;
-
+    
     if (LOAD_INT(f, hasP1) < 0 ||
         (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
         load_string(f, &_ad->t1086) < 0 ||
-        S_load(f, &_ad->sum[0]) < 0 ||
-        S_load(f, &_ad->sum[1]) < 0 ||
-        S_load(f, &_ad->sum[2]) < 0 ||
-        S_load(f, &_ad->sum[3]) < 0 ||
         load_list(f, &_ad->clist, (load_item_func_t)C_load) < 0)
         ret = -1;
     else
         ret = 0;
 
+	AD_calc_sum();
+        
+    printf("AD_load: %d, ad.C.count: %d, ad.docs.count: %d\n", ret, _ad->clist.count,
+    	_ad->docs.count);
+    
     fclose(f);
     return ret;
 }
@@ -653,14 +584,13 @@ int AD_delete_doc(int64_t doc) {
         C *c = LIST_IT_OBJ(i1, C);
 		for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
 			K *k = LIST_IT_OBJ(i2, K);
-			if (k->i == doc) {
+			if (k->d == doc) {
 				list_it_remove(&i2);
 				count++;
             }
         }
-		if (c->klist.count == 0) {
+		if (c->klist.count == 0)
 			list_it_remove(&i1);
-		}
 	}
 
 	_ad->docs.count = 0;
@@ -669,9 +599,11 @@ int AD_delete_doc(int64_t doc) {
 		C *c = LIST_ITEM(li1, C);
 		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
-			int64_array_add(&_ad->docs, k->i, true);
+			int64_array_add(&_ad->docs, k->d, true);
 		}
 	}
+
+	AD_calc_sum();
 	
     if (count)
     	AD_save();
@@ -707,11 +639,6 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     } else
     	printf("cheque found\n");
 
-    for (list_item_t *i = k->llist.head; i; i = i->next) {
-        L *l = LIST_ITEM(i, L);
-        S_addValue(k->m, l->t, 2, &_ad->sum[t1054 - 1], &c->sum);
-    }
-
     list_add(&c->klist, k);
     K_after_add(k);
 
@@ -720,39 +647,46 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     return 0;
 }
 
-int AD_makeOp(K *k, uint8_t o, uint8_t t1054, uint8_t t1055, uint8_t op) {
+int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
     for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
         C *c = LIST_IT_OBJ(i1, C);
-        printf("AD_makeOp. check\n");
-       	printf("  c->p = %lld, k->p = %lld\n", c->p, k->p);
-       	printf("  c->h = %s, k->h = %s (equal: %d)\n", c->h, k->h,
-       		strcmp2(c->h, k->h) == 0);
-       	printf("  c->t1054 = %d, t1054 = %d\n", c->t1054, t1054);
-       	printf("  c->t1055 = %d, t1055 = %d\n", c->t1055, t1055);
         if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
             for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
                 K *k1 = LIST_IT_OBJ(i2, K);
-                if (k1->i == k->r && k1->m == k->m && k1->o == o) {
+                if (k1->i1 == k->r && k1->m == k->m && k1->o == o) {
                     if (K_equalByL(k, k1)) {
-                        for (list_item_t *i3 = k1->llist.head; i3; i3 = i3->next) {
-                            L *l1 = LIST_ITEM(i3, L);
-                            S_subtractValue(k1->m, l1->t, 2, &_ad->sum[t1054 - 1], &c->sum);
-                        }
                         list_it_remove(&i2);
                         if (c->klist.count == 0)
                             list_it_remove(&i1);
-                    } else {
-                        k->i = k->r;
-                        AD_makeCheque(k, k->r, op, t1055);
-                    }
-                    return 0;
+						return 0;
+					}
                 }
             }
         }
     }
-    k->i = k->r;
-    AD_makeCheque(k, k->r, op, t1055);
+    AD_makeCheque(k, k->r, 2, t1055);
     return 0;
+}
+
+int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
+	for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
+		C *c = LIST_IT_OBJ(i1, C);
+		if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
+			for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
+				K *k1 = LIST_IT_OBJ(i2, K);
+				if (k1->i21 == k->r && (k1->i2 == 0 || k1->i2 == k->r) && k1->m == k->m && k1->o == o) {
+					if (K_equalByL(k, k1)) {
+						list_it_remove(&i2);
+						if (c->klist.count == 0)
+							list_it_remove(&i1);
+						return 0;
+					}
+				}
+			}
+		}
+	}
+	AD_makeCheque(k, k->r, t1054 == 2 ? 1 : 2, t1055);
+	return 0;
 }
 
 int AD_processO(K *k) {
@@ -762,24 +696,31 @@ int AD_processO(K *k) {
     
     switch (k->o) {
         case 1:
-            k->i = k->d;
+            k->i1 = k->d;
             AD_makeCheque(k, k->d, 1, _ad->t1055);
             break;
         case 2:
             k1 = K_divide(k, 1);
-            k->i = k->d;
+            k->i2 = k->d;
+			k->i21 = k->r;
             AD_makeCheque(k, k->r, 2, _ad->t1055);
-            k1->i = k->d;
-            AD_makeCheque(k1, k->d, 1, _ad->t1055);
+			if (k1->llist.count > 0) {
+				k1->i2 = k->d;
+				k1->i21 = k->r;
+				AD_makeCheque(k1, k->d, 1, _ad->t1055);
+			} else
+				K_destroy(k1);
             break;
         case 3:
-            AD_makeOp(k, 1, 1, _ad->t1055, 2);
+            AD_makeAnnul(k, 1, 1, _ad->t1055);
             break;
         case 4:
             k2 = K_divide(k, 2);
-            AD_makeOp(k, 2, 2, _ad->t1055, 1);
-            if (k2->llist.count  > 0)
-                AD_makeOp(k2, 2, 1, _ad->t1055, 2);
+            AD_makeAnnulReturn(k, 2, 2, _ad->t1055);
+			if (k2->llist.count > 0)
+				AD_makeAnnulReturn(k2, 2, 1, _ad->t1055);
+			else
+				K_destroy(k2);
             break;
     }
     return 0;
@@ -1102,7 +1043,41 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
             }
             break;
         case 4:
+			if (!check)
+				AD_calc_sum();
             break;
     }
     return 0;
+}
+
+
+void AD_calc_sum() {
+	memset(_ad->sum, 0, sizeof(_ad->sum));
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		memset(&c->sum, 0, sizeof(c->sum));
+		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+				L *l = LIST_ITEM(li3, L);
+				S *s = &_ad->sum[l->p - 1];
+				switch (k->m) {
+				case 1:
+					c->sum.n += l->t;
+					s->n += l->t;
+					break;
+				case 2:
+					c->sum.e= l->t;
+					s->e += l->t;
+					break;
+				case 3:
+					c->sum.p += l->t;
+					s->p += l->t;
+					break;
+				}
+				c->sum.a += l->t;
+				s->a += l->t;
+			}
+		}
+	}
 }

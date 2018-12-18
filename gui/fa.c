@@ -874,6 +874,7 @@ static size_t get_phone(char *src, char *dst) {
 }
 
 void fa_cheque() {
+	bool changed = false;
 	int64_t sumN = 0;
 	int64_t sumE = 0;
 	int64_t sumI = 0;
@@ -1068,6 +1069,7 @@ void fa_cheque() {
 					AD_save();
 					cheque_sync_first();
 					cheque_draw();
+					changed = true;
 				} else
 					break;
 				/*else {
@@ -1083,6 +1085,8 @@ void fa_cheque() {
 		} else
 			break;
 	}
+	
+	AD_calc_sum();
 
 	fa_set_group(FAPP_GROUP_MENU);
 }

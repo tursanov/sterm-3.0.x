@@ -6,6 +6,10 @@
 #include "sysdefs.h"
 #include "list.h"
 
+struct C;
+struct L;
+struct K;
+
 // составляющая
 typedef struct L {
     char *s;        // Название составляющей
@@ -27,12 +31,14 @@ extern L *L_load(FILE *f);
 
 // документ
 typedef struct K {
-    struct list_t llist;    // список составляющих
+	struct list_t llist;    // список составляющих
     uint8_t o;          // Операция
     int64_t d;          // Номер оформляемого документа или КРС при возврате
     int64_t r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
-    int64_t i;          // индекс
-    int64_t p;          // ИНН перевозчика
+    int64_t i1;          // индекс
+	int64_t i2;          // индекс
+	int64_t i21;          // индекс
+	int64_t p;          // ИНН перевозчика
     char *h;            // телефон перевозчика
     uint8_t m;          // способ оплаты
     char *t;            // номер телефона пассажира
@@ -63,14 +69,6 @@ typedef struct S {
     int64_t p; // сумма в зачет ранее внесенных средств
 } S;
 
-// прибавить к dst src
-extern void S_add(S *dst, S*src);
-// вычесть из dst src
-extern void S_subtract(S* dst, S*src);
-// прибавить значение к сумме (в зависимости от вида расчета)
-extern void S_addValue(uint8_t m, int64_t value, size_t count, ...);
-// вычесть из суммы значение (в зависимости от вида расчета)
-extern void S_subtractValue(uint8_t m, int64_t value, size_t count, ...);
 
 // чек
 typedef struct C {
@@ -160,6 +158,8 @@ extern void AD_setP1(P1 *p1);
 
 // удаление из корзины документа
 extern int AD_delete_doc(int64_t doc);
+
+extern void AD_calc_sum();
 
 // callback для обработки XML
 extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);

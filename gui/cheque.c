@@ -130,7 +130,7 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 			sum += l->t;
 		}
 		
-		sprintf(text, "„®ªã¬¥­â N%.14lld (‘“ŒŒ€: %.1lld.%.2lld)", k->i, sum / 100, sum % 100);
+		sprintf(text, "„®ªã¬¥­â N%.14lld (‘“ŒŒ€: %.1lld.%.2lld)", k->d, sum / 100, sum % 100);
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
 		
