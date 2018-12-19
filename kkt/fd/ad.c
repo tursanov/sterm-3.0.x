@@ -674,7 +674,7 @@ int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 		if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
 			for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
 				K *k1 = LIST_IT_OBJ(i2, K);
-				if (k1->i21 == k->r && (k1->i2 == 0 || k1->i2 == k->r) && k1->m == k->m && k1->o == o) {
+				if ((k1->i2 == k->r || k1->i21 == k->r) && k1->m == k->m && k1->o == o) {
 					if (K_equalByL(k, k1)) {
 						list_it_remove(&i2);
 						if (c->klist.count == 0)
