@@ -1607,7 +1607,7 @@ static bool create_term(void)
 		return false;
 	fdo_init();
 	/* загрузка корзины фискального приложения */
-	AD_load((1 << cfg.tax_system));
+	AD_load((1 << cfg.tax_system), false);
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));

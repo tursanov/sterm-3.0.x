@@ -3,24 +3,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+int list_add_item(list_t *list, list_item_t *item) {
+	item->next = NULL;
+	if (list->tail == NULL) {
+		list->head = list->tail = item;
+	} else {
+		list->tail->next = item;
+		list->tail = item;
+	}
+
+	list->count++;
+
+	return 0;
+}
+
 int list_add(list_t *list, void *obj) {
     list_item_t *item = (list_item_t *)malloc(sizeof(list_item_t));
     if (item == NULL)
         return -1;
     
     item->obj = obj;
-    item->next = NULL;
-    
-    if (list->tail == NULL) {
-        list->head = list->tail = item;
-    } else {
-        list->tail->next = item;
-        list->tail = item;
-    }
-    
-    list->count++;
-    
-    return 0;
+
+	return list_add_item(list, item);
 }
 
 int list_remove(list_t *list, void *obj) {
@@ -124,7 +128,7 @@ int list_compare(list_t *list1, list_t *list2,
         size_t i = 0;
         for (list_item_t *item2 = list2->head; item2 != NULL;
                 item2 = item2->next, i++) {
-            if ((*u & n) == 0 && func(arg, item1->obj, item2->obj)) {
+            if ((*u & n) == 0 && func(arg, item1->obj, item2->obj) == 0) {
                 *u |= n;
                 break;
             }

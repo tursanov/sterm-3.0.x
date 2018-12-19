@@ -161,40 +161,48 @@ bool K_addL(K *k, L* l) {
 
 #define COPYSTR(s) ((s) != NULL ? strdup(s) : NULL)
 
-struct K_divide_arg {
-    K *k;
-    uint8_t p;
-};
-
-static bool K_divide_func(struct K_divide_arg *arg, L *l) {
-    if (l->p == arg->p) {
-		if (list_add(&arg->k->llist, l) == 0)
-	        return true;
-    }
-    return false;
-}
-
 K *K_divide(K *k, uint8_t p) {
-    K *k1 = (K*)malloc(sizeof(K));
-    struct K_divide_arg arg = { k1, p };
+	K *k1 = NULL;
+	int count = 0;
+	for (list_item_t *item = k->llist.head, *prev = NULL; item != NULL;) {
+		L *l = LIST_ITEM(item, L);
+		list_item_t *tmp = item;
+		item = item->next;
+		if (l->p == p) {
+			if (prev != NULL)
+				prev->next = item;
+			if (item == NULL)
+				k->llist.tail = prev;
+			if (tmp == k->llist.head)
+				k->llist.head = item;
+			count++;
+			
+			if (k1 == NULL) {
+				k1 = (K*)malloc(sizeof(K));
+				memset(&k1->llist, 0, sizeof(k1->llist));
+				k->llist.delete_func = (list_item_delete_func_t)L_destroy;
 
-    k1->o = k->o;          // Операция
-    k1->d = k->d;          // Номер оформляемого документа или КРС при возврате
-    k1->r = k->r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
-    k1->i1 = k->i1;          // индекс
-	k1->i2 = k->i2;          // индекс
-	k1->i21 = k->i21;          // индекс
-	k1->p = k->p;          // ИНН перевозчика
+				k1->o = k->o;          // Операция
+				k1->d = k->d;          // Номер оформляемого документа или КРС при возврате
+				k1->r = k->r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
+				k1->i1 = k->i1;          // индекс
+				k1->i2 = k->i2;          // индекс
+				k1->i21 = k->i21;          // индекс
+				k1->p = k->p;          // ИНН перевозчика
 
-    k1->h = COPYSTR(k->h); // телефон перевозчика
-    k1->m = k->m;          // способ оплаты
-    k1->t = COPYSTR(k->t);            // номер телефона пассажира
-    k1->e = COPYSTR(k->e);            // адрес электронной посты пассажира
- 
-    // разделяем на 2 части
-    list_remove_if(&k->llist, &arg, (list_item_func_t)K_divide_func);
- 
-    return k;
+				k1->h = COPYSTR(k->h); // телефон перевозчика
+				k1->m = k->m;          // способ оплаты
+				k1->t = COPYSTR(k->t);            // номер телефона пассажира
+				k1->e = COPYSTR(k->e);            // адрес электронной посты пассажира
+			}
+
+			list_add_item(&k1->llist, tmp);
+		} else
+			prev = tmp;
+	}
+	k->llist.count -= count;
+
+    return k1;
 }
 
 static int L_compare(void *arg, L *l1, L *l2) {
@@ -522,11 +530,15 @@ int AD_save() {
     return ret;
 }
 
-int AD_load(uint8_t t1055) {
+int AD_load(uint8_t t1055, bool clear) {
     if (_ad != NULL)
         AD_destroy();
     if (AD_create(t1055) < 0)
         return -1;
+
+	if (clear)
+		return 0;
+
     FILE *f = fopen(FILE_NAME, "rb");
     if (f == NULL)
         return -1;
@@ -658,6 +670,7 @@ int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
                         list_it_remove(&i2);
                         if (c->klist.count == 0)
                             list_it_remove(&i1);
+						K_destroy(k);
 						return 0;
 					}
                 }
@@ -679,6 +692,7 @@ int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 						list_it_remove(&i2);
 						if (c->klist.count == 0)
 							list_it_remove(&i1);
+						K_destroy(k);
 						return 0;
 					}
 				}
@@ -691,6 +705,7 @@ int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 
 int AD_processO(K *k) {
     K *k1, *k2;
+	int64_t d, r;
     
     printf("process new K. K->o = %d\n", k->o);
     
@@ -700,16 +715,17 @@ int AD_processO(K *k) {
             AD_makeCheque(k, k->d, 1, _ad->t1055);
             break;
         case 2:
+			d = k->d;
+			r = k->r;
             k1 = K_divide(k, 1);
-            k->i2 = k->d;
-			k->i21 = k->r;
+            k->i2 = d;
+			k->i21 = r;
             AD_makeCheque(k, k->r, 2, _ad->t1055);
-			if (k1->llist.count > 0) {
-				k1->i2 = k->d;
-				k1->i21 = k->r;
+			if (k1) {
+				k1->i2 = d;
+				k1->i21 = r;
 				AD_makeCheque(k1, k->d, 1, _ad->t1055);
-			} else
-				K_destroy(k1);
+			}
             break;
         case 3:
             AD_makeAnnul(k, 1, 1, _ad->t1055);
@@ -717,10 +733,8 @@ int AD_processO(K *k) {
         case 4:
             k2 = K_divide(k, 2);
             AD_makeAnnulReturn(k, 2, 2, _ad->t1055);
-			if (k2->llist.count > 0)
+			if (k2)
 				AD_makeAnnulReturn(k2, 2, 1, _ad->t1055);
-			else
-				K_destroy(k2);
             break;
     }
     return 0;

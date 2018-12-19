@@ -20,6 +20,7 @@ typedef struct list_t {
 } list_t;
 
 int list_add(list_t *list, void *obj);
+int list_add_item(list_t *list, list_item_t *item);
 void list_remove_item(list_t *list, list_item_t *p, list_item_t *i);
 int list_remove(list_t *list, void *obj);
 int list_remove_at(list_t *list, int i);
