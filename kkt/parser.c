@@ -551,6 +551,9 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 				case KKT_FS_LAST_REG_DATA:
 					ret = parse_var_data;
 					break;
+				case KKT_FS_RESET:
+					ret = parse_status;
+					break;
 			}
 			break;
 	}

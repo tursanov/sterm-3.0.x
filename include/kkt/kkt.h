@@ -149,4 +149,8 @@ extern uint8_t kkt_get_unconfirmed_docs_nr(uint32_t *nr_docs);
 /* Получить данные последней регистрции */
 extern uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len);
 
+/* Сброс ФН */
+extern uint8_t kkt_reset_fs(uint8_t b);
+
+
 #endif		/* KKT_KKT_H */

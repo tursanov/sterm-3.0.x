@@ -705,26 +705,23 @@ int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 
 int AD_processO(K *k) {
     K *k1, *k2;
-	int64_t d, r;
-    
+
     printf("process new K. K->o = %d\n", k->o);
-    
+
     switch (k->o) {
         case 1:
             k->i1 = k->d;
             AD_makeCheque(k, k->d, 1, _ad->t1055);
             break;
         case 2:
-			d = k->d;
-			r = k->r;
             k1 = K_divide(k, 1);
-            k->i2 = d;
-			k->i21 = r;
+            k->i2 = k->d;
+			k->i21 = k->r;
             AD_makeCheque(k, k->r, 2, _ad->t1055);
 			if (k1) {
-				k1->i2 = d;
-				k1->i21 = r;
-				AD_makeCheque(k1, k->d, 1, _ad->t1055);
+				k1->i2 = k1->d;
+				k1->i21 = k1->r;
+				AD_makeCheque(k1, k1->d, 1, _ad->t1055);
 			}
             break;
         case 3:

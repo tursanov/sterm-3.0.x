@@ -33,6 +33,7 @@ static int fa_active_item = -1;
 int fa_cm = cmd_none;
 static struct menu *fa_menu = NULL;
 int fa_arg = cmd_fa;
+static bool fs_debug = false;
 
 static bool process_fa_cmd(int cmd);
 
@@ -54,6 +55,8 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
+	if (fs_debug)
+		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
 	return true;
 }
@@ -98,6 +101,11 @@ static int fa_get_reregistration_data() {
 	return ret;
 }
 
+static void fa_check_fn() {
+	struct kkt_fs_version ver;
+	fs_debug = kkt_get_fs_version(&ver) == 0 && ver.type == 0;
+}
+
 bool init_fa(int arg)
 {
 	fa_arg = arg;
@@ -108,6 +116,7 @@ bool init_fa(int arg)
 	set_scr_mode(m80x20, true, false);
 	set_term_busy(true);
 
+	fa_check_fn();
 	fa_get_reregistration_data();
 
 	if (arg == cmd_fa) {
@@ -749,6 +758,11 @@ void fa_reregistration() {
 			form_focus(form, 9998);
 			form_draw(form);
 			continue;
+		} else {
+			for (int i = 0; i < 4; i++) {
+				if ((rereg_reason & (1 << i)) != 0)
+					ffd_tlv_add_uint8(1101, (uint8_t)(i + 1));
+			}
 		}
 
 		if (fa_create_doc(RE_REGISTRATION, NULL, 0, update_form, form))
@@ -1098,6 +1112,30 @@ void fa_del_doc() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+void fa_reset_fs() {
+	if (message_box("Уведомление", "Тестовый ФН будет реинициализирован. Продолжить?",
+				dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
+		ClearScreen(clBlack);
+		draw_menu(fa_menu);
+				
+		kbd_flush_queue();
+		uint8_t ret = kkt_reset_fs(0x16);
+		
+		char buffer[512];
+		
+		if (ret == 0)
+			sprintf(buffer, "Операция успешно завершена. Проведите процедуру перерегистрации");
+		else
+			sprintf(buffer, "Операция завершена с ошибкой (%.2x). Перезагрузите ККТ и попробуйте еще раз.",
+				ret);
+		
+		message_box("Уведомление", buffer, dlg_yes, 0, al_center);
+		ClearScreen(clBlack);
+		draw_menu(fa_menu);
+	}
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
 static bool process_fa_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
@@ -1127,6 +1165,9 @@ static bool process_fa_cmd(int cmd) {
 			break;
 		case cmd_del_doc_fa:
 			fa_del_doc();
+			break;
+		case cmd_reset_fs_fa:
+			fa_reset_fs();
 			break;
 		default:
 			ret = false;

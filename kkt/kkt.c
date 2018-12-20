@@ -782,3 +782,16 @@ uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len)
 	}
 	return kkt_status;
 }
+
+/* ë°‡Æ· îç */
+uint8_t kkt_reset_fs(uint8_t b)
+{
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_FS, KKT_FS_RESET) && write_byte(b) && kkt_open_dev_if_need()) {
+			do_transaction(KKT_FS, KKT_FS_RESET, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
+	}
+	return kkt_status;
+}
