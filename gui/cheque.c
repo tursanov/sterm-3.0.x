@@ -237,7 +237,7 @@ static int cheque_draw_sum(int start_y) {
 	int w;
 	int y = start_y;
 
-	printf("sumN: %lld, sumE: %lld\n", sumN, sumE);
+	//printf("sumN: %lld, sumE: %lld\n", sumN, sumE);
 
 	if (sumN == 0 && sumE == 0) {
 		sprintf(title[count], "Получение или выдача денежных средств не требуется");
@@ -394,6 +394,44 @@ static void next_focus() {
 	cheque_draw();
 }
 
+static void prev_focus() {
+	if (active_button == 1)
+		active_button = 0;
+	else if (active_button == 0) {
+		if (first) {
+			active_item = first;
+			active_item_n = first_n;
+			active_item_child = 0;
+			active_button = -1;
+			for (int i = 0; i < MAX_CHEQUE_PER_PAGE; i++) {
+				if (active_item->next) {
+					active_item = active_item->next;
+					active_item_n++;
+					active_item_child = 1;
+				}
+			}
+		} else {
+			active_button = 1;
+		}
+	} else {
+		if (active_item_child == 1)
+			active_item_child = 0;
+		else {
+			if (active_item_n > first_n) {
+				active_item_n--;
+				int i = first_n;
+				for (active_item = first; i < active_item_n; active_item = active_item->next);
+				active_item_child = 1;
+			} else {
+				active_item = NULL;
+				active_button = 1;
+			}
+		}
+	}
+	cheque_draw();
+}
+
+
 static void select_phone_or_email() {
 	C *c = LIST_ITEM(active_item, C);
 	form_t *form = NULL;
@@ -461,7 +499,11 @@ static bool cheque_process(const struct kbd_event *_e) {
 					return 0;
 				case KEY_TAB:
 				case KEY_DOWN:
-					next_focus();
+				case KEY_UP:
+					if ((e.key == KEY_TAB && (e.shift_state & SHIFT_CTRL) == 0) || e.key == KEY_DOWN)
+						next_focus();
+					else
+						prev_focus();
 					return 1;
 				case KEY_ENTER:
 					if (active_button == 0) {
