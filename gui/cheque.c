@@ -500,7 +500,8 @@ static bool cheque_process(const struct kbd_event *_e) {
 				case KEY_TAB:
 				case KEY_DOWN:
 				case KEY_UP:
-					if ((e.key == KEY_TAB && (e.shift_state & SHIFT_CTRL) == 0) || e.key == KEY_DOWN)
+					if ((e.key == KEY_TAB && (e.shift_state & SHIFT_SHIFT) == 0) 
+							|| e.key == KEY_DOWN)
 						next_focus();
 					else
 						prev_focus();
