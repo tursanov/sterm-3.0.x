@@ -55,6 +55,7 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать последнего неотпечатанного документа", cmd_print_last_doc_fa, true));
 	if (fs_debug)
 		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
@@ -1136,6 +1137,40 @@ void fa_reset_fs() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+void fa_print_last_doc() {
+	struct kkt_last_doc_info ldi;
+	uint8_t err_info[32];
+	size_t err_info_len;
+
+	uint8_t status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
+	if (status != 0) {
+		fd_set_error(status, err_info, err_info_len);
+	} else {
+		if (message_box("Уведомление",
+			"Будет напечатан последний неотпечатанный документ.\n"
+			"Продолжить?",
+					dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
+					
+			ClearScreen(clBlack);
+			draw_menu(fa_menu);
+					
+			status = fd_print_last_doc(ldi.last_type);
+
+			if (status != 0) {
+				fd_set_error(status, err_info, err_info_len);
+			}
+		}
+	}
+
+	if (status != 0) {
+		const char *error;
+		fd_get_last_error(&error);
+		message_box("Ошибка", error, dlg_yes, 0, al_center);
+	}
+
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
 static bool process_fa_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
@@ -1168,6 +1203,9 @@ static bool process_fa_cmd(int cmd) {
 			break;
 		case cmd_reset_fs_fa:
 			fa_reset_fs();
+			break;
+		case cmd_print_last_doc_fa:
+			fa_print_last_doc();
 			break;
 		default:
 			ret = false;
