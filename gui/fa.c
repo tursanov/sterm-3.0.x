@@ -477,7 +477,7 @@ static void update_cheque(void *arg) {
 
 void fa_open_shift() {
 	BEGIN_FORM(open_shift_form, "Открытие смены")
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
@@ -545,7 +545,7 @@ void fa_calc_report() {
 
 void fa_close_fs() {
 	BEGIN_FORM(close_fs_form, "Закрытие ФН")
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
@@ -610,7 +610,7 @@ void fa_registration() {
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1060, "Адрес сайта ФНС:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
@@ -731,7 +731,7 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1060, "Адрес сайта ФНС:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
