@@ -268,7 +268,7 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 {
 	char *s = last_error;
 	
-	s += sprintf(s, "Код ошибки: Ф:%d", status);
+	s += sprintf(s, "Код ошибки: Ф:%.3d", status);
 	if (err_info_len > 0) {
 		s += sprintf(s, " (");
 		
