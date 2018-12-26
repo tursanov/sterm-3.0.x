@@ -267,86 +267,102 @@ static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
 void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len) 
 {
 	char *s = last_error;
+	
+	s += sprintf(s, "Код ошибки: Ф:%d", status);
+	if (err_info_len > 0) {
+		s += sprintf(s, " (");
+		
+		for (int i = 0; i < err_info_len; i++) {
+			if (i > 0)
+				s += sprintf(s, "%s", ", ");
+			s += sprintf(s, "%d", err_info[i]);
+		}
+		
+		s += sprintf(s, ")");
+	}
+	
+	s += sprintf(s, "\n");
+	
 	switch (status) {
 		case 0x00: // STATUS_OK
 		case 0x30:
-			sprintf(s, "%s", "нет ошибок");
+			sprintf(s, "%s", "Нет ошибок");
 			break;
 		case 0x41: // STATUS_PAPER_END
-			sprintf(s, "%s", "конец бумаги");
+			sprintf(s, "%s", "Конец бумаги");
 		case 0x42: // STATUS_COVER_OPEN
 			break;
-			sprintf(s, "%s", "крышка открыта");
+			sprintf(s, "%s", "Крышка открыта");
 		case 0x43: // STATUS_PAPER_LOCK
-			sprintf(s, "%s", "бумага застряла на выходе");
+			sprintf(s, "%s", "Бумага застряла на выходе");
 			break;
 		case 0x44: // STATUS_PAPER_WRACK
-			sprintf(s, "%s", "бумага замялась");
+			sprintf(s, "%s", "Бумага замялась");
 			break;
 		case 0x45: // STATUS_FS_ERR
-			s += sprintf(s, "%s", "общая аппаратная ошибка ФН");
+			s += sprintf(s, "%s", "Общая аппаратная ошибка ФН");
 			if (err_info_len > 0)
                 set_fn_error(s, err_info, err_info_len);
 			break;
 		case 0x46: // STATUS_LAST_UNPRINTED
-			sprintf(s, "%s", "последний сформированный документ не отпечатан");
+			sprintf(s, "%s", "Последний сформированный документ не отпечатан");
 			break;
 		case 0x48: // STATUS_CUT_ERR
-			sprintf(s, "%s", "ошибка отрезки бумаги");
+			sprintf(s, "%s", "Ошибка отрезки бумаги");
 			break;
 		case 0x49: // STATUS_INIT
 			sprintf(s, "%s", "ФР находится в состоянии инициализации");
 			break;
 		case 0x4a: // STATUS_THERMHEAD_ERR
-			sprintf(s, "%s", "неполадки термоголовки");
+			sprintf(s, "%s", "Неполадки термоголовки");
 			break;
 		case 0x4d: // STATUS_PREV_INCOMPLETE
-			sprintf(s, "%s", "предыдущая команда была принята не полностью");
+			sprintf(s, "%s", "Предыдущая команда была принята не полностью");
 			break;
 		case 0x4e: // STATUS_CRC_ERR
-			sprintf(s, "%s", "предыдущая команда была принята с ошибкой контрольной суммы");
+			sprintf(s, "%s", "Предыдущая команда была принята с ошибкой контрольной суммы");
 			break;
 		case 0x4f: // STATUS_HW_ERR
-			sprintf(s, "%s", "общая аппаратная ошибка ФР");
+			sprintf(s, "%s", "Общая аппаратная ошибка ФР");
 			break;
 		case 0x50: // STATUS_NO_FFEED
-			sprintf(s, "%s", "нет команды отрезки бланка");
+			sprintf(s, "%s", "Нет команды отрезки бланка");
 			break;
 		case 0x51: // STATUS_VPOS_OVER
-			sprintf(s, "%s", "превышение объёма текста по вертикальным позициям");
+			sprintf(s, "%s", "Превышение объёма текста по вертикальным позициям");
 			break;
 		case 0x52: // STATUS_HPOS_OVER
-			sprintf(s, "%s", "превышение объёма текста по горизонтальным позициям");
+			sprintf(s, "%s", "Превышение объёма текста по горизонтальным позициям");
 			break;
 		case 0x53: // STATUS_LOG_ERR
-			sprintf(s, "%s", "нарушение структуры информации при печати КЛ");
+			sprintf(s, "%s", "Нарушение структуры информации при печати КЛ");
 			break;
 		case 0x55: // STATUS_GRID_ERROR
-			sprintf(s, "%s", "нарушение параметров нанесения макетов");
+			sprintf(s, "%s", "Нарушение параметров нанесения макетов");
 			break;
 		case 0x70: // STATUS_BCODE_PARAM
-			sprintf(s, "%s", "нарушение параметров нанесения штрих-кода");
+			sprintf(s, "%s", "Нарушение параметров нанесения штрих-кода");
 			break;
 		case 0x71: // STATUS_NO_ICON
-			sprintf(s, "%s", "пиктограмма не найдена");
+			sprintf(s, "%s", "Пиктограмма не найдена");
 			break;
 		case 0x72: // STATUS_GRID_WIDTH
-			sprintf(s, "%s", "ширина сетки больше ширины бланка в установках");
+			sprintf(s, "%s", "Ширина сетки больше ширины бланка в установках");
 			break;
 		case 0x73: // STATUS_GRID_HEIGHT
-			sprintf(s, "%s", "высота сетки больше высоты бланка в установках");
+			sprintf(s, "%s", "Высота сетки больше высоты бланка в установках");
 			break;
 		case 0x74: // STATUS_GRID_NM_FMT
-			sprintf(s, "%s", "неправильный формат имени сетки");
+			sprintf(s, "%s", "Неправильный формат имени сетки");
 			break;
 		case 0x75: // STATUS_GRID_NM_LEN
-			sprintf(s, "%s", "длина имени сетки больше допустимой");
+			sprintf(s, "%s", "Длина имени сетки больше допустимой");
 			break;
 		case 0x76: // STATUS_GRID_NR
-			sprintf(s, "%s", "неверный формат номера сетки");
+			sprintf(s, "%s", "Неверный формат номера сетки");
 			break;
 		case 0x77: // STATUS_INVALID_ARG
-			sprintf(s, "%s", "неверный параметр");
+			sprintf(s, "%s", "Неверный параметр");
 			break;
 		case 0x80: // STATUS_INVALID_TAG
 			s += sprintf(s, "%s", "Ошибка в TLV ");
@@ -363,7 +379,7 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 			sprintf(s, "%s", "Выход за границы общей длины TLV-данных");
 			break;
 		case 0x84: // STATUS_INVALID_STATE
-			sprintf(s, "%s", "неправильное состояние");
+			sprintf(s, "%s", "Неправильное состояние");
 			break;
 		case 0x85: // STATUS_FS_REPLACED
 			sprintf(s, "%s", "Нельзя формировать ФД на другом ФН "
