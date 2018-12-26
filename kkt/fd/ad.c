@@ -947,7 +947,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                         bool required = (REQUIRED_L_MASK & mask) != 0;
                         bool present = (_lMask & mask) != 0;
 
-                        if (i == 5 && _l->n <= 4)
+                        if (i == 5 && _l->n > 0 && _l->n <= 4)
                             required = true;
 
                         if (required && !present)
@@ -986,7 +986,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                                                  &_lMask, 0x08, &_l->t)) != 0)
                         return ret;
                 } else if (strcmp(name, "N") == 0) {
-                    if ((ret = process_int_value("L", name, val, 0, 6,
+                    if ((ret = process_int_value("L", name, val, 0, 5,
                                                  &_lMask, 0x10, &v64)) != 0)
                         return ret;
 					_l->n = (uint8_t)v64;
