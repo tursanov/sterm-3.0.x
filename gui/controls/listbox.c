@@ -168,9 +168,11 @@ bool listbox_focus(listbox_t *listbox, bool focus) {
 
 static void listbox_sync_edit_text(listbox_t *listbox) {
 	if (listbox->edit) {
-		char *text = listbox->items[listbox->selected_index];
-		int textlen = strlen(text);
-		edit_set_data(listbox->edit, 0, text, (size_t)textlen);
+		if (listbox->selected_index >= 0) {
+			char *text = listbox->items[listbox->selected_index];
+			int textlen = strlen(text);
+			edit_set_data(listbox->edit, 0, text, (size_t)textlen);
+		}
 	}
 }
 

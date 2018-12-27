@@ -401,9 +401,9 @@ static void prev_focus() {
 		if (first) {
 			active_item = first;
 			active_item_n = first_n;
-			active_item_child = 0;
+			active_item_child = 1;
 			active_button = -1;
-			for (int i = 0; i < MAX_CHEQUE_PER_PAGE; i++) {
+			for (int i = 0; i < MAX_CHEQUE_PER_PAGE - 1; i++) {
 				if (active_item->next) {
 					active_item = active_item->next;
 					active_item_n++;
@@ -420,7 +420,7 @@ static void prev_focus() {
 			if (active_item_n > first_n) {
 				active_item_n--;
 				int i = first_n;
-				for (active_item = first; i < active_item_n; active_item = active_item->next);
+				for (active_item = first; i < active_item_n; active_item = active_item->next, i++);
 				active_item_child = 1;
 			} else {
 				active_item = NULL;

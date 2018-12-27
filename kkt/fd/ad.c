@@ -1078,7 +1078,7 @@ void AD_calc_sum() {
 					s->n += l->t;
 					break;
 				case 2:
-					c->sum.e= l->t;
+					c->sum.e += l->t;
 					s->e += l->t;
 					break;
 				case 3:
