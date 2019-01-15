@@ -1608,6 +1608,8 @@ static bool create_term(void)
 	fdo_init();
 	/* загрузка корзины фискального приложения */
 	AD_load((1 << cfg.tax_system), false);
+	/* загрузка информации о кассире */
+	cashier_load();
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));

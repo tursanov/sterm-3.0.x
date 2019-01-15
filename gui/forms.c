@@ -105,7 +105,7 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 
     	if (prev != NULL) {
     		if (prev->name != NULL) {
-				y += h + GAP;
+				y += h + 2;
 				x = GAP * 2;
     		}
     	}

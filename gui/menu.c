@@ -233,8 +233,9 @@ static bool draw_menu_items(struct menu *mnu)
 	DrawText(pMemGC, 0, 0, mw, mh, "Œ…ž (Esc-¢ëå®¤)", 0);
 	DrawBorder(pMemGC, 0, mh, GetCX(pMemGC), 1, 1, 
 		clBtnShadow, clBtnHighlight);
-	
-	
+
+//	printf("mnu: %p, mnu->selected = %d, mnu->n_items = %d\n", mnu, mnu->selected, mnu->n_items);
+
 	struct menu_item *itm = mnu->head;
 	for (int i = 0; (itm != NULL) && (i < mnu->n_items); i++, itm = itm->next){
 		SetTextColor(pMemGC, itm->enabled ? clBlack : clGray);

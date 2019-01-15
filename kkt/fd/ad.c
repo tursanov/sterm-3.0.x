@@ -8,6 +8,7 @@
 #include "ad.h"
 #else
 #include "kkt/fd/ad.h"
+#include "gui/fa.h"
 #endif
 
 #ifdef WIN32
@@ -960,6 +961,8 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
             } else if (strcmp(name, "P1") == 0) {
                 if (!check) {
                 	AD_setP1(_p1);
+                	if (_p1->c)
+	                	cashier_set_name(_p1->c);
                 } else
                 	P1_destroy(_p1);
                	_p1 = NULL;

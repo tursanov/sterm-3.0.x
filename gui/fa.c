@@ -32,14 +32,134 @@ static int fa_active_item = -1;
 //static int fa_active_control = -1;
 int fa_cm = cmd_none;
 static struct menu *fa_menu = NULL;
+static struct menu *fa_sales_menu = NULL;
 int fa_arg = cmd_fa;
 static bool fs_debug = false;
 
 static bool process_fa_cmd(int cmd);
 
+
+static char cashier_name[64+1] = {0};
+static char cashier_post[64+1] = {0};
+static char cashier_inn[12+1] = {0};
+static char cashier_cashier[64+1] = {0};
+
+bool cashier_load() {
+	FILE *f = fopen("/home/sterm/cashier.txt", "r");
+	if (f != NULL) {
+		char *strings[] = { cashier_name, cashier_post, cashier_inn, cashier_cashier };
+		size_t sizes[] = { sizeof(cashier_name), sizeof(cashier_post),
+			sizeof(cashier_inn), sizeof(cashier_cashier) } ;
+
+		for (int i = 0; i < ASIZE(strings); i++) {
+			char *s;
+			if ((s = fgets(strings[i], sizes[i], f)) == NULL)
+				strings[i][0] = 0;
+			int len = strlen(s);
+			if (s[len - 1] == '\n')
+				s[len - 1] = 0;
+		}
+		fclose(f);
+
+		return 0;
+	}
+	return -1;
+}
+
+bool cashier_save() {
+	FILE *f = fopen("/home/sterm/cashier.txt", "w");
+	if (f != NULL) {
+		fprintf(f, "%s\n%s\n%s\n%s\n",
+		(const char *)cashier_name,
+		(const char *)cashier_post,
+		(const char *)cashier_inn,
+		(const char *)cashier_cashier);
+		fclose(f);
+		return true;
+	}
+	return false;
+}
+
+
+bool cashier_set(const char *name, const char *post, const char *inn) {
+	bool cashier_changed = false;
+	bool changed = false;
+	
+	if (strcmp(name, cashier_name) != 0) {
+		strncpy(cashier_name, name, sizeof(cashier_name) - 1);
+		cashier_name[sizeof(cashier_name) - 1] = 0;
+		changed = true;
+		cashier_changed = true;
+	}
+
+	if (strcmp(post, cashier_post) != 0) {
+		strncpy(cashier_post, post, sizeof(cashier_post) - 1);
+		cashier_post[sizeof(cashier_post) - 1] = 0;
+		changed = true;
+		cashier_changed = true;
+	}
+
+	if (strcmp(inn, cashier_inn) != 0) {
+		strncpy(cashier_inn, inn, sizeof(cashier_inn) - 1);
+		cashier_inn[sizeof(cashier_inn) - 1] = 0;
+		changed = true;
+	}
+
+	if (cashier_changed) {
+		size_t cashier_name_size = strlen(cashier_name);
+		size_t cashier_post_size = strlen(cashier_post);
+		size_t cashier_cashier_size = cashier_name_size;
+
+		memcpy(cashier_cashier, cashier_name, cashier_name_size);
+		if (cashier_post_size > 0 && cashier_name_size < 63) {
+			size_t l = 64 - cashier_name_size - 1;
+			l = MIN(l, cashier_post_size);
+
+			cashier_cashier[cashier_name_size] = ' ';
+			memcpy(cashier_cashier + cashier_name_size + 1, cashier_post, l);
+			cashier_cashier_size += l + 1;
+		}
+		cashier_cashier[cashier_cashier_size] = 0;
+	}
+
+	if (changed)
+		return cashier_save();
+
+	return false;
+}
+
+bool cashier_set_name(const char *name) {
+	if (strcmp(name, cashier_name) != 0) {
+		strncpy(cashier_name, name, sizeof(cashier_name) - 1);
+		cashier_name[sizeof(cashier_name) - 1] = 0;
+		cashier_post[0] = 0;
+		cashier_inn[0] = 0;
+		strcpy(cashier_cashier, cashier_name);
+		return cashier_save();
+	}
+	return false;
+}
+
+const char *cashier_get_name() {
+	return cashier_name;
+}
+
+const char *cashier_get_post() {
+	return cashier_post;
+}
+
+const char *cashier_get_inn() {
+	return cashier_inn;
+}
+
+const char *cashier_get_cashier() {
+	return cashier_cashier;
+}
+
 /* Группы параметров настройки */
 enum {
 	FAPP_GROUP_MENU = -1,
+	FAPP_GROUP_SALES_MENU = 0,
 };
 
 /* Работа с меню настроек */
@@ -55,10 +175,18 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Печать последнего неотпечатанного документа", cmd_print_last_doc_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
 	if (fs_debug)
 		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
+
+
+	fa_sales_menu = new_menu(false, false);
+	add_menu_item(fa_sales_menu, new_menu_item("Новый чек", cmd_sales_cheque_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Справочник агентов", cmd_agents_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
+
 	return true;
 }
 
@@ -69,9 +197,13 @@ static bool fa_set_group(int n)
 	bool ret = false;
 	fa_cm = cmd_none;
 	fa_active_group = n;
+	ClearScreen(clBlack);
 	if (n == FAPP_GROUP_MENU){
-		ClearScreen(clBlack);
 		draw_menu(fa_menu);
+		ret = true;
+	} else if (n == FAPP_GROUP_SALES_MENU) {
+		fa_sales_menu->selected = 0;
+		draw_menu(fa_sales_menu);
 		ret = true;
 	}
 	return ret;
@@ -174,6 +306,8 @@ void release_fa(void)
 	cheque_docs_release();
 	if (fa_menu)
 		release_menu(fa_menu,false);
+	if (fa_sales_menu)
+		release_menu(fa_sales_menu,false);
 	online = true;
 	pop_term_info();
 	ClearScreen(clBtnFace);
@@ -184,6 +318,8 @@ bool draw_fa(void)
 {
 	if (fa_active_group == FAPP_GROUP_MENU)
 		return draw_menu(fa_menu);
+	else if (fa_active_group == FAPP_GROUP_SALES_MENU)
+		return draw_menu(fa_sales_menu);
     return true;
 }
 
@@ -333,23 +469,25 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 	return 0;
 }
 
-static int fa_tlv_add_cashier(form_t *form, bool save) {
+static int fa_tlv_add_cashier(form_t *form) {
 	form_data_t cashier;
 	form_data_t post;
-	char result[64+1];
+	form_data_t inn;
 
 	form_get_data(form, 1021, 1, &cashier);
 	form_get_data(form, 9999, 1, &post);
-	size_t length = cashier.size;
+	form_get_data(form, 1203, 1, &inn);
 
-	if (length == 0) {
+	if (cashier.size == 0) {
 		form_focus(form, 1021);
 		message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
 		form_draw(form);
 		return -1;
 	}
 
-	memcpy(result, cashier.data, cashier.size);
+	cashier_set(cashier.data, post.data, inn.data);
+
+/*	memcpy(result, cashier.data, cashier.size);
 	if (post.size > 0 && cashier.size < 63) {
 		size_t l = 64 - cashier.size - 1;
 		l = MIN(l, post.size);
@@ -377,11 +515,21 @@ static int fa_tlv_add_cashier(form_t *form, bool save) {
 			form_draw(form);
 			return -1;
 		}
-	}
+	}*/
 
-	return ffd_tlv_add_string(1021, result);
+	if (inn.size > 0) {
+		int ret;
+		if ((ret = ffd_tlv_add_fixed_string(1203, (const char *)cashier_inn, 12)) != 0) {
+			form_focus(form, 1203);
+			message_box("Ошибка", "Ошибка при добавлении TLV. Обратитесь к разработчикам", dlg_yes, 0, al_center);
+			form_draw(form);
+			return ret;
+		}
+	}
+	return ffd_tlv_add_string(1021, cashier_cashier);
 }
 
+/*
 typedef struct {
     char cashier[64+1]; // кассир
     char post[64+1]; // должность
@@ -410,7 +558,7 @@ static int fa_load_cashier_data(cashier_data_t *data) {
 	}
 
 	return 0;
-}
+}*/
 
 typedef void (*update_screen_func_t)(void *arg);
 
@@ -425,14 +573,14 @@ static bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 			uint8_t err_info[32];
 			size_t err_info_len;
 
-			printf("#1 %d\n", doc_type);
+			//printf("#1 %d\n", doc_type);
 LCheckLastDocNo:
 			status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
 			if (status != 0) {
-				printf("#2: %d\n", status);
+				//printf("#2: %d\n", status);
 				fd_set_error(status, err_info, err_info_len);
 			} else {
-				printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
+				//printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
 				if (ldi.last_nr != ldi.last_printed_nr) {
 					message_box("Ошибка", "Последний сформированный документ не был напечатан.\n"
 							"Для его печати вставьте бумагу в ККТ и нажмите Enter",
@@ -441,7 +589,7 @@ LCheckLastDocNo:
 						update_func(update_func_arg);
 					status = fd_print_last_doc(ldi.last_type);
 
-					printf("LD: status = %d\n", status);
+					//printf("LD: status = %d\n", status);
 
 					if (status != 0) {
 						fd_set_error(status, err_info, err_info_len);
@@ -450,7 +598,7 @@ LCheckLastDocNo:
 				}
 			}
 		}
-	
+
 		const char *error;
 		fd_get_last_error(&error);
 		message_box("Ошибка", error, dlg_yes, 0, al_center);
@@ -477,9 +625,9 @@ static void update_cheque(void *arg) {
 
 void fa_open_shift() {
 	BEGIN_FORM(open_shift_form, "Открытие смены")
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
 	END_FORM()
@@ -487,8 +635,7 @@ void fa_open_shift() {
 
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
-		if (fa_tlv_add_cashier(form, true) != 0 ||
-			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
+		if (fa_tlv_add_cashier(form) != 0)
 			continue;
 
 		if (fa_create_doc(OPEN_SHIFT, NULL, 0, update_form, form))
@@ -500,25 +647,17 @@ void fa_open_shift() {
 
 void fa_close_shift() {
 	BEGIN_FORM(close_shift_form, "Закрытие смены")
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
 	END_FORM()
 	form_t *form = close_shift_form;
 
-	cashier_data_t data;
-	if (fa_load_cashier_data(&data) == 0) {
-		FORM_EDIT_TEXT_SET_TEXT(form, 1021, data.cashier, strlen(data.cashier));
-		FORM_EDIT_TEXT_SET_TEXT(form, 9999, data.post, strlen(data.post));
-		FORM_EDIT_TEXT_SET_TEXT(form, 1203, data.cashier_inn, strlen(data.cashier_inn));
-	}
-
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
-		if (fa_tlv_add_cashier(form, false) != 0 ||
-			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
+		if (fa_tlv_add_cashier(form) != 0)
 			continue;
 
 		if (fa_create_doc(CLOSE_SHIFT, NULL, 0, update_form, form))
@@ -545,8 +684,9 @@ void fa_calc_report() {
 
 void fa_close_fs() {
 	BEGIN_FORM(close_fs_form, "Закрытие ФН")
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BUTTON(1, "Печать", NULL)
 		FORM_ITEM_BUTTON(0, "Отмена", NULL)
 	END_FORM()
@@ -554,10 +694,8 @@ void fa_close_fs() {
 
 	while (form_execute(form) == 1) {
 		ffd_tlv_reset();
-		if (fa_tlv_add_string(form, 1021, true) != 0 ||
-			fa_tlv_add_fixed_string(form, 1203, 12, false) != 0)
+		if (fa_tlv_add_cashier(form) != 0)
 			continue;
-
 		if (fa_create_doc(CLOSE_FS, NULL, 0, update_form, form))
 			break;
 	}
@@ -577,15 +715,16 @@ static int fa_fill_registration_tlv(form_t *form) {
 	int tax_systems = form_get_int_data(form, 1062, 0, 0);
 	int reg_modes = form_get_int_data(form, 9999, 0, 0);
 
-	if (fa_tlv_add_string(form, 1048, true) != 0 ||
+	if (fa_tlv_add_cashier(form) != 0 ||
+		fa_tlv_add_string(form, 1048, true) != 0 ||
 		fa_tlv_add_fixed_string(form, 1018, 12, true) != 0 ||
 		fa_tlv_add_string(form, 1009, false) != 0 ||
 		fa_tlv_add_string(form, 1187, false) != 0 ||
 		ffd_tlv_add_uint8(1062, (uint8_t)tax_systems) != 0 ||
 		fa_tlv_add_fixed_string(form, 1037, 20, true) != 0 ||
 		fa_tlv_add_string(form, 1036, (reg_modes & REG_MODE_AUTOMAT) != 0) != 0 ||
-		fa_tlv_add_string(form, 1021, true) != 0 ||
-		fa_tlv_add_fixed_string(form, 1203, 12, false) != 0 ||
+//		fa_tlv_add_string(form, 1021, true) != 0 ||
+//		fa_tlv_add_fixed_string(form, 1203, 12, false) != 0 ||
 		fa_tlv_add_string(form, 1060, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
 		fa_tlv_add_string(form, 1117, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
 		fa_tlv_add_string(form, 1046, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
@@ -610,8 +749,11 @@ void fa_registration() {
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
+
 		FORM_ITEM_EDIT_TEXT(1060, "Адрес сайта ФНС:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1046, "Наименование ОФД:", NULL, FORM_INPUT_TYPE_TEXT, 256)
@@ -731,8 +873,13 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
-		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
+		
+//		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", _ad->p1 ? _ad->p1->c : NULL, FORM_INPUT_TYPE_TEXT, 64)
+//		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1060, "Адрес сайта ФНС:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1046, "Наименование ОФД:", NULL, FORM_INPUT_TYPE_TEXT, 256)
@@ -792,6 +939,11 @@ void fa_cheque_corr() {
 		FORM_ITEM_LISTBOX(1054, "Признак расчета:", str_pay_type, ASIZE(str_pay_type), -1)
 		FORM_ITEM_LISTBOX(1055, "Система налогообложения:", str_tax_mode, ASIZE(str_tax_mode), -1)
 		FORM_ITEM_LISTBOX(1173, "Тип коррекции:", str_corr_type, ASIZE(str_corr_type), -1)
+
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
+
 		FORM_ITEM_EDIT_TEXT(1177, "Описание коррекции:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1178, "Дата коррекции:", NULL, FORM_INPUT_TYPE_DATE, 10)
 		FORM_ITEM_EDIT_TEXT(1179, "Номер предписания:", NULL, FORM_INPUT_TYPE_TEXT, 32)
@@ -851,12 +1003,8 @@ void fa_cheque_corr() {
 			fa_tlv_add_vln(form, 1107, false) != 0)
 			continue;
 
-		cashier_data_t data = { "", "", "", "" };
-		fa_load_cashier_data(&data);
-		if (data.cashier_post[0])
-			ffd_tlv_add_string(1021, data.cashier_post);
-		if (data.cashier_inn[0])
-			ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
+		if (fa_tlv_add_cashier(form) != 0)
+			continue;
 
 		if (fa_create_doc(CHEQUE_CORR, NULL, 0, update_form, form))
 			break;
@@ -974,18 +1122,22 @@ void fa_cheque() {
 		
 			fdo_suspend();
 			
-			cashier_data_t data = { "", "", "", "" };
-			fa_load_cashier_data(&data);
+/*			cashier_data_t data = { "", "", "", "" };
+			fa_load_cashier_data(&data);*/
 
 			while (_ad->clist.head) {
 				C *c = LIST_ITEM(_ad->clist.head, C);
 				ffd_tlv_reset();
+				
+				ffd_tlv_add_string(1021, cashier_cashier);
+				if (cashier_inn[0])
+					ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
 
-				if (data.cashier_post[0])
+/*				if (data.cashier_post[0])
 					ffd_tlv_add_string(1021, data.cashier_post);
 				printf("CASHIER_INN: %d\n", data.cashier_inn[0]);
 				if (data.cashier_inn[0])
-					ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);
+					ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);*/
 					
 				ffd_tlv_add_uint8(1054, c->t1054);
 				ffd_tlv_add_uint8(1055, c->t1055);
@@ -1171,6 +1323,16 @@ void fa_print_last_doc() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+static bool process_fa_sales_cmd(int cmd) {
+	bool ret = true;
+	switch (cmd){
+		default:
+			ret = false;
+			break;
+	}
+	return ret;
+}
+
 static bool process_fa_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
@@ -1207,6 +1369,9 @@ static bool process_fa_cmd(int cmd) {
 		case cmd_print_last_doc_fa:
 			fa_print_last_doc();
 			break;
+		case cmd_sales_fa:
+			fa_set_group(FAPP_GROUP_SALES_MENU);
+			break;
 		default:
 			ret = false;
 			break;
@@ -1224,6 +1389,10 @@ bool process_fa(const struct kbd_event *e)
 	if (fa_active_group == FAPP_GROUP_MENU) {
 		if (process_menu(fa_menu, (struct kbd_event *)e) != cmd_none)
 			return process_fa_cmd(get_menu_command(fa_menu));
-    }
+    } else if (fa_active_group == FAPP_GROUP_SALES_MENU) {
+		if (process_menu(fa_sales_menu, (struct kbd_event *)e) != cmd_none)
+			if (!process_fa_sales_cmd(get_menu_command(fa_sales_menu)))
+				fa_set_group(FAPP_GROUP_MENU);
+	}
 	return true;
 }

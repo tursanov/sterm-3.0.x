@@ -4,6 +4,8 @@
 #include "gui/gdi.h"
 #include "gui/cheque.h"
 #include "gui/forms.h"
+#include "gui/fa.h"
+#include "gui/dialog.h"
 #include "kkt/fd/ad.h"
 #include <string.h>
 #include <stdlib.h>
@@ -22,6 +24,9 @@ static int64_t sumE = 0;
 static list_item_t *first = NULL;
 static int first_n = 0;
 static bool main_view = true;
+
+#define BUTTON_WIDTH	100
+#define BUTTON_HEIGHT	30
 
 int cheque_init(void) {
 	if (fnt == NULL)
@@ -294,6 +299,32 @@ static int cheque_draw_sum(int start_y) {
 	return y;
 }
 
+static int cheque_draw_cashier(int start_y) {
+	char text[512];
+	char *p = text;
+	
+	p += sprintf(text, "Кассир: %s", cashier_get_name());
+	
+	if (cashier_get_post()[0])
+		p += sprintf(p, ", Должность: %s", cashier_get_post());
+		
+	if (cashier_get_inn()[0])
+		p += sprintf(p, ", ИНН: %s", cashier_get_inn());
+		
+	int x = 10;
+	int y = start_y + (BUTTON_HEIGHT - fnt->max_height) / 2;
+	
+	SetTextColor(screen, clBlack);
+	TextOut(screen, x, y, text);
+	
+	x += TextWidth(fnt, text) + 10;
+
+	draw_button(screen, fnt, x, start_y, BUTTON_WIDTH, BUTTON_HEIGHT, "Изменить", active_button == 2);
+	
+	return start_y + BUTTON_HEIGHT + 4;
+}
+
+
 #define MAX_CHEQUE_PER_PAGE	3
 static int cheque_main_draw() {
 	int x;
@@ -304,9 +335,10 @@ static int cheque_main_draw() {
 			_ad->clist.count, first_n + 1, MIN(first_n + MAX_CHEQUE_PER_PAGE, _ad->clist.count));
 	
 		draw_title(screen, fnt, title);
-		
+
 		y += 20;
-		
+		y = cheque_draw_cashier(y);
+				
 		size_t n = 0;
 		for (list_item_t *i1 = first; i1 && n < MAX_CHEQUE_PER_PAGE; i1 = i1->next, n++) {
 			C *c = LIST_ITEM(i1, C);
@@ -315,8 +347,6 @@ static int cheque_main_draw() {
 		
 		y = cheque_draw_sum(y);
 		
-#define BUTTON_WIDTH	100
-#define BUTTON_HEIGHT	30
 		x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
 		draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
 	} else {
@@ -363,7 +393,9 @@ int cheque_draw() {
 static void next_focus() {
 	if (active_button == 0)
 		active_button = 1;
-	else if (active_button == 1) {
+	else if (active_button == 1)
+		active_button = 2;
+	else if (active_button == 2) {
 		if (first) {
 			active_item = first;
 			active_item_n = first_n;
@@ -395,7 +427,9 @@ static void next_focus() {
 }
 
 static void prev_focus() {
-	if (active_button == 1)
+	if (active_button == 2)
+		active_button = 1;
+	else if (active_button == 1)
 		active_button = 0;
 	else if (active_button == 0) {
 		if (first) {
@@ -411,7 +445,7 @@ static void prev_focus() {
 				}
 			}
 		} else {
-			active_button = 1;
+			active_button = 2;
 		}
 	} else {
 		if (active_item_child == 1)
@@ -424,7 +458,7 @@ static void prev_focus() {
 				active_item_child = 1;
 			} else {
 				active_item = NULL;
-				active_button = 1;
+				active_button = 2;
 			}
 		}
 	}
@@ -479,6 +513,50 @@ static void show_doc_info() {
 	cheque_draw();
 }
 
+static void change_cashier() {
+	form_t *form = NULL;
+
+	BEGIN_FORM(form, "Изменение данных кассира")
+		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_get_name(), FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_get_post(), FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_get_inn(), FORM_INPUT_TYPE_NUMBER, 12)
+
+		FORM_ITEM_BUTTON(1, "ОК", NULL)
+		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+	END_FORM()
+
+	kbd_lang_ex = lng_lat;
+	while (form_execute(form) == 1) {
+		form_data_t cashier;
+		form_data_t post;
+		form_data_t inn;
+
+		form_get_data(form, 1021, 1, &cashier);
+		form_get_data(form, 9999, 1, &post);
+		form_get_data(form, 1203, 1, &inn);
+
+		if (cashier.size == 0) {
+			form_focus(form, 1021);
+			message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
+			form_draw(form);
+			continue;
+		}
+		
+		if (inn.size != 12) {
+			form_focus(form, 1203);
+			message_box("Ошибка", "Длина поля \"ИНН кассира\" должна быть 12 цифр", dlg_yes, 0, al_center);
+			form_draw(form);
+			continue;
+		}
+
+		cashier_set(cashier.data, post.data, inn.data);
+		break;
+	}
+
+	cheque_draw();
+	form_destroy(form);
+}
+
 static bool cheque_process(const struct kbd_event *_e) {
 	struct kbd_event e = *_e;
 
@@ -513,6 +591,8 @@ static bool cheque_process(const struct kbd_event *_e) {
 					} else if (active_button == 1) {
 						current_c = NULL;
 						return 0;
+					} else if (active_button == 2) {
+						change_cashier();
 					} else if (active_item_child == 0) {
 						select_phone_or_email();
 					} else if (active_item_child == 1) {
