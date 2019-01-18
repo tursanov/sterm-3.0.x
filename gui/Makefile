@@ -14,6 +14,7 @@ GUI_OBJS =		\
 	forms		\
 	gdi		\
 	help		\
+	listview	\
 	menu		\
 	options		\
 	ping		\

@@ -22,6 +22,7 @@
 #include "gui/forms.h"
 #include "gui/cheque.h"
 #include "gui/cheque_docs.h"
+#include "gui/listview.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fdo.h"
@@ -175,8 +176,10 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать документов из архива ФН", cmd_archive_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_fndoc_fa, true));
 	if (fs_debug)
 		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
@@ -239,6 +242,8 @@ static void fa_check_fn() {
 	fs_debug = kkt_get_fs_version(&ver) == 0 && ver.type == 0;
 }
 
+static void fa_agents();
+
 bool init_fa(int arg)
 {
 	fa_arg = arg;
@@ -265,6 +270,10 @@ bool init_fa(int arg)
 		fa_menu = NULL;
 		process_fa_cmd(arg);
 	}
+	
+	fa_agents();
+	
+	return false;
 
 	return true;
 }
@@ -1323,9 +1332,196 @@ void fa_print_last_doc() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+typedef struct {
+	int n;
+	char *name;
+	char *inn;
+	char *description;
+	uint8_t pay_agent;
+	char *transfer_operator_phone;
+	char *pay_agent_operation;
+	char *pay_agent_phone;
+	char *payment_processor_phone;
+	char *money_transfer_operator_name;
+	char *money_transfer_operator_address;
+	char *money_transfer_operator_inn;
+	char *supplier_phone;
+} agent_t;
+
+
+int agent_get_text(void *obj, int index, char *text, size_t text_size) {
+	agent_t *a = (agent_t *)obj;
+	switch (index) {
+		case 0:
+			snprintf(text, text_size, "%d", a->n);
+			break;
+		case 1:
+			snprintf(text, text_size, "%s", a->name);
+			break;
+		case 2:
+			snprintf(text, text_size, "%s", a->inn);
+			break;
+		case 3:
+			snprintf(text, text_size, "%s", a->description);
+			break;
+		default:
+			return -1;
+	}		
+	return 0;
+}
+
+static void free_agent(agent_t *a) {
+	if (a->name)
+		free(a->name);
+	if (a->inn)
+		free(a->inn);
+	if (a->description)
+		free(a->description);
+	if (a->transfer_operator_phone)
+		free(a->transfer_operator_phone);
+	if (a->pay_agent_operation)
+		free(a->pay_agent_operation);
+	if (a->pay_agent_phone)
+		free(a->pay_agent_phone);
+	if (a->payment_processor_phone)
+		free(a->payment_processor_phone);
+	if (a->money_transfer_operator_name)
+		free(a->money_transfer_operator_name);
+	if (a->money_transfer_operator_address)
+		free(a->money_transfer_operator_address);
+	if (a->money_transfer_operator_inn)
+		free(a->money_transfer_operator_inn);
+	if (a->supplier_phone)
+		free(a->supplier_phone);
+}
+
+void* new_agent(data_source_t *ds) {
+	agent_t *a;
+	form_t *form = NULL;
+	BEGIN_FORM(form, "Новый агент")
+		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", NULL, FORM_INPUT_TYPE_TEXT, 32)
+		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_EDIT_TEXT(102, "Описание:", NULL, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_BUTTON(1, "ОК", NULL)
+		FORM_ITEM_BUTTON(2, "Отмена", NULL)
+	END_FORM()
+
+	if (form_execute(form) == 1) {
+		form_data_t data;
+
+		a = (agent_t *)malloc(sizeof(agent_t));
+		memset(a, 0, sizeof(*a));
+
+		a->n = ds->list->count + 1;
+
+		form_get_data(form, 100, 1, &data);
+		a->name = strdup((char *)data.data);
+
+		form_get_data(form, 101, 1, &data);
+		a->inn = strdup((char *)data.data);
+
+		form_get_data(form, 102, 1, &data);
+		a->description = strdup((char *)data.data);
+	} else
+		a = NULL;
+
+	form_destroy(form);
+
+	return a;
+}
+
+int edit_agent(data_source_t *ds, void *obj) {
+	int ret = -1;
+	agent_t *a = (agent_t *)obj;
+	form_t *form = NULL;
+	BEGIN_FORM(form, "Изменить данные агента")
+		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", a->name, FORM_INPUT_TYPE_TEXT, 32)
+		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", a->inn, FORM_INPUT_TYPE_NUMBER, 12)
+		FORM_ITEM_EDIT_TEXT(102, "Описание:", a->description, FORM_INPUT_TYPE_TEXT, 64)
+		FORM_ITEM_BUTTON(1, "ОК", NULL)
+		FORM_ITEM_BUTTON(2, "Отмена", NULL)
+	END_FORM()
+
+	if (form_execute(form) == 1) {
+		form_data_t data;
+
+		form_get_data(form, 100, 1, &data);
+		if (a->name)
+			free(a->name);
+		a->name = strdup((char *)data.data);
+
+		form_get_data(form, 101, 1, &data);
+		if (a->inn)
+			free(a->inn);
+		a->inn = strdup((char *)data.data);
+
+		form_get_data(form, 102, 1, &data);
+		if (a->description)
+			free(a->description);
+		a->description = strdup((char *)data.data);
+
+		ret = 0;
+	}
+
+	form_destroy(form);
+
+	return ret;
+}
+
+int remove_agent(data_source_t *ds, void *obj) {
+	return 0;
+}
+
+void fa_agents() {
+
+	listview_column_t columns[] = {
+		{ "\xfc", 50 },
+		{ "Наименование агента", 250 },
+		{ "ИНН", 200 },
+		{ "Описание", 278 },
+	};
+	list_t list = { NULL, NULL, 0, (list_item_delete_func_t)free_agent };
+	data_source_t ds = {
+		&list,
+		agent_get_text,
+		new_agent,
+		edit_agent,
+		remove_agent
+	};
+
+	for (int i = 0; i < 26; i++) {
+		agent_t *a = (agent_t *)malloc(sizeof(agent_t));
+		memset(a, 0, sizeof(*a));
+		a->n = i + 1;
+		a->name = (char *)malloc(32);
+		a->inn = (char *)malloc(13);
+		a->description = (char *)malloc(64);
+
+		sprintf(a->name, "Агент  %d", i + 1);
+		sprintf(a->inn, "%.10d", i + 999000999 + 1);
+		sprintf(a->description, "Описание %d", i + 1);
+
+		list_add(&list, a);
+	}
+
+	printf("%d, %p\n", ds.list->count, ds.list->head);
+
+	listview_t *lv = listview_create("Справочник агентов", columns, ASIZE(columns),	&ds);
+	int ret = listview_execute(lv);
+	listview_destroy(lv);
+
+	list_clear(&list);
+
+	//ClearScreen(clBlack);
+	//draw_menu(fa_sales_menu);
+}
+
 static bool process_fa_sales_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
+		case cmd_agents_fa:
+			fa_agents();
+			break;
 		default:
 			ret = false;
 			break;
