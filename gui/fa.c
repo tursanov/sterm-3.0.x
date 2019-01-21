@@ -23,6 +23,7 @@
 #include "gui/cheque.h"
 #include "gui/cheque_docs.h"
 #include "gui/listview.h"
+#include "gui/newcheque.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fdo.h"
@@ -186,7 +187,7 @@ static bool fa_create_menu(void)
 
 
 	fa_sales_menu = new_menu(false, false);
-	add_menu_item(fa_sales_menu, new_menu_item("Новый чек", cmd_sales_cheque_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Новый чек", cmd_newcheque_fa, true));
 	add_menu_item(fa_sales_menu, new_menu_item("Справочник агентов", cmd_agents_fa, true));
 	add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
 
@@ -1264,9 +1265,19 @@ void fa_print_last_doc() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
+static void fa_newcheque() {
+	newcheque_execute();
+
+	ClearScreen(clBlack);
+	draw_menu(fa_sales_menu);
+}
+
 static bool process_fa_sales_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
+		case cmd_newcheque_fa:
+			fa_newcheque();
+			break;
 		case cmd_agents_fa:
 			fa_agents();
 			break;

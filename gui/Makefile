@@ -16,6 +16,7 @@ GUI_OBJS =		\
 	help		\
 	listview	\
 	menu		\
+	newcheque	\
 	options		\
 	ping		\
 	scr		\

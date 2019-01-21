@@ -43,6 +43,7 @@ GUI_OBJS =		\
 	listview	\
 	menu		\
 	options		\
+	newcheque	\
 	ping		\
 	scr		\
 	ssaver		\

@@ -162,7 +162,7 @@ enum {
 	cmd_reset_fs_fa,
 	cmd_print_last_doc_fa,
 	cmd_sales_fa,
-	cmd_sales_cheque_fa,
+	cmd_newcheque_fa,
 	cmd_agents_fa,
 	cmd_articles_fa,
 	cmd_archive_fa,

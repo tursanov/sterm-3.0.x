@@ -43,8 +43,6 @@ void listview_destroy(listview_t *listview) {
 	free(listview);
 }
 
-
-
 extern void draw_title(GCPtr screen, FontPtr fnt, const char *title);
 extern void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color);
