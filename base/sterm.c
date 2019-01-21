@@ -1610,6 +1610,10 @@ static bool create_term(void)
 	AD_load((1 << cfg.tax_system), false);
 	/* загрузка информации о кассире */
 	cashier_load();
+	/* загрузка справочника агентов */
+	agents_load();
+	/* загрузка справочника товаров/работ/услуг */
+	articles_load();
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));

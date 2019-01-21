@@ -231,9 +231,8 @@ static void listview_new_action(listview_t *listview) {
 		listview->top_index = listview->selected_index - max_items;
 		if (listview->top_index < 0)
 			listview->top_index = 0;
-
-		listview_draw(listview);
 	}
+	listview_draw(listview);
 }
 
 static void listview_edit_action(listview_t *listview) {

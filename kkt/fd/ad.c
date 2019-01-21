@@ -9,6 +9,7 @@
 #else
 #include "kkt/fd/ad.h"
 #include "gui/fa.h"
+#include "serialize.h"
 #endif
 
 #ifdef WIN32
@@ -25,76 +26,6 @@ static int strcmp2(const char *s1, const char *s2) {
         return 1;
     else 
         return strcmp(s1, s2);
-}
-
-
-static int save_string(FILE *f, char *s) {
-    size_t len = s != NULL ? strlen(s) : 0;
-    if (fwrite(&len, sizeof(len), 1, f) != 1)
-        return -1;
-    if (len > 0 && fwrite(s, len, 1, f) != 1)
-        return -1;
-    return 0;
-}
-
-static int load_string(FILE *f, char **ret) {
-    size_t len;
-    if (fread(&len, sizeof(len), 1, f) != 1)
-        return -1;
-	if (len > 0) {
-		char *s = (char *)malloc(len + 1);
-		if (s == NULL)
-			return -1;
-
-		if (fread(s, len, 1, f) != 1) {
-			free(s);
-			return -1;
-		}
-		s[len] = 0;
-
-		*ret = s;
-	} else
-		*ret = NULL;
-    
-    return 0;
-}
-
-static int save_int(FILE *f, uint64_t v, size_t size) {
-    if (fwrite(&v, size, 1, f) != 1)
-        return -1;
-    return 0;
-}
-#define SAVE_INT(f, v) save_int((f), (v), sizeof(v))
-
-static int load_int(FILE *f, uint64_t *v, size_t size) {
-    if (fread(v, size, 1, f) != 1)
-        return -1;
-    return 0;
-}
-#define LOAD_INT(f, v) load_int((f), (uint64_t *)&(v), sizeof(v))
-
-static int save_list(FILE *f, list_t *list, list_item_func_t save_item_func) {
-    if (SAVE_INT(f, list->count) < 0 ||
-        list_foreach(list, f, save_item_func) < 0)
-        return -1;
-    return 0;
-}
-
-typedef void * (*load_item_func_t)(FILE *f);
-
-static int load_list(FILE *f, list_t *list, load_item_func_t load_item_func) {
-    size_t count = 0;
-    if (LOAD_INT(f, count) < 0)
-        return -1;
-    
-    for (size_t i = 0; i < count; i++) {
-        void *obj = load_item_func(f);
-        if (obj == NULL)
-            return -1;
-        if (list_add(list, obj) != 0)
-            return -1;
-    }
-    return 0;
 }
 
 L *L_create(void) {

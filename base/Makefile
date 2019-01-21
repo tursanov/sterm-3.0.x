@@ -21,6 +21,7 @@ BASE_OBJS =		\
 	md5		\
 	rndtbl		\
 	serial		\
+	serialize	\
 	sterm		\
 	tki		\
 	transport	\

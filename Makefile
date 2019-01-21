@@ -23,6 +23,7 @@ BASE_OBJS =		\
 	md5		\
 	rndtbl		\
 	serial		\
+	serialize	\
 	sterm		\
 	tki		\
 	transport	\
@@ -130,6 +131,8 @@ all:	inc_build $(SUBDIRS) sterm mk_env
 
 inc_build:
 	@./helpers/setbuild.pl
+
+all:	$(SUBDIRS) sterm
 
 
 $(SUBDIRS):

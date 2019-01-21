@@ -20,4 +20,9 @@ extern const char *cashier_get_post();
 extern const char *cashier_get_inn();
 extern const char *cashier_get_cashier();
 
+extern int agents_load();
+extern int articles_load();
+extern int agents_save();
+extern int articles_save();
+
 #endif		/* GUI_KKT_H */

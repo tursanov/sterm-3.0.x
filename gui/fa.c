@@ -28,6 +28,7 @@
 #include "kkt/fdo.h"
 #include "kkt/fd/tlv.h"
 
+
 static int fa_active_group = -1;
 static int fa_active_item = -1;
 //static int fa_active_control = -1;
@@ -38,7 +39,6 @@ int fa_arg = cmd_fa;
 static bool fs_debug = false;
 
 static bool process_fa_cmd(int cmd);
-
 
 static char cashier_name[64+1] = {0};
 static char cashier_post[64+1] = {0};
@@ -242,8 +242,6 @@ static void fa_check_fn() {
 	fs_debug = kkt_get_fs_version(&ver) == 0 && ver.type == 0;
 }
 
-static void fa_agents();
-
 bool init_fa(int arg)
 {
 	fa_arg = arg;
@@ -271,10 +269,6 @@ bool init_fa(int arg)
 		process_fa_cmd(arg);
 	}
 	
-	fa_agents();
-	
-	return false;
-
 	return true;
 }
 
@@ -332,19 +326,37 @@ bool draw_fa(void)
     return true;
 }
 
+static void fa_show_error(form_t *form, uint16_t tag, const char *text) {
+	message_box("Ошибка", text, dlg_yes, 0, al_center);
+	form_focus(form, tag);
+	form_draw(form);
+}
+
+static bool fa_check_field(form_t *form, form_data_t *data, uint16_t tag, const char *error_text) {
+	if (data->size == 0) {
+		fa_show_error(form, tag, error_text);
+		return false;
+	}
+	return true;
+}
+
+static bool fa_check_inn_field(form_t *form, form_data_t *data, uint16_t tag, const char *error_text) {
+	if (data->size != 10 && data->size != 12) {
+		fa_show_error(form, tag, error_text);
+		return false;
+	}
+	return true;
+}
+
 static int fa_get_string(form_t *form, form_data_t *data, uint16_t tag, bool required) {
 	if (!form_get_data(form, tag, 1, data)) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Указан неверный тэг", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Указан неверный тэг");
 		return -1;
 	}
 
 	if (data->size == 0) {
 		if (required) {
-			form_focus(form, tag);
-			message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
-			form_draw(form);
+			fa_show_error(form, tag, "Обязательное поле не заполнено");
 			return -2;
 		}
 	}
@@ -362,9 +374,7 @@ static int fa_tlv_add_string(form_t *form, uint16_t tag, bool required) {
 		return 0;
 
 	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data)) != 0) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Ошибка при добавлении TLV. Обратитесь к разработчикам", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Ошибка при добавлении TLV. Обратитесь к разработчикам");
 		return ret;
 	}
 	return 0;
@@ -381,9 +391,7 @@ static int fa_tlv_add_fixed_string(form_t *form, uint16_t tag, size_t fixed_leng
 		return 0;
 		
 	if ((ret = ffd_tlv_add_fixed_string(tag, (const char *)data.data, fixed_length)) != 0) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Ошибка при добавлении TLV. Обратитесь к разработчикам", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Ошибка при добавлении TLV. Обратитесь к разработчикам");
 		return ret;
 	}
 	return 0;
@@ -409,17 +417,13 @@ static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
 	form_data_t data;
 
 	if (!form_get_data(form, tag, 1, &data)) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Указан неверный тэг", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Указан неверный тэг");
 		return -1;
 	}
 
 	if (data.size == 0) {
 		if (required) {
-			form_focus(form, tag);
-			message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
-			form_draw(form);
+			fa_show_error(form, tag, "Обязательное поле не заполнено");
 			return -2;
 		}
 		return 0;
@@ -429,9 +433,7 @@ static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
 
 	int ret;
 	if ((ret = ffd_tlv_add_vln(tag, value)) != 0) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Неправильное значение", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Неправильное значение");
 		return ret;
 	}
 	return 0;
@@ -441,17 +443,13 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 	form_data_t data;
 
 	if (!form_get_data(form, tag, 1, &data)) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Указан неверный тэг", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Указан неверный тэг");
 		return -1;
 	}
 
 	if (data.size == 0) {
 		if (required) {
-			form_focus(form, tag);
-			message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
-			form_draw(form);
+			fa_show_error(form, tag, "Обязательное поле не заполнено");
 			return -2;
 		}
 		return 0;
@@ -460,9 +458,7 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 	struct tm tm;
 	char *s;
 	if ((s = strptime((const char *)data.data, "%d.%m.%Y", &tm)) == NULL || *s != 0) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Неправильное значение", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Неправильное значение");
 		return -1;
 	}
 
@@ -470,9 +466,7 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 
 	int ret;
 	if ((ret = ffd_tlv_add_unix_time(tag, value)) != 0) {
-		form_focus(form, tag);
-		message_box("Ошибка", "Ошибка добавления TLV", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, tag, "Ошибка добавления TLV");
 		return ret;
 	}
 	return 0;
@@ -488,86 +482,21 @@ static int fa_tlv_add_cashier(form_t *form) {
 	form_get_data(form, 1203, 1, &inn);
 
 	if (cashier.size == 0) {
-		form_focus(form, 1021);
-		message_box("Ошибка", "Обязательное поле не заполнено", dlg_yes, 0, al_center);
-		form_draw(form);
+		fa_show_error(form, 1021, "Обязательное поле не заполнено");
 		return -1;
 	}
 
 	cashier_set(cashier.data, post.data, inn.data);
 
-/*	memcpy(result, cashier.data, cashier.size);
-	if (post.size > 0 && cashier.size < 63) {
-		size_t l = 64 - cashier.size - 1;
-		l = MIN(l, post.size);
-
-		result[cashier.size] = ' ';
-		memcpy(result + cashier.size + 1, post.data, l);
-		length += l + 1;
-	}
-	result[length] = 0;
-
-	if (save) {
-		form_data_t inn;
-		form_get_data(form, 1203, 0, &inn);
-		FILE *f = fopen("/home/sterm/cashier.txt", "w");
-		if (f != NULL) {
-			fprintf(f, "%s\n%s\n%s\n%s\n",
-			(const char *)cashier.data,
-			(const char *)post.data,
-			(const char *)inn.data,
-			(const char *)result);
-			fclose(f);
-		} else {
-			message_box("Ошибка", "Ошибка записи параметров открытия смены в файл",
-				dlg_yes, 0, al_center);
-			form_draw(form);
-			return -1;
-		}
-	}*/
-
 	if (inn.size > 0) {
 		int ret;
 		if ((ret = ffd_tlv_add_fixed_string(1203, (const char *)cashier_inn, 12)) != 0) {
-			form_focus(form, 1203);
-			message_box("Ошибка", "Ошибка при добавлении TLV. Обратитесь к разработчикам", dlg_yes, 0, al_center);
-			form_draw(form);
+			fa_show_error(form, 1203, "Ошибка при добавлении TLV. Обратитесь к разработчикам");
 			return ret;
 		}
 	}
 	return ffd_tlv_add_string(1021, cashier_cashier);
 }
-
-/*
-typedef struct {
-    char cashier[64+1]; // кассир
-    char post[64+1]; // должность
-    char cashier_inn[12+1]; // инн кассира
-    char cashier_post[64+1]; //  кассир + должность
-} cashier_data_t;
-
-static int fa_load_cashier_data(cashier_data_t *data) {
-	FILE *f = fopen("/home/sterm/cashier.txt", "r");
-	if (f != NULL) {
-		char *strings[] = { data->cashier, data->post, data->cashier_inn, data->cashier_post };
-		size_t sizes[] = { sizeof(data->cashier), sizeof(data->post),
-			sizeof(data->cashier_inn), sizeof(data->cashier_post) } ;
-
-		for (int i = 0; i < ASIZE(strings); i++) {
-			char *s;
-			if ((s = fgets(strings[i], sizes[i], f)) == NULL)
-				strings[i][0] = 0;
-			int len = strlen(s);
-			if (s[len - 1] == '\n')
-				s[len - 1] = 0;
-		}
-		fclose(f);
-
-		return 0;
-	}
-
-	return 0;
-}*/
 
 typedef void (*update_screen_func_t)(void *arg);
 
@@ -710,6 +639,9 @@ void fa_close_fs() {
 	}
 	fa_set_group(FAPP_GROUP_MENU);
 }
+
+#include "references/agent.c"
+#include "references/article.c"
 
 static const char *tax_modes[8] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН",
 		NULL, NULL, NULL };
@@ -1332,195 +1264,14 @@ void fa_print_last_doc() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
-typedef struct {
-	int n;
-	char *name;
-	char *inn;
-	char *description;
-	uint8_t pay_agent;
-	char *transfer_operator_phone;
-	char *pay_agent_operation;
-	char *pay_agent_phone;
-	char *payment_processor_phone;
-	char *money_transfer_operator_name;
-	char *money_transfer_operator_address;
-	char *money_transfer_operator_inn;
-	char *supplier_phone;
-} agent_t;
-
-
-int agent_get_text(void *obj, int index, char *text, size_t text_size) {
-	agent_t *a = (agent_t *)obj;
-	switch (index) {
-		case 0:
-			snprintf(text, text_size, "%d", a->n);
-			break;
-		case 1:
-			snprintf(text, text_size, "%s", a->name);
-			break;
-		case 2:
-			snprintf(text, text_size, "%s", a->inn);
-			break;
-		case 3:
-			snprintf(text, text_size, "%s", a->description);
-			break;
-		default:
-			return -1;
-	}		
-	return 0;
-}
-
-static void free_agent(agent_t *a) {
-	if (a->name)
-		free(a->name);
-	if (a->inn)
-		free(a->inn);
-	if (a->description)
-		free(a->description);
-	if (a->transfer_operator_phone)
-		free(a->transfer_operator_phone);
-	if (a->pay_agent_operation)
-		free(a->pay_agent_operation);
-	if (a->pay_agent_phone)
-		free(a->pay_agent_phone);
-	if (a->payment_processor_phone)
-		free(a->payment_processor_phone);
-	if (a->money_transfer_operator_name)
-		free(a->money_transfer_operator_name);
-	if (a->money_transfer_operator_address)
-		free(a->money_transfer_operator_address);
-	if (a->money_transfer_operator_inn)
-		free(a->money_transfer_operator_inn);
-	if (a->supplier_phone)
-		free(a->supplier_phone);
-}
-
-void* new_agent(data_source_t *ds) {
-	agent_t *a;
-	form_t *form = NULL;
-	BEGIN_FORM(form, "Новый агент")
-		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", NULL, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_EDIT_TEXT(102, "Описание:", NULL, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_BUTTON(1, "ОК", NULL)
-		FORM_ITEM_BUTTON(2, "Отмена", NULL)
-	END_FORM()
-
-	if (form_execute(form) == 1) {
-		form_data_t data;
-
-		a = (agent_t *)malloc(sizeof(agent_t));
-		memset(a, 0, sizeof(*a));
-
-		a->n = ds->list->count + 1;
-
-		form_get_data(form, 100, 1, &data);
-		a->name = strdup((char *)data.data);
-
-		form_get_data(form, 101, 1, &data);
-		a->inn = strdup((char *)data.data);
-
-		form_get_data(form, 102, 1, &data);
-		a->description = strdup((char *)data.data);
-	} else
-		a = NULL;
-
-	form_destroy(form);
-
-	return a;
-}
-
-int edit_agent(data_source_t *ds, void *obj) {
-	int ret = -1;
-	agent_t *a = (agent_t *)obj;
-	form_t *form = NULL;
-	BEGIN_FORM(form, "Изменить данные агента")
-		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", a->name, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", a->inn, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_EDIT_TEXT(102, "Описание:", a->description, FORM_INPUT_TYPE_TEXT, 64)
-		FORM_ITEM_BUTTON(1, "ОК", NULL)
-		FORM_ITEM_BUTTON(2, "Отмена", NULL)
-	END_FORM()
-
-	if (form_execute(form) == 1) {
-		form_data_t data;
-
-		form_get_data(form, 100, 1, &data);
-		if (a->name)
-			free(a->name);
-		a->name = strdup((char *)data.data);
-
-		form_get_data(form, 101, 1, &data);
-		if (a->inn)
-			free(a->inn);
-		a->inn = strdup((char *)data.data);
-
-		form_get_data(form, 102, 1, &data);
-		if (a->description)
-			free(a->description);
-		a->description = strdup((char *)data.data);
-
-		ret = 0;
-	}
-
-	form_destroy(form);
-
-	return ret;
-}
-
-int remove_agent(data_source_t *ds, void *obj) {
-	return 0;
-}
-
-void fa_agents() {
-
-	listview_column_t columns[] = {
-		{ "\xfc", 50 },
-		{ "Наименование агента", 250 },
-		{ "ИНН", 200 },
-		{ "Описание", 278 },
-	};
-	list_t list = { NULL, NULL, 0, (list_item_delete_func_t)free_agent };
-	data_source_t ds = {
-		&list,
-		agent_get_text,
-		new_agent,
-		edit_agent,
-		remove_agent
-	};
-
-	for (int i = 0; i < 26; i++) {
-		agent_t *a = (agent_t *)malloc(sizeof(agent_t));
-		memset(a, 0, sizeof(*a));
-		a->n = i + 1;
-		a->name = (char *)malloc(32);
-		a->inn = (char *)malloc(13);
-		a->description = (char *)malloc(64);
-
-		sprintf(a->name, "Агент  %d", i + 1);
-		sprintf(a->inn, "%.10d", i + 999000999 + 1);
-		sprintf(a->description, "Описание %d", i + 1);
-
-		list_add(&list, a);
-	}
-
-	printf("%d, %p\n", ds.list->count, ds.list->head);
-
-	listview_t *lv = listview_create("Справочник агентов", columns, ASIZE(columns),	&ds);
-	int ret = listview_execute(lv);
-	listview_destroy(lv);
-
-	list_clear(&list);
-
-	//ClearScreen(clBlack);
-	//draw_menu(fa_sales_menu);
-}
-
 static bool process_fa_sales_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
 		case cmd_agents_fa:
 			fa_agents();
+			break;
+		case cmd_articles_fa:
+			fa_articles();
 			break;
 		default:
 			ret = false;
