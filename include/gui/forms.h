@@ -1,6 +1,8 @@
 #if !defined GUI_FORMS_H
 #define GUI_FORMS_H
 
+#include "gui/controls/control.h"
+
 typedef struct form_t form_t;
 
 struct kbd_event;
@@ -35,7 +37,6 @@ typedef struct form_item_info_t {
 		} edit;
 		struct {
 			const char *text;
-			form_action_t action;
 		} button;
 		struct {
 			const char *text;
@@ -62,8 +63,8 @@ typedef struct form_item_info_t {
 #define FORM_ITEM_EDIT_TEXT(id, name, text, input_type, max_length) { FORM_ITEM_TYPE_EDIT_TEXT, \
 	id, name, { .edit = { text, input_type, max_length } } },
 
-#define FORM_ITEM_BUTTON(id, text, action) { FORM_ITEM_TYPE_BUTTON, \
-	id, NULL, { .button = { text, action } } },
+#define FORM_ITEM_BUTTON(id, text) { FORM_ITEM_TYPE_BUTTON, \
+	id, NULL, { .button = { text } } },
 
 #define FORM_ITEM_LISTBOX(id, name, items, item_count, value) \
 	{ FORM_ITEM_TYPE_LISTBOX, \
@@ -89,11 +90,7 @@ bool form_focus(form_t *form, int id);
 void draw_title(GCPtr sreeen, FontPtr fnt, const char *title);
 
 
-typedef struct form_data_t {
-	const void *data;
-	size_t size;
-} form_data_t;
-
+typedef struct data_t form_data_t;
 bool form_get_data(form_t *form, int id, int what, form_data_t *data);
 
 static inline int form_get_int_data(form_t *form, int id, int what, int default_value) {
@@ -111,7 +108,7 @@ bool form_set_data(form_t *form, int id, int what, const void *data, size_t data
 #define FORM_LISTBOX_SET_SELECTED_INDEX(form, id, selected_index) \
 	form_set_data(form, id, 0, (void *)(int)selected_index, 0)
 	
-void draw_button(GCPtr screen, FontPtr fnt, int x, int y, int width, int height, const char *text, bool focused);
+void draw_button(GCPtr screen, int x, int y, int width, int height, const char *text, bool focused);
 void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color);
 	

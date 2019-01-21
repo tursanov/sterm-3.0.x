@@ -1,3 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <ctype.h>
+#include "sysdefs.h"
+#include "kbd.h"
+#include "paths.h"
+#include "gui/gdi.h"
+#include "gui/controls/bitset.h"
+
 typedef struct bitset_t {
 	control_t control;
 	char *text;
@@ -16,11 +27,14 @@ void bitset_destroy(bitset_t *bitset);
 void bitset_draw(bitset_t *bitset);
 bool bitset_focus(bitset_t *bitset, bool focus);
 bool bitset_handle(bitset_t *bitset, const struct kbd_event *e);
-bool bitset_get_data(bitset_t *bitset, int what, form_data_t *data);
+bool bitset_get_data(bitset_t *bitset, int what, data_t *data);
 bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_len);
 
-bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
-	form_item_info_t *info)
+#define screen	(bitset->control.gc)
+
+
+control_t* bitset_create(GCPtr gc, int x, int y, int width, int height,
+	const char **short_items, const char **items, size_t item_count, int value)
 {
     bitset_t *bitset = (bitset_t *)malloc(sizeof(bitset_t));
     control_api_t api = {
@@ -28,28 +42,28 @@ bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
 		(void (*)(struct control_t *))bitset_draw,
 		(bool (*)(struct control_t *, bool))bitset_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))bitset_handle,
-		(bool (*)(struct control_t *, int, form_data_t *))bitset_get_data,
+		(bool (*)(struct control_t *, int, data_t *))bitset_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data
     };
 
-    control_init(&bitset->control, x, y, width, height, form, &api);
+    control_init(&bitset->control, gc, x, y, width, height, &api);
 
-	bitset->value = info->bitset.value;
-	bitset->item_count = info->bitset.item_count;
-	bitset->short_items = (char **)malloc(sizeof(char *) * bitset->item_count);
-	bitset->items = (char **)malloc(sizeof(char *) * bitset->item_count);
+	bitset->value = value;
+	bitset->item_count = item_count;
+	bitset->short_items = (char **)malloc(sizeof(char *) * item_count);
+	bitset->items = (char **)malloc(sizeof(char *) * item_count);
 	bitset->expanded = false;
 
 	size_t text_size = 0;
 	for (size_t i = 0; i < bitset->item_count; i++) {
-		bitset->short_items[i] = strdup(info->bitset.short_items[i]);
-		bitset->items[i] = strdup(info->bitset.items[i]);
-		text_size += strlen(info->bitset.short_items[i]) + 1;
+		bitset->short_items[i] = strdup(short_items[i]);
+		bitset->items[i] = strdup(items[i]);
+		text_size += strlen(short_items[i]) + 1;
 	}
 
 	bitset->text = (char *)malloc(text_size + 1);
 
-	bitset->dropdown_height = bitset->item_count * (form_fnt->max_height + BORDER_WIDTH * 2) +
+	bitset->dropdown_height = bitset->item_count * (GetTextHeight(bitset->control.gc) + BORDER_WIDTH * 2) +
 		BORDER_WIDTH * 2;
 	y = bitset->control.y + bitset->control.height - BORDER_WIDTH;
 
@@ -62,7 +76,7 @@ bitset_t* bitset_create(int x, int y, int width, int height, form_t *form,
 	bitset->dropdown_y = y;
 	bitset->selected_index = 0;
 
-    return bitset;
+    return (control_t *)bitset;
 }
 
 void bitset_destroy(bitset_t *bitset) {
@@ -104,22 +118,22 @@ static void bitset_draw_normal(bitset_t *bitset) {
 		fgColor = RGB(32, 32, 32);
 	}
 
-	control_fill_rect(bitset->control.x, bitset->control.y,
+	fill_rect(bitset->control.gc, bitset->control.x, bitset->control.y,
 		bitset->control.width, bitset->control.height, BORDER_WIDTH,
 		borderColor, bgColor);
 
-	SetGCBounds(screen, bitset->control.x + BORDER_WIDTH, bitset->control.y + BORDER_WIDTH,
+	SetGCBounds(bitset->control.gc, bitset->control.x + BORDER_WIDTH, bitset->control.y + BORDER_WIDTH,
 		bitset->control.width - BORDER_WIDTH * 2, bitset->control.height - BORDER_WIDTH * 2);
-	int y = (bitset->control.height - form_fnt->max_height) / 2 - BORDER_WIDTH;
+	int y = (bitset->control.height - GetTextHeight(bitset->control.gc)) / 2 - BORDER_WIDTH;
 	if (*bitset->text) {
-		int w = TextWidth(form_fnt, bitset->text);
+		int w = GetTextWidth(bitset->control.gc, bitset->text);
 		int x = (bitset->control.width - w) / 2;
 		SetTextColor(screen, fgColor);
 
 		TextOut(screen, x, y, bitset->text);
 	}
 	SetTextColor(screen, borderColor);
-	TextOut(screen, bitset->control.width - BORDER_WIDTH * 3 - form_fnt->max_width,
+	TextOut(screen, bitset->control.width - BORDER_WIDTH * 3 - GetMaxCharWidth(screen),
 		y + 1, "\x1f");
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
@@ -128,21 +142,21 @@ static void bitset_draw_expanded(bitset_t *bitset) {
 	Color borderColor = clRopnetDarkBrown;
 	//Color bgColor = clRopnetBrown;
 
-	control_fill_rect(bitset->control.x, bitset->dropdown_y,
+	fill_rect(screen, bitset->control.x, bitset->dropdown_y,
 		bitset->control.width, bitset->dropdown_height,
 		BORDER_WIDTH, borderColor, -1);
 
 	SetGCBounds(screen, bitset->control.x + BORDER_WIDTH, bitset->dropdown_y + BORDER_WIDTH,
 		bitset->control.width - BORDER_WIDTH * 2, bitset->dropdown_height - BORDER_WIDTH * 2);
 
-	int x = BORDER_WIDTH + form_fnt->max_width*2;
+	int x = BORDER_WIDTH + GetMaxCharWidth(screen)*2;
 	int y = 0;
 	SetTextColor(screen, clBlack);
-	for (size_t i = 0; i < bitset->item_count; i++, y += form_fnt->max_height + BORDER_WIDTH * 2) {
+	for (size_t i = 0; i < bitset->item_count; i++, y += GetTextHeight(bitset->control.gc) + BORDER_WIDTH * 2) {
 		SetBrushColor(screen, i == bitset->selected_index ? clBlue : clRopnetBrown);
 		SetTextColor(screen, i == bitset->selected_index ? clWhite : clBlack);
 		FillBox(screen, 0, y, bitset->control.width - BORDER_WIDTH * 2,
-			form_fnt->max_height + BORDER_WIDTH*2);
+			GetTextHeight(bitset->control.gc) + BORDER_WIDTH*2);
 		if (bitset->tmp_value & (1 << i))
 			TextOut(screen, BORDER_WIDTH, y, "\xfb");
 
@@ -189,7 +203,7 @@ bool bitset_handle(bitset_t *bitset, const struct kbd_event *e) {
 L1:
 		if (bitset->expanded) {
 			bitset->expanded = false;
-			form_draw(bitset->control.form);
+			control_refresh_parent(&bitset->control);
 			return true;
 		}
 	case KEY_TAB:
@@ -214,7 +228,7 @@ L1:
 	return false;
 }
 
-bool bitset_get_data(bitset_t *bitset, int what, form_data_t *data) {
+bool bitset_get_data(bitset_t *bitset, int what, data_t *data) {
 	switch (what) {
 	case 0:
 		data->data = (void *)bitset->value;

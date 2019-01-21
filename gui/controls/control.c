@@ -1,39 +1,43 @@
-#include "control.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <ctype.h>
+#include "sysdefs.h"
+#include "kbd.h"
+#include "paths.h"
+#include "gui/gdi.h"
+#include "gui/controls/control.h"
 
 void control_init(control_t *control,
+		GCPtr gc,
 		int x, int y, int width, int height,
-		form_t *form,
 		control_api_t* api) {
 	control->x = x;
 	control->y = y;
 	control->width = width;
 	control->height = height;
+	control->gc = gc;
 	control->api = *api;
 	control->focused = false;
-	control->form = form;
+	control->extra = NULL;
+	control->refresh_parent_fn = NULL;
 }
 
-typedef control_t *(*create_control_func_t)(int x, int y, int w, int h, form_t *form,
-	form_item_info_t *);
+void* control_get_extra(struct control_t *control) {
+	return control->extra;
+}
+void control_set_extra(struct control_t *control, void *extra) {
+	control->extra = extra;
+}
 
-static struct {
-	form_item_type_t type;
-	create_control_func_t create_control;
-} control_create_func[] = {
-	{ FORM_ITEM_TYPE_EDIT_TEXT, (create_control_func_t)edit_create },
-	{ FORM_ITEM_TYPE_BUTTON, (create_control_func_t)button_create },
-	{ FORM_ITEM_TYPE_LISTBOX, (create_control_func_t)listbox_create },
-	{ FORM_ITEM_TYPE_BITSET, (create_control_func_t)bitset_create },
-};
+void control_set_refresh_parent(struct control_t *control, void (*fn)(struct control_t *)) {
+	control->refresh_parent_fn = fn;
+}
 
-control_t *control_create(int x, int y, int w, int h, form_t *form, form_item_info_t *info) {
-	for (int i = 0; i < ASIZE(control_create_func); i++) {
-		if (control_create_func[i].type == info->type) {
-			control_t *control = control_create_func[i].create_control(x, y, w, h, form, info);
-			return control;
-		}
-	}
-	return NULL;
+void control_refresh_parent(struct control_t *control) {
+	if (control->refresh_parent_fn)
+		control->refresh_parent_fn(control);
 }
 
 void control_destroy(control_t *control) {
@@ -52,7 +56,7 @@ bool control_handle(struct control_t *control, const struct kbd_event *e) {
 	return control->api.handle(control, e);
 }
 
-bool control_get_data(struct control_t *control, int what, form_data_t *data) {
+bool control_get_data(struct control_t *control, int what, data_t *data) {
 	if (control->api.get_data)
 		return control->api.get_data(control, what, data);
 	return false;
@@ -81,10 +85,4 @@ void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_wid
 		FillBox(screen, x + border_width, y + border_width, 
 			width - border_width * 2, height - border_width * 2);
 	}
-
-}
-
-void control_fill_rect(int x, int y, int width, int height, int border_width,
-		Color border_color, int bg_color) {
-	fill_rect(screen, x, y, width, height, border_width, border_color, bg_color);
 }

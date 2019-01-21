@@ -8,6 +8,12 @@
 #include "paths.h"
 #include "gui/gdi.h"
 #include "gui/forms.h"
+#include "gui/controls/lang.h"
+#include "gui/controls/control.h"
+#include "gui/controls/edit.h"
+#include "gui/controls/bitset.h"
+#include "gui/controls/button.h"
+#include "gui/controls/listbox.h"
 
 #define	GAP	5
 #define	SPAN_GAP	10
@@ -15,8 +21,6 @@
 #define DEFAULT_CAPACITY    256
 #define BORDER_WIDTH		2
 
-#include "controls/control.h"
-#include "controls/lang.c"
 
 typedef struct form_item_t {
 	form_item_type_t type;
@@ -41,13 +45,59 @@ static int ref_count = 0;
 static FontPtr form_fnt = NULL;
 static GCPtr screen = NULL;
 
-#include "controls/edit.c"
+/*#include "controls/edit.c"
 #include "controls/button.c"
 #include "controls/listbox.c"
 #include "controls/bitset.c"
-#include "controls/control.c"
+#include "controls/control.c"*/
 
 static void form_draw_title(form_t *form);
+
+
+typedef control_t *(*create_control_func_t)(int x, int y, int w, int h, form_t *form,
+	form_item_info_t *);
+
+static void form_refresh(struct control_t *c) {
+	form_draw(CONTROL_EXTRA(c, form_t));
+}
+
+static void form_button_action(control_t *c, int cmd) {
+	(CONTROL_EXTRA(c, form_t))->result = cmd;
+}
+
+static control_t *control_create(GCPtr gc, int x, int y, int w, int h, 
+		form_t *form, form_item_info_t *info) {
+	control_t *c;
+	switch (info->type) {
+	case FORM_ITEM_TYPE_EDIT_TEXT:
+		c = edit_create(gc, x, y, w, h, 
+				info->edit.text, info->edit.input_type, info->edit.max_length);
+		break;
+	case FORM_ITEM_TYPE_BUTTON:
+		c = button_create(gc, x, y, w, h, info->id, info->button.text,
+				form_button_action);
+		break;
+	case FORM_ITEM_TYPE_LISTBOX:
+		c = listbox_create(gc, x, y, w, h,
+			info->listbox.text, info->listbox.input_type, info->listbox.max_length,
+			info->listbox.items, info->listbox.item_count, info->listbox.value,
+			info->listbox.flags);
+		break;
+	case FORM_ITEM_TYPE_BITSET:
+		c = bitset_create(gc, x, y, w, h,
+				info->bitset.short_items, info->bitset.items, info->bitset.item_count,
+				info->bitset.value);
+		break;
+	default:
+		return NULL;
+	}
+
+	control_set_extra(c, form);
+	control_set_refresh_parent(c, form_refresh);
+
+	return NULL;
+}
+
 
 form_t* form_create(const char *name, form_item_info_t items[], size_t item_count) {
 	if (ref_count++ == 0) {
@@ -138,7 +188,7 @@ form_t* form_create(const char *name, form_item_info_t items[], size_t item_coun
 			h = form_fnt->max_height + SPAN_GAP;
 		}
 
-		item->control = control_create(x, y, w, h, form, info);
+		item->control = control_create(screen, x, y, w, h, form, info);
 		if (i == form->active_index)
 			control_focus(item->control, true);
 		else

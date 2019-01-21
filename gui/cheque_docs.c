@@ -83,7 +83,7 @@ int cheque_docs_draw() {
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
 	x = (DISCX - BUTTON_WIDTH) / 2;
-	draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+	draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
 
 	return 0;
 }

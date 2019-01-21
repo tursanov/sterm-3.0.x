@@ -150,13 +150,13 @@ void listview_draw_items(listview_t *listview) {
 
 static void listview_draw_buttons() {
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
-	draw_button(screen, fnt, GAP + (BUTTON_WIDTH + GAP)*0, items_bottom + GAP, 
+	draw_button(screen, GAP + (BUTTON_WIDTH + GAP)*0, items_bottom + GAP, 
 			BUTTON_WIDTH, BUTTON_HEIGHT, "Добавить", active_element == 1);
-	draw_button(screen, fnt, GAP + (BUTTON_WIDTH + GAP)*1, items_bottom + GAP,
+	draw_button(screen, GAP + (BUTTON_WIDTH + GAP)*1, items_bottom + GAP,
 			BUTTON_WIDTH, BUTTON_HEIGHT, "Изменить", active_element == 2);
-	draw_button(screen, fnt, GAP + (BUTTON_WIDTH + GAP)*2, items_bottom + GAP,
+	draw_button(screen, GAP + (BUTTON_WIDTH + GAP)*2, items_bottom + GAP,
 			BUTTON_WIDTH, BUTTON_HEIGHT, "Удалить", active_element == 3);
-	draw_button(screen, fnt, DISCX - BUTTON_WIDTH - GAP, items_bottom + GAP,
+	draw_button(screen, DISCX - BUTTON_WIDTH - GAP, items_bottom + GAP,
 			BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", active_element == 4);
 }
 

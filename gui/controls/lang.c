@@ -1,3 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <ctype.h>
+#include "sysdefs.h"
+#include "kbd.h"
+#include "paths.h"
+#include "gui/gdi.h"
+
+
 struct key_metric_ex{
 	uint8_t key;
 	int rusu;

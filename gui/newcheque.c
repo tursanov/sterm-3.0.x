@@ -45,7 +45,6 @@ static bool newcheque_process(const struct kbd_event *_e) {
 	return true;
 }
 
-
 int newcheque_execute() {
 	struct kbd_event e;
 

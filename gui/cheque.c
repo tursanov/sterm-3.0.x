@@ -319,7 +319,7 @@ static int cheque_draw_cashier(int start_y) {
 	
 	x += TextWidth(fnt, text) + 10;
 
-	draw_button(screen, fnt, x, start_y, BUTTON_WIDTH, BUTTON_HEIGHT, "Изменить", active_button == 2);
+	draw_button(screen, x, start_y, BUTTON_WIDTH, BUTTON_HEIGHT, "Изменить", active_button == 2);
 	
 	return start_y + BUTTON_HEIGHT + 4;
 }
@@ -348,7 +348,7 @@ static int cheque_main_draw() {
 		y = cheque_draw_sum(y);
 		
 		x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
-		draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
+		draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
 	} else {
 		const char *text = "Нет документов для печати";
 		SetTextColor(screen, clBlack);
@@ -361,7 +361,7 @@ static int cheque_main_draw() {
 		y += fnt->max_height + 8;
 	}
 
-	draw_button(screen, fnt, x + BUTTON_WIDTH + GAP, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Отмена", active_button == 1);
+	draw_button(screen,  x + BUTTON_WIDTH + GAP, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Отмена", active_button == 1);
 
 	return 0;
 }
@@ -378,7 +378,7 @@ static void cheque_info_draw() {
 
 	y = cheque_draw_cheque(c, active_item_n, y + 2, false);
 
-	draw_button(screen, fnt, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+	draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
 }
 
 int cheque_draw() {
@@ -484,8 +484,8 @@ static void select_phone_or_email() {
 	BEGIN_FORM(form, "Ввод телефона или e-mail получателя чека")
 		FORM_ITEM_EDIT_LISTBOX(1008, title, c->pe, FORM_INPUT_TYPE_TEXT, 64,
 			(const char **)items, item_count)
-		FORM_ITEM_BUTTON(1, "ОК", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "ОК")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 
 	free(items);
@@ -521,8 +521,8 @@ static void change_cashier() {
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_get_post(), FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_get_inn(), FORM_INPUT_TYPE_NUMBER, 12)
 
-		FORM_ITEM_BUTTON(1, "ОК", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "ОК")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 
 	kbd_lang_ex = lng_lat;

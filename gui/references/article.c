@@ -250,8 +250,8 @@ void* create_new_article(data_source_t *ds) {
 		FORM_ITEM_LISTBOX(1199, "‘â ¢ª  „‘:", str_vats, ASIZE(str_vats), -1)
 		FORM_ITEM_LISTBOX(1054, "€£¥­â:", (const char **)agent_info_list, agents.count + 1, 0)
 
-		FORM_ITEM_BUTTON(1, "ŽŠ", NULL)
-		FORM_ITEM_BUTTON(2, "Žâ¬¥­ ", NULL)
+		FORM_ITEM_BUTTON(1, "ŽŠ")
+		FORM_ITEM_BUTTON(2, "Žâ¬¥­ ")
 	END_FORM()
 
 	a = article_new();
@@ -298,8 +298,8 @@ int edit_article(data_source_t *ds, void *obj) {
 		FORM_ITEM_LISTBOX(1199, "‘â ¢ª  „‘:", str_vats, ASIZE(str_vats), a->vat_rate - 1)
 		FORM_ITEM_LISTBOX(1054, "€£¥­â:", (const char **)agent_info_list, agents.count + 1, pay_agent_index)
 
-		FORM_ITEM_BUTTON(1, "ŽŠ", NULL)
-		FORM_ITEM_BUTTON(2, "Žâ¬¥­ ", NULL)
+		FORM_ITEM_BUTTON(1, "ŽŠ")
+		FORM_ITEM_BUTTON(2, "Žâ¬¥­ ")
 	END_FORM()
 
 	if (process_article_edit(form, a)) {

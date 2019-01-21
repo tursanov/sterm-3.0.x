@@ -1496,6 +1496,24 @@ int TextHeight(FontPtr pFont)
 		return -1;
 }
 
+int GetTextWidth(GCPtr pGC, const char *text) {
+	if (pGC->pFont != NULL)
+		return TextWidth(pGC->pFont, text);
+	return 0;
+}
+
+int GetMaxCharWidth(GCPtr pGC) {
+	if (pGC->pFont != NULL)
+		return pGC->pFont->max_width;
+	return 0;
+}
+
+int GetTextHeight(GCPtr pGC) {
+	if (pGC->pFont != NULL)
+		return pGC->pFont->max_height;
+	return 0;
+}
+
 static void text_out(GCPtr pGC, int x, int y,
 		int bound_x1, int bound_y1, int bound_x2, int bound_y2,
 		const char *text, int count)

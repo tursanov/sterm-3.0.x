@@ -200,6 +200,10 @@ void CopyGC(GCPtr pDest, int x, int y,
 
 int TextWidth(FontPtr pFont, const char *sText);
 int TextHeight(FontPtr pFont);
+
+int GetTextWidth(GCPtr pGC, const char *text);
+int GetMaxCharWidth(GCPtr pGC);
+int GetTextHeight(GCPtr pGC);
 void TextOut(GCPtr pGC, int x, int y, const char *sText);
 void TextOutN(GCPtr pGC, int x, int y, const char *sText, int count);
 void DrawText(GCPtr pGC, int x, int y, int w, int h, const char *sText, 

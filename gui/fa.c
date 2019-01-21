@@ -567,8 +567,8 @@ void fa_open_shift() {
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = open_shift_form;
 
@@ -589,8 +589,8 @@ void fa_close_shift() {
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = close_shift_form;
 
@@ -608,8 +608,8 @@ void fa_close_shift() {
 void fa_calc_report() {
 	form_t *form = NULL;
 	BEGIN_FORM(form, "Отчет о текущем состоянии расчетов")
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 
 	while (form_execute(form) == 1) {
@@ -626,8 +626,8 @@ void fa_close_fs() {
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1203, "ИНН Кассира:", cashier_inn, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = close_fs_form;
 
@@ -700,8 +700,8 @@ void fa_registration() {
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1046, "Наименование ОФД:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1017, "ИНН ОФД:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = reg_form;
 
@@ -827,8 +827,8 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1046, "Наименование ОФД:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1017, "ИНН ОФД:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_BITSET(9998, "Причины перерегистрации", short_rereg_reason, rereg_reason, 4, 0)
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = rereg_form;
 
@@ -903,8 +903,8 @@ void fa_cheque_corr() {
 		FORM_ITEM_EDIT_TEXT(1106, "НДС 20/120:", NULL, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_EDIT_TEXT(1107, "НДС 10/110:", NULL, FORM_INPUT_TYPE_MONEY, 16)
 
-		FORM_ITEM_BUTTON(1, "Печать", NULL)
-		FORM_ITEM_BUTTON(0, "Отмена", NULL)
+		FORM_ITEM_BUTTON(1, "Печать")
+		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
 	form_t *form = cheque_corr_form;
 
@@ -1013,8 +1013,8 @@ void fa_cheque() {
 		
 				BEGIN_FORM(form, title)
 					FORM_ITEM_EDIT_TEXT(1031, "Введите сумму, принятую от пассажира:", "", FORM_INPUT_TYPE_MONEY, 16)
-					FORM_ITEM_BUTTON(1, "ОК", NULL)
-					FORM_ITEM_BUTTON(0, "Отмена", NULL)
+					FORM_ITEM_BUTTON(1, "ОК")
+					FORM_ITEM_BUTTON(0, "Отмена")
 				END_FORM()
 				
 				while (1) {
