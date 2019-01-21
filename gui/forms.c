@@ -95,7 +95,7 @@ static control_t *control_create(GCPtr gc, int x, int y, int w, int h,
 	control_set_extra(c, form);
 	control_set_refresh_parent(c, form_refresh);
 
-	return NULL;
+	return c;
 }
 
 
