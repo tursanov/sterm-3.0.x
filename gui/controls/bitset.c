@@ -33,7 +33,7 @@ bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_l
 #define screen	(bitset->control.gc)
 
 
-control_t* bitset_create(GCPtr gc, int x, int y, int width, int height,
+control_t* bitset_create(int id, GCPtr gc, int x, int y, int width, int height,
 	const char **short_items, const char **items, size_t item_count, int value)
 {
     bitset_t *bitset = (bitset_t *)malloc(sizeof(bitset_t));
@@ -46,7 +46,7 @@ control_t* bitset_create(GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data
     };
 
-    control_init(&bitset->control, gc, x, y, width, height, &api);
+    control_init(&bitset->control, id, gc, x, y, width, height, &api);
 
 	bitset->value = value;
 	bitset->item_count = item_count;

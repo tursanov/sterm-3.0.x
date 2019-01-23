@@ -92,7 +92,7 @@ static void do_cursor_blinking(edit_t *edit, bool restart)
 }
 
 
-control_t* edit_create(GCPtr gc, int x, int y, int width, int height,
+control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
 	const char *text, edit_input_type_t input_type, size_t max_length)
 {
     edit_t *edit = (edit_t *)malloc(sizeof(edit_t));
@@ -105,7 +105,7 @@ control_t* edit_create(GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *control, int, const void *, size_t))edit_set_data
     };
 
-    control_init(&edit->control, gc, x, y, width, height, &api);
+    control_init(&edit->control, id, gc, x, y, width, height, &api);
  
     edit->input_type = input_type;
 

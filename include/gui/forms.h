@@ -11,7 +11,7 @@ typedef enum form_item_type_t {
 	FORM_ITEM_TYPE_NONE,
 	FORM_ITEM_TYPE_EDIT_TEXT,
 	FORM_ITEM_TYPE_BUTTON,
-	FORM_ITEM_TYPE_LISTBOX,
+	FORM_ITEM_TYPE_COMBOBOX,
 	FORM_ITEM_TYPE_BITSET,
 } form_item_type_t;
 
@@ -46,7 +46,7 @@ typedef struct form_item_info_t {
 			const char **items;
 			int value;
 			int flags;
-		} listbox;
+		} combobox;
 		struct {
 			size_t item_count;
 			const char **short_items;
@@ -66,13 +66,13 @@ typedef struct form_item_info_t {
 #define FORM_ITEM_BUTTON(id, text) { FORM_ITEM_TYPE_BUTTON, \
 	id, NULL, { .button = { text } } },
 
-#define FORM_ITEM_LISTBOX(id, name, items, item_count, value) \
-	{ FORM_ITEM_TYPE_LISTBOX, \
-	id, name, { .listbox = { NULL, FORM_INPUT_TYPE_TEXT, 0, item_count, items, value, 0 } } },
+#define FORM_ITEM_COMBOBOX(id, name, items, item_count, value) \
+	{ FORM_ITEM_TYPE_COMBOBOX, \
+	id, name, { .combobox = { NULL, FORM_INPUT_TYPE_TEXT, 0, item_count, items, value, 0 } } },
 
-#define FORM_ITEM_EDIT_LISTBOX(id, name, text, input_type, max_length, items, item_count) \
-	{ FORM_ITEM_TYPE_LISTBOX, \
-	id, name, { .listbox = { text, input_type, max_length, item_count, items, -1, 1 } } },
+#define FORM_ITEM_EDIT_COMBOBOX(id, name, text, input_type, max_length, items, item_count) \
+	{ FORM_ITEM_TYPE_COMBOBOX, \
+	id, name, { .combobox = { text, input_type, max_length, item_count, items, -1, 1 } } },
 
 #define FORM_ITEM_BITSET(id, name, short_items, items, item_count, value) \
 	{ FORM_ITEM_TYPE_BITSET, \
@@ -105,7 +105,7 @@ bool form_set_data(form_t *form, int id, int what, const void *data, size_t data
 	form_set_data(form, id, 0, text, text_size)
 #define FORM_BITSET_SET_VALUE(form, id, value) \
 	form_set_data(form, id, 0, (void *)(int)value, 0)
-#define FORM_LISTBOX_SET_SELECTED_INDEX(form, id, selected_index) \
+#define FORM_COMBOBOX_SET_SELECTED_INDEX(form, id, selected_index) \
 	form_set_data(form, id, 0, (void *)(int)selected_index, 0)
 	
 void draw_button(GCPtr screen, int x, int y, int width, int height, const char *text, bool focused);

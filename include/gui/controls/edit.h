@@ -10,7 +10,7 @@ typedef enum edit_input_type_t {
 	EDIT_INPUT_TYPE_MONEY,
 } edit_input_type_t;
 
-control_t* edit_create(GCPtr gc, int x, int y, int width, int height,
+control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
 	const char *text, edit_input_type_t input_type, size_t max_length);
 
 #endif

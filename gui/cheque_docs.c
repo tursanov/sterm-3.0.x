@@ -11,7 +11,7 @@
 
 static FontPtr fnt = NULL;
 static GCPtr screen = NULL;
-static int active_button = 0;
+//static int active_button = 0;
 static int active_item = 0;
 
 int cheque_docs_init(void) {

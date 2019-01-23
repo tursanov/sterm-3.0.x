@@ -58,12 +58,14 @@ GUI_LOG_OBJS =		\
 	pos
 
 GUI_CONTROLS_OBJS =		\
+	combobox \
 	control	\
 	bitset \
 	button \
 	edit \
 	lang \
 	listbox \
+	window \
 
 KKT_OBJS =		\
 	fdo		\
@@ -133,16 +135,15 @@ SUBDIRS =		\
 	usb		\
 	helpers		\
 	scripts	\
-	modules
+#	modules
 
 .PHONY:	$(SUBDIRS)
 
-all:	inc_build $(SUBDIRS) sterm mk_env
+#all:	inc_build $(SUBDIRS) sterm mk_env
+all:	$(SUBDIRS) sterm
 
 inc_build:
 	@./helpers/setbuild.pl
-
-all:	$(SUBDIRS) sterm
 
 
 $(SUBDIRS):

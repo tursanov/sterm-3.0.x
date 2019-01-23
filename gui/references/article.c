@@ -56,9 +56,9 @@ static const char * str_pay_methods[] =
 };
 static const char * str_vats[] = 
 {
-	"НДС 18%",
+	"НДС 20%",
 	"НДС 10%",
-	"НДС 18/118",
+	"НДС 20/120",
 	"НДС 10/110",
 	"НДС 0%",
 	"НДС НЕ ОБЛАГАЕТСЯ",
@@ -244,11 +244,11 @@ void* create_new_article(data_source_t *ds) {
 
 	BEGIN_FORM(form, "Новый товар/работа/услуга")
 		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", NULL, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_LISTBOX(1055, "Система налогообложения:", str_tax_systems, ASIZE(str_tax_systems), -1)
-		FORM_ITEM_LISTBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), -1)
+		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, ASIZE(str_tax_systems), -1)
+		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), -1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", NULL, FORM_INPUT_TYPE_MONEY, 16)
-		FORM_ITEM_LISTBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), -1)
-		FORM_ITEM_LISTBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, 0)
+		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), -1)
+		FORM_ITEM_COMBOBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, 0)
 
 		FORM_ITEM_BUTTON(1, "ОК")
 		FORM_ITEM_BUTTON(2, "Отмена")
@@ -292,11 +292,11 @@ int edit_article(data_source_t *ds, void *obj) {
 
 	BEGIN_FORM(form, "Изменить данные товара/работы/услуги")
 		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", a->name, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_LISTBOX(1055, "Система налогообложения:", str_tax_systems, ASIZE(str_tax_systems), tax_system)
-		FORM_ITEM_LISTBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), a->pay_method - 1)
+		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, ASIZE(str_tax_systems), tax_system)
+		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), a->pay_method - 1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", price_per_unit, FORM_INPUT_TYPE_MONEY, 16)
-		FORM_ITEM_LISTBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), a->vat_rate - 1)
-		FORM_ITEM_LISTBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, pay_agent_index)
+		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), a->vat_rate - 1)
+		FORM_ITEM_COMBOBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, pay_agent_index)
 
 		FORM_ITEM_BUTTON(1, "ОК")
 		FORM_ITEM_BUTTON(2, "Отмена")

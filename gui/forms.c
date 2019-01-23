@@ -13,7 +13,7 @@
 #include "gui/controls/edit.h"
 #include "gui/controls/bitset.h"
 #include "gui/controls/button.h"
-#include "gui/controls/listbox.h"
+#include "gui/controls/combobox.h"
 
 #define	GAP	5
 #define	SPAN_GAP	10
@@ -47,7 +47,7 @@ static GCPtr screen = NULL;
 
 /*#include "controls/edit.c"
 #include "controls/button.c"
-#include "controls/listbox.c"
+#include "controls/combobox.c"
 #include "controls/bitset.c"
 #include "controls/control.c"*/
 
@@ -56,10 +56,6 @@ static void form_draw_title(form_t *form);
 
 typedef control_t *(*create_control_func_t)(int x, int y, int w, int h, form_t *form,
 	form_item_info_t *);
-
-static void form_refresh(struct control_t *c) {
-	form_draw(CONTROL_EXTRA(c, form_t));
-}
 
 static void form_button_action(control_t *c, int cmd) {
 	(CONTROL_EXTRA(c, form_t))->result = cmd;
@@ -70,21 +66,21 @@ static control_t *control_create(GCPtr gc, int x, int y, int w, int h,
 	control_t *c;
 	switch (info->type) {
 	case FORM_ITEM_TYPE_EDIT_TEXT:
-		c = edit_create(gc, x, y, w, h, 
+		c = edit_create(info->id, gc, x, y, w, h, 
 				info->edit.text, info->edit.input_type, info->edit.max_length);
 		break;
 	case FORM_ITEM_TYPE_BUTTON:
-		c = button_create(gc, x, y, w, h, info->id, info->button.text,
+		c = button_create(info->id, gc, x, y, w, h, info->id, info->button.text,
 				form_button_action);
 		break;
-	case FORM_ITEM_TYPE_LISTBOX:
-		c = listbox_create(gc, x, y, w, h,
-			info->listbox.text, info->listbox.input_type, info->listbox.max_length,
-			info->listbox.items, info->listbox.item_count, info->listbox.value,
-			info->listbox.flags);
+	case FORM_ITEM_TYPE_COMBOBOX:
+		c = combobox_create(info->id, gc, x, y, w, h,
+			info->combobox.text, info->combobox.input_type, info->combobox.max_length,
+			info->combobox.items, info->combobox.item_count, info->combobox.value,
+			info->combobox.flags);
 		break;
 	case FORM_ITEM_TYPE_BITSET:
-		c = bitset_create(gc, x, y, w, h,
+		c = bitset_create(info->id, gc, x, y, w, h,
 				info->bitset.short_items, info->bitset.items, info->bitset.item_count,
 				info->bitset.value);
 		break;
@@ -92,8 +88,8 @@ static control_t *control_create(GCPtr gc, int x, int y, int w, int h,
 		return NULL;
 	}
 
-	control_set_extra(c, form);
-	control_set_refresh_parent(c, form_refresh);
+	control_parent_t p = { form, (draw_func_t)form_draw };
+	control_set_parent(c, &p);
 
 	return c;
 }

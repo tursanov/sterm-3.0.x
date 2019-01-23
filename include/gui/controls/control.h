@@ -20,19 +20,27 @@ typedef struct control_api_t {
 	bool (*set_data)(struct control_t *control, int what, const void *data, size_t data_len);
 } control_api_t;
 
+typedef void (*draw_func_t)(void *obj);
+
+typedef struct {
+	void *parent;
+	draw_func_t draw;
+} control_parent_t;
+
 typedef struct control_t {
+	int id;
+	GCPtr gc;
 	int x;
    	int y;
    	int width;
    	int height;
-	GCPtr gc;
    	control_api_t api;
    	bool focused;
 	void *extra;
-	void (*refresh_parent_fn)(struct control_t *);
+	control_parent_t parent;
 } control_t;
 
-void control_init(control_t *control, GCPtr gc, int x, int y, int width, int height,
+void control_init(control_t *control, int id, GCPtr gc, int x, int y, int width, int height,
 	control_api_t* api);
 
 #define CONTROL_EXTRA(c, type) ((type *)control_get_extra(c))
@@ -45,7 +53,7 @@ void* control_get_extra(struct control_t *control);
 void control_set_extra(struct control_t *control, void *extra);
 bool control_get_data(struct control_t *control, int what, data_t *data);
 bool control_set_data(struct control_t *control, int what, const void *data, size_t data_len);
-void control_set_refresh_parent(struct control_t *control, void (*fn)(struct control_t *));
+void control_set_parent(struct control_t *control, control_parent_t *parent);
 void control_refresh_parent(struct control_t *control);
 
 void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,

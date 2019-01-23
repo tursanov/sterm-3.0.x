@@ -5,6 +5,7 @@
 
 int list_add_item(list_t *list, list_item_t *item) {
 	item->next = NULL;
+	item->prev = list->tail;
 	if (list->tail == NULL) {
 		list->head = list->tail = item;
 	} else {
@@ -28,7 +29,31 @@ int list_add(list_t *list, void *obj) {
 }
 
 int list_remove(list_t *list, void *obj) {
-    for (list_item_t *item = list->head, *prev = NULL; item != NULL;) {
+    for (list_item_t *item = list->head; item != NULL;) {
+        list_item_t *tmp = item;
+        item = item->next;
+        if (tmp->obj == obj) {
+            if (list->delete_func != NULL)
+                list->delete_func(tmp->obj);
+			list_item_t *prev = tmp->prev;
+            free(tmp);
+
+            if (prev != NULL)
+                prev->next = item;
+            if (item == NULL)
+                list->tail = prev;
+			else
+				item->prev = prev;
+            if (tmp == list->head)
+                list->head = item;
+            list->count--;
+            return 1;
+        } /*else
+            prev = tmp;*/
+    }
+    return 0;
+
+/*    for (list_item_t *item = list->head, *prev = NULL; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
         if (tmp->obj == obj) {
@@ -45,12 +70,12 @@ int list_remove(list_t *list, void *obj) {
             return 1;
         } else
             prev = tmp;
-    }
+    }*/
     return 0;
 }
 
 int list_remove_at(list_t *list, int i) {
-    int n = 0;
+/*    int n = 0;
     for (list_item_t *item = list->head, *prev = NULL; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
@@ -71,11 +96,59 @@ int list_remove_at(list_t *list, int i) {
             n++;
         }
     }
+    return 0;*/
+
+    int n = 0;
+    for (list_item_t *item = list->head; item != NULL;) {
+        list_item_t *tmp = item;
+        item = item->next;
+        if (n == i) {
+            if (list->delete_func != NULL)
+                list->delete_func(tmp->obj);
+			list_item_t *prev = tmp->prev;
+            free(tmp);
+            if (prev != NULL)
+                prev->next = item;
+            if (item == NULL)
+                list->tail = prev;
+			else
+				item->prev = prev;
+            if (tmp == list->head)
+                list->head = item;
+            list->count--;
+            return 1;
+        } else {
+            //prev = tmp;
+            n++;
+        }
+    }
     return 0;
 }
 
 int list_remove_if(list_t *list, void *arg, list_item_func_t func) {
     int count = 0;
+    for (list_item_t *item = list->head; item != NULL;) {
+        list_item_t *tmp = item;
+        item = item->next;
+        if (func(arg, tmp->obj)) {
+			list_item_t *prev = tmp->prev;
+            free(tmp);
+            if (prev != NULL)
+                prev->next = item;
+            if (item == NULL)
+                list->tail = prev;
+			else
+				item->prev = prev;
+            if (tmp == list->head)
+                list->head = item;
+            count++;
+        } /*else
+            prev = tmp;*/
+    }
+    list->count -= count;
+    return count;
+
+/*    int count = 0;
     for (list_item_t *item = list->head, *prev = NULL; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
@@ -92,7 +165,7 @@ int list_remove_if(list_t *list, void *arg, list_item_func_t func) {
             prev = tmp;
     }
     list->count -= count;
-    return count;
+    return count;*/
 }
 
 int list_clear(list_t* list) {

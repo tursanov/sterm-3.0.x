@@ -3,12 +3,14 @@ DIR = gui/controls/
 
 INCLUDE = ../../include
 GUI_CONTROLS_OBJS =		\
+	combobox \
 	control	\
 	bitset \
 	button \
 	edit \
 	lang \
 	listbox \
+	window \
 
 
 OBJS = $(addsuffix .o, $(GUI_CONTROLS_OBJS))

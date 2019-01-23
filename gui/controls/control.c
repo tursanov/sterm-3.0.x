@@ -10,18 +10,21 @@
 #include "gui/controls/control.h"
 
 void control_init(control_t *control,
+		int id,
 		GCPtr gc,
 		int x, int y, int width, int height,
 		control_api_t* api) {
+	control->id = id;
+	control->gc = gc;
 	control->x = x;
 	control->y = y;
 	control->width = width;
 	control->height = height;
-	control->gc = gc;
 	control->api = *api;
 	control->focused = false;
 	control->extra = NULL;
-	control->refresh_parent_fn = NULL;
+	control->parent.parent = NULL;
+	control->parent.draw = NULL;
 }
 
 void* control_get_extra(struct control_t *control) {
@@ -31,13 +34,16 @@ void control_set_extra(struct control_t *control, void *extra) {
 	control->extra = extra;
 }
 
-void control_set_refresh_parent(struct control_t *control, void (*fn)(struct control_t *)) {
-	control->refresh_parent_fn = fn;
+void control_set_parent(struct control_t *control, control_parent_t *parent) {
+	if (parent)
+		memcpy(&control->parent, parent, sizeof(*parent));
+	else
+		memset(&control->parent, 0, sizeof(*parent));
 }
 
 void control_refresh_parent(struct control_t *control) {
-	if (control->refresh_parent_fn)
-		control->refresh_parent_fn(control);
+	if (control->parent.parent && control->parent.draw)
+		control->parent.draw(control->parent.parent);
 }
 
 void control_destroy(control_t *control) {

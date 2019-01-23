@@ -25,7 +25,7 @@ bool button_handle(button_t *button, const struct kbd_event *e);
 
 #define screen	(button->control.gc)
 
-control_t* button_create(GCPtr gc, int x, int y, int width, int height,
+control_t* button_create(int id, GCPtr gc, int x, int y, int width, int height,
 	int cmd, const char *text, action_t action) 
 {
     button_t *button = (button_t *)malloc(sizeof(button_t));
@@ -38,7 +38,7 @@ control_t* button_create(GCPtr gc, int x, int y, int width, int height,
 		NULL,
     };
 
-    control_init(&button->control, gc, x, y, width, height, &api);
+    control_init(&button->control, id, gc, x, y, width, height, &api);
 
 	if (text != NULL)
 	    button->text = strdup(text);

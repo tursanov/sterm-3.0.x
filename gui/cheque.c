@@ -482,7 +482,7 @@ static void select_phone_or_email() {
 	sprintf(title, "Тел. или e-mail (%d):", item_count);
 
 	BEGIN_FORM(form, "Ввод телефона или e-mail получателя чека")
-		FORM_ITEM_EDIT_LISTBOX(1008, title, c->pe, FORM_INPUT_TYPE_TEXT, 64,
+		FORM_ITEM_EDIT_COMBOBOX(1008, title, c->pe, FORM_INPUT_TYPE_TEXT, 64,
 			(const char **)items, item_count)
 		FORM_ITEM_BUTTON(1, "ОК")
 		FORM_ITEM_BUTTON(0, "Отмена")

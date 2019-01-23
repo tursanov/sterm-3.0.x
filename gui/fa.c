@@ -878,9 +878,9 @@ void fa_cheque_corr() {
 	const char *str_corr_type[] = { "Самостоятельно", "По предписанию" };
 
 	BEGIN_FORM(cheque_corr_form, "Чек коррекции")
-		FORM_ITEM_LISTBOX(1054, "Признак расчета:", str_pay_type, ASIZE(str_pay_type), -1)
-		FORM_ITEM_LISTBOX(1055, "Система налогообложения:", str_tax_mode, ASIZE(str_tax_mode), -1)
-		FORM_ITEM_LISTBOX(1173, "Тип коррекции:", str_corr_type, ASIZE(str_corr_type), -1)
+		FORM_ITEM_COMBOBOX(1054, "Признак расчета:", str_pay_type, ASIZE(str_pay_type), -1)
+		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_mode, ASIZE(str_tax_mode), -1)
+		FORM_ITEM_COMBOBOX(1173, "Тип коррекции:", str_corr_type, ASIZE(str_corr_type), -1)
 
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)

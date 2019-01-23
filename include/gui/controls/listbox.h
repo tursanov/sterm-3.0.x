@@ -1,19 +1,13 @@
 #ifndef LISTBOX_H
 #define LISTBOX_H
 
-#include "gui/controls/edit.h"
+#include "gui/controls/control.h"
+#include "list.h"
 
+typedef void (*listbox_get_item_text_func_t)(void *item, char text[], size_t text_size);
 
-control_t* listbox_create(GCPtr gc, int x, int y, int width, int height,
-	const char *text, edit_input_type_t input_type, size_t max_length,
-	const char **items, size_t item_count, int value, int flags);
+control_t* listbox_create(int id, GCPtr gc, int x, int y, int width, int height,
+		list_t *items, listbox_get_item_text_func_t get_item_text_func,
+		int selected_index);
 
-control_t* simple_listbox_create(GCPtr gc, int x, int y, int width, int height,
-	const char **items, size_t item_count, int value);
-
-control_t* edit_listbox_create(GCPtr gc, int x, int y, int width, int height,
-	const char *text, edit_input_type_t input_type, size_t max_length,
-	const char **items, size_t item_count);
-
-
-#endif // LISTBOX_H
+#endif
