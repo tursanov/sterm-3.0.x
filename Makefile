@@ -65,6 +65,7 @@ GUI_CONTROLS_OBJS =		\
 	edit \
 	lang \
 	listbox \
+	listview \
 	window \
 
 KKT_OBJS =		\
