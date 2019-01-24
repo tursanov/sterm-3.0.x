@@ -22,7 +22,7 @@
 #include "gui/forms.h"
 #include "gui/cheque.h"
 #include "gui/cheque_docs.h"
-#include "gui/listview.h"
+#include "gui/lvform.h"
 #include "gui/newcheque.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"

@@ -302,7 +302,7 @@ int agents_save() {
 
 void fa_agents() {
 
-	listview_column_t columns[] = {
+	lvform_column_t columns[] = {
 		{ "\xfc", 50 },
 		{ "Наименование агента", 250 },
 		{ "ИНН", 200 },
@@ -316,9 +316,9 @@ void fa_agents() {
 		remove_agent
 	};
 
-	listview_t *lv = listview_create("Справочник агентов", columns, ASIZE(columns),	&ds);
-	listview_execute(lv);
-	listview_destroy(lv);
+	lvform_t *lv = lvform_create("Справочник агентов", columns, ASIZE(columns),	&ds);
+	lvform_execute(lv);
+	lvform_destroy(lv);
 
 	agents_save();
 

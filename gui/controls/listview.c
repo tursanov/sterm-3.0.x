@@ -52,7 +52,7 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
     listview_column_t *c = listview->columns;
     listview_column_t *c1 = columns;
     for (int i = 0; i < column_count; i++, c++, c1++) {
-        c->title = strdup(c1->title[i]);
+        c->title = strdup(c1->title);
         c->width = c1->width;
     }
 
@@ -80,7 +80,7 @@ static void listview_draw_column(listview_t *listview, listview_column_t *c, int
 	FillBox(screen, c->width - 2, 0, 2, h);
 }
 
-static void listview_draw_columns(listview_t *listview, int y) {
+static void listview_draw_columns(listview_t *listview) {
 	listview_column_t *c = listview->columns;
 	int x = listview->control.x;
     int y = listview->control.y;

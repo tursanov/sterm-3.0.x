@@ -355,7 +355,7 @@ int articles_save() {
 
 
 void fa_articles() {
-	listview_column_t columns[] = {
+	lvform_column_t columns[] = {
 		{ "\xfc", 30 },
 		{ "Наименование", 150 },
 		{ "СНО", 50 },
@@ -372,9 +372,9 @@ void fa_articles() {
 		remove_article
 	};
 
-	listview_t *lv = listview_create("Справочник товаров/работ/услуг", columns, ASIZE(columns),	&ds);
-	listview_execute(lv);
-	listview_destroy(lv);
+	lvform_t *lv = lvform_create("Справочник товаров/работ/услуг", columns, ASIZE(columns),	&ds);
+	lvform_execute(lv);
+	lvform_destroy(lv);
 
 	articles_save();
 

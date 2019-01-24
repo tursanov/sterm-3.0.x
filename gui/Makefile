@@ -14,7 +14,7 @@ GUI_OBJS =		\
 	forms		\
 	gdi		\
 	help		\
-	listview	\
+	lvform	\
 	menu		\
 	newcheque	\
 	options		\
