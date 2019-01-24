@@ -26,6 +26,7 @@ struct window_t {
 	list_t controls;
 	list_item_t *focused;
 	list_item_t *idfind;
+	window_handle_event_func_t handle_event_func;
 	int dialog_result;
 };
 
@@ -34,10 +35,11 @@ static void label_destroy(label_t *l) {
 	free(l);
 }
 
-window_t *window_create(GCPtr gc, const char *title) {
+window_t *window_create(GCPtr gc, const char *title, window_handle_event_func_t handle_event_func) {
 	window_t *w = (window_t *)malloc(sizeof(window_t));
 	memset(w, 0, sizeof(window_t));
 
+	w->handle_event_func = handle_event_func;
 	w->dialog_result = -1;
 
 	if (gc == NULL) {
@@ -66,7 +68,6 @@ void window_destroy(window_t *w) {
 	}
 	free(w);
 }
-
 
 GCPtr window_get_gc(window_t *w) {
 	return w->gc;
@@ -101,7 +102,6 @@ void window_add_label_with_id(window_t *w, int id, int x, int y, const char *tex
 void window_add_label(window_t *w, int x, int y, const char *text) {
 	window_add_label_with_id(w, -1, x, y, text);
 }
-
 
 void window_set_label_text(window_t *w, int id, const char *text) {
 	for (list_item_t *li = w->idlabels.head; li; li = li->next) {
@@ -227,6 +227,10 @@ static bool window_process(window_t *w, const struct kbd_event *_e) {
 		}
 	}
 
+	if (w->handle_event_func)
+		if (!w->handle_event_func(w, &e))
+			return false;
+
 	if (w->dialog_result >= 0)
 		return false;
 	return true;
@@ -235,7 +239,6 @@ static bool window_process(window_t *w, const struct kbd_event *_e) {
 
 
 int window_show_dialog(window_t *w) {
-
 	struct kbd_event e;
 	kbd_flush_queue();
 
