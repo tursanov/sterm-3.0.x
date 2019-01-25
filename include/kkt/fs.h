@@ -243,4 +243,10 @@ struct kkt_fs_fdo_ack {
 	uint32_t doc_nr;
 };
 
+/* Информация об STLV фискального документа */
+struct kkt_fs_doc_stlv_info {
+	uint32_t doc_type;		/* тип документа */
+	size_t len;			/* длина документа */
+};
+
 #endif		/* KKT_FS_H */

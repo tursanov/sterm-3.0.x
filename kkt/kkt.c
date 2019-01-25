@@ -783,6 +783,22 @@ uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len)
 	return kkt_status;
 }
 
+/* Получить информацию об STLV фискального документа */
+uint8_t kkt_get_doc_stlv(uint32_t doc_nr, uint16_t *doc_type, size_t *len)
+{
+	assert(doc_type != NULL);
+	assert(len != NULL);
+	if (kkt_lock()){
+		struct kkt_fs_doc_stlv_info arg;
+		if (do_cmd(KKT_FS, KKT_FS_GET_DOC_STLV, &arg)){
+			*doc_type = arg.doc_type;
+			*len = arg.len;
+		}
+		kkt_unlock();
+	}
+	return kkt_status;
+}
+
 /* Сброс ФН */
 uint8_t kkt_reset_fs(uint8_t b)
 {

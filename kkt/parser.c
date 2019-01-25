@@ -478,6 +478,21 @@ static bool parse_fs_unconfirmed_cnt(uint32_t *cnt)
 	return ret;
 }
 
+static bool parse_fs_doc_stlv_info(struct kkt_fs_doc_stlv_info *di)
+{
+	assert(di != NULL);
+	bool ret = true;
+	if (rx_st == st_prefix){
+		ret = parse_prefix();
+		if (ret && (kkt_status == KKT_STATUS_OK))
+			begin_fix_data(4);
+	}else if (rx_st == st_fix_data){
+		di->doc_type = *(const uint16_t *)(kkt_rx + kkt_rx_len - 4);
+		di->len = *(const uint16_t *)(kkt_rx + kkt_rx_len - 2);
+	}
+	return ret;
+}
+
 parser_t get_parser(uint8_t prefix, uint8_t cmd)
 {
 	parser_t ret = NULL;
@@ -550,6 +565,9 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 					break;
 				case KKT_FS_LAST_REG_DATA:
 					ret = parse_var_data;
+					break;
+				case KKT_FS_GET_DOC_STLV:
+					ret = parse_fs_doc_stlv_info;
 					break;
 				case KKT_FS_RESET:
 					ret = parse_status;
