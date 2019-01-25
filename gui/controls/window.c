@@ -25,7 +25,6 @@ struct window_t {
 	list_t idlabels;
 	list_t controls;
 	list_item_t *focused;
-	list_item_t *idfind;
 	window_handle_event_func_t handle_event_func;
 	int dialog_result;
 };
@@ -35,7 +34,8 @@ static void label_destroy(label_t *l) {
 	free(l);
 }
 
-window_t *window_create(GCPtr gc, const char *title, window_handle_event_func_t handle_event_func) {
+window_t *window_create(GCPtr gc, const char *title, 
+		window_handle_event_func_t handle_event_func) {
 	window_t *w = (window_t *)malloc(sizeof(window_t));
 	memset(w, 0, sizeof(window_t));
 
@@ -237,27 +237,59 @@ static bool window_process(window_t *w, const struct kbd_event *_e) {
 }
 
 
-
 int window_show_dialog(window_t *w) {
 	struct kbd_event e;
 	kbd_flush_queue();
 
+	w->dialog_result = -1;
 	window_draw(w);
 
 	do {
 		kbd_get_event(&e);
 	} while (window_process(w, &e));
 
-	return 0;	
+	return w->dialog_result;	
+}
+
+static list_item_t *window_get_control_item(window_t *w, int id) {
+	for (list_item_t *li = w->controls.head; li; li = li->next) {
+		control_t *c = LIST_ITEM(li, control_t);
+		if (c->id == id)
+			return li;
+	}
+	return NULL;
 }
 
 control_t *window_get_control(window_t *w, int id) {
+	list_item_t *li = window_get_control_item(w, id);
+	return li ? LIST_ITEM(li, control_t) : NULL;
+}
+
+bool window_set_focus(window_t *w, int id) {
+	list_item_t *li = window_get_control_item(w, id);
+	if (li) {
+		if (w->focused)
+			control_focus(LIST_ITEM(w->focused, control_t), false);
+		w->focused = li;
+		return control_focus(LIST_ITEM(w->focused, control_t), true);
+	}
+	return false;
+}
+
+bool window_get_data(window_t *w, int id, int what, data_t *data) {
 	for (list_item_t *li = w->controls.head; li; li = li->next) {
 		control_t *c = LIST_ITEM(li, control_t);
-		if (c->id == id) {
-			w->idfind = li->next;
-			return c;
-		}
+		if (c->id == id)
+			return control_get_data(c, what, data);
 	}
-	return NULL;
+	return false;
+}
+
+bool window_set_data(window_t *w, int id, int what, const void *data, size_t data_size) {
+	for (list_item_t *li = w->controls.head; li; li = li->next) {
+		control_t *c = LIST_ITEM(li, control_t);
+		if (c->id == id)
+			return control_set_data(c, what, data, data_size);
+	}
+	return false;
 }

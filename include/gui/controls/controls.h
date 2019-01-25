@@ -7,5 +7,6 @@
 #include "combobox.h"
 #include "bitset.h"
 #include "listbox.h"
+#include "listview.h"
 
 #endif // CONTROLS_H

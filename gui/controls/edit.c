@@ -406,7 +406,18 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 		case EDIT_INPUT_TYPE_DATE:
 			if (!isdigit(e->ch))
 				return true;
+		case EDIT_INPUT_TYPE_DOUBLE:
+			if (!isdigit(e->ch)) {
+				if (e->ch == '.') {
+					if (strchr(edit->text, '.'))
+						return true;
+					if (edit->cur_pos == 0)
+						edit_insert_char(edit, '0');
+				} else
+					return true;
+			}
 		}
+
 		edit_insert_char(edit, e->ch);
 		if (edit->input_type == EDIT_INPUT_TYPE_DATE) {
 			if (edit->cur_pos == 2 || edit->cur_pos == 5)

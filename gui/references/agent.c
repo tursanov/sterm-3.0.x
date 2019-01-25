@@ -1,21 +1,5 @@
 #include "serialize.h"
-
-typedef struct {
-	int n;
-	char *name;
-	char *inn;
-	char *description;
-	uint8_t pay_agent;
-	char *transfer_operator_phone;
-	char *pay_agent_operation;
-	char *pay_agent_phone;
-	char *payment_processor_phone;
-	char *money_transfer_operator_name;
-	char *money_transfer_operator_address;
-	char *money_transfer_operator_inn;
-	char *supplier_phone;
-} agent_t;
-
+#include "gui/references/agent.h"
 
 int agent_get_text(void *obj, int index, char *text, size_t text_size) {
 	agent_t *a = (agent_t *)obj;
@@ -264,7 +248,7 @@ int remove_agent(data_source_t *ds, void *obj) {
 	return 0;
 }
 
-static list_t agents = { NULL, NULL, 0, (list_item_delete_func_t)agent_free };
+list_t agents = { NULL, NULL, 0, (list_item_delete_func_t)agent_free };
 
 #define AGENTS_FILE_NAME	"/home/sterm/agents.bin"
 

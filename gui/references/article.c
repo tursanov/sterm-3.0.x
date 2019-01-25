@@ -1,15 +1,6 @@
 #include <stdint.h>
 #include <unistd.h>
-
-typedef struct {
-	int n;
-	char *name;
-	uint8_t tax_system;
-	uint8_t pay_method;
-	uint64_t price_per_unit;
-	uint8_t vat_rate;
-	int32_t pay_agent;
-} article_t;
+#include "gui/references/article.h"
 
 static int get_bit(uint8_t v) {
 	switch (v) {
@@ -317,7 +308,7 @@ int remove_article(data_source_t *ds, void *obj) {
 }
 
 
-static list_t articles = { NULL, NULL, 0, (list_item_delete_func_t)article_free };
+list_t articles = { NULL, NULL, 0, (list_item_delete_func_t)article_free };
 
 #define ARTICLES_FILE_NAME	"/home/sterm/articles.bin"
 

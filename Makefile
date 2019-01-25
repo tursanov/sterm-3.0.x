@@ -136,11 +136,11 @@ SUBDIRS =		\
 	usb		\
 	helpers		\
 	scripts	\
-#	modules
+	modules
 
 .PHONY:	$(SUBDIRS)
 
-#all:	inc_build $(SUBDIRS) sterm mk_env
+all:	inc_build $(SUBDIRS) sterm mk_env
 all:	$(SUBDIRS) sterm
 
 inc_build:
