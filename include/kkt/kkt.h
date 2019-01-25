@@ -152,6 +152,9 @@ extern uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len);
 /* Получить информацию об STLV фискального документа */
 extern uint8_t kkt_get_doc_stlv(uint32_t doc_nr, uint16_t *doc_type, size_t *len);
 
+/* Прочитать TLV фискального документа */
+extern uint8_t kkt_read_doc_tlv(uint8_t *data, size_t *len);
+
 /* Сброс ФН */
 extern uint8_t kkt_reset_fs(uint8_t b);
 

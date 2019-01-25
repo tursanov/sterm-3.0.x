@@ -493,6 +493,23 @@ static bool parse_fs_doc_stlv_info(struct kkt_fs_doc_stlv_info *di)
 	return ret;
 }
 
+static bool parse_fs_doc_tlv(struct read_doc_tlv_arg *arg)
+{
+	assert(arg != NULL);
+	bool ret = true;
+	if (rx_st == st_prefix){
+		ret = parse_prefix();
+		if (ret && (kkt_status == KKT_STATUS_OK))
+			begin_fix_data(2);
+	}else if (rx_st == st_fix_data){
+		arg->tag = *(const uint8_t *)(kkt_rx + kkt_rx_len - 2);
+		begin_var_data_len();
+	}else if (rx_st == st_var_data_len)
+		parse_var_data_len(&arg->data);
+	return ret;
+
+}
+
 parser_t get_parser(uint8_t prefix, uint8_t cmd)
 {
 	parser_t ret = NULL;
@@ -568,6 +585,9 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 					break;
 				case KKT_FS_GET_DOC_STLV:
 					ret = parse_fs_doc_stlv_info;
+					break;
+				case KKT_FS_READ_DOC_TLV:
+					ret = parse_fs_doc_tlv;
 					break;
 				case KKT_FS_RESET:
 					ret = parse_status;

@@ -790,11 +790,54 @@ uint8_t kkt_get_doc_stlv(uint32_t doc_nr, uint16_t *doc_type, size_t *len)
 	assert(len != NULL);
 	if (kkt_lock()){
 		struct kkt_fs_doc_stlv_info arg;
-		if (do_cmd(KKT_FS, KKT_FS_GET_DOC_STLV, &arg)){
-			*doc_type = arg.doc_type;
-			*len = arg.len;
+		if (prepare_cmd(KKT_FS, KKT_FS_GET_DOC_STLV) && write_dword(doc_nr) &&
+				kkt_open_dev_if_need()){
+			if (do_transaction(KKT_FS, KKT_FS_GET_DOC_STLV, &arg)){
+				*doc_type = arg.doc_type;
+				*len = arg.len;
+			}
+			kkt_close_dev();
 		}
 		kkt_unlock();
+	}
+	return kkt_status;
+}
+
+/* Прочитать TLV фискального документа */
+uint8_t kkt_read_doc_tlv(uint8_t *data, size_t *len)
+{
+	assert(data != NULL);
+	assert(len != NULL);
+	if (kkt_lock()){
+		bool flag = true;
+		size_t l = 0;
+		kkt_begin_batch_mode();
+		while (flag){
+			flag = false;
+			struct read_doc_tlv_arg arg;
+			if (do_cmd(KKT_FS, KKT_FS_READ_DOC_TLV, &arg)){
+				if (kkt_status == 8){
+					kkt_status = KKT_STATUS_OK;
+					flag = true;
+					break;
+				}else if (kkt_status != KKT_STATUS_OK)
+					break;
+				else if ((l + 2 + arg.data.len) <= *len){
+					*(uint16_t *)(data + l) = arg.tag;
+					l += 2;
+					if (arg.data.len > 0){
+						memcpy(data + l, arg.data.data, arg.data.len);
+						l += arg.data.len;
+					}
+					flag = true;
+				}else
+					kkt_status = KKT_STATUS_OVERFLOW;
+			}
+		}
+		kkt_end_batch_mode();
+		kkt_unlock();
+		if (flag)
+			*len = l;
 	}
 	return kkt_status;
 }

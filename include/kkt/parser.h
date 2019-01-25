@@ -32,6 +32,11 @@ struct find_doc_info_arg {
 	struct kkt_var_data data;
 };
 
+struct read_doc_tlv_arg {
+	uint16_t tag;
+	struct kkt_var_data data;
+};
+
 typedef bool (*parser_t)();
 
 extern parser_t get_parser(uint8_t prefix, uint8_t cmd);
