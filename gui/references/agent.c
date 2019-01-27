@@ -1,5 +1,8 @@
 #include "serialize.h"
 #include "gui/references/agent.h"
+#include "gui/references/article.h"
+
+static int agent_max_id = 0;
 
 int agent_get_text(void *obj, int index, char *text, size_t text_size) {
 	agent_t *a = (agent_t *)obj;
@@ -90,6 +93,8 @@ agent_t* agent_load(FILE *f) {
 		agent_free(a);
 		return NULL;
 	}
+	if (a->n > agent_max_id)
+		agent_max_id = a->n;
 	return a;
 }
 
@@ -200,11 +205,12 @@ void* create_new_agent(data_source_t *ds) {
 	END_FORM()
 
 	a = agent_new();
-   	a->n = ds->list->count + 1;
+   	a->n = ++agent_max_id;
 
 	if (!process_agent_edit(form, a)) {
 		agent_free(a);
 		a = NULL;
+		agent_max_id--;
 	}
 
 	form_destroy(form);
@@ -245,6 +251,18 @@ int edit_agent(data_source_t *ds, void *obj) {
 }
 
 int remove_agent(data_source_t *ds, void *obj) {
+	agent_t *agent = (agent_t *)obj;
+	for (list_item_t *li = articles.head; li; li = li->next) {
+		article_t *a = LIST_ITEM(li, article_t);
+		if (a->pay_agent == agent->n) {
+			message_box("Уведомление", 
+						"Данный агент используется в описании товаров/работ/услуг и не может быть удален."
+						"\nСначала необходимо удалить все ссылки на данного агента.",
+						dlg_yes, 0, al_center);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 

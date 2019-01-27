@@ -7,6 +7,7 @@
 #include "kbd.h"
 #include "paths.h"
 #include "gui/gdi.h"
+#include "gui/dialog.h"
 #include "gui/controls/lang.h"
 #include "gui/controls/window.h"
 
@@ -14,6 +15,7 @@ typedef struct {
 	int id;
 	int x;
    	int y;
+	align_t align;
 	char *text;
 } label_t;
 
@@ -87,11 +89,12 @@ void window_add_control(window_t *w, control_t *c) {
 	}
 }
 
-void window_add_label_with_id(window_t *w, int id, int x, int y, const char *text) {
+void window_add_label_with_id(window_t *w, int id, int x, int y, align_t align, const char *text) {
 	label_t *label = (label_t *)malloc(sizeof(label_t));
 	label->id = id;
 	label->x = x;
 	label->y = y;
+	label->align = align;
 	label->text = strdup(text);
 	if (id != -1)
 		list_add(&w->idlabels, label);
@@ -99,17 +102,18 @@ void window_add_label_with_id(window_t *w, int id, int x, int y, const char *tex
 		list_add(&w->labels, label);
 }
 
-void window_add_label(window_t *w, int x, int y, const char *text) {
-	window_add_label_with_id(w, -1, x, y, text);
+void window_add_label(window_t *w, int x, int y, align_t align, const char *text) {
+	window_add_label_with_id(w, -1, x, y, align, text);
 }
 
-void window_set_label_text(window_t *w, int id, const char *text) {
+void window_set_label_text(window_t *w, int id, const char *text, bool redraw) {
 	for (list_item_t *li = w->idlabels.head; li; li = li->next) {
 		label_t *l = LIST_ITEM(li, label_t);
 		if (l->id == id) {
 			free(l->text);
 			l->text = strdup(text);
-			window_draw(w);
+			if (redraw)
+				window_draw(w);
 			break;
 		}
 	}
@@ -144,8 +148,19 @@ static void draw_title(GCPtr screen, const char *title) {
 }
 
 static void label_draw(GCPtr gc, label_t *l) {
+	int x = l->x;
+	int y = l->y;
+
+	if (l->align != align_left) {
+		int tw = GetTextWidth(gc, l->text);
+		if (l->align == align_center)
+			x -= tw  / 2;
+		else if (l->align == align_right)
+			x -= tw;
+	}
+
 	SetTextColor(gc, clBlack);
-	TextOut(gc, l->x, l->y, l->text);
+	TextOut(gc, x, y, l->text);
 }
 
 void window_draw(window_t *w) {
@@ -265,6 +280,10 @@ control_t *window_get_control(window_t *w, int id) {
 	return li ? LIST_ITEM(li, control_t) : NULL;
 }
 
+control_t *window_get_focus(window_t *w) {
+	return w->focused ? LIST_ITEM(w->focused, control_t) : NULL;
+}
+
 bool window_set_focus(window_t *w, int id) {
 	list_item_t *li = window_get_control_item(w, id);
 	if (li) {
@@ -292,4 +311,10 @@ bool window_set_data(window_t *w, int id, int what, const void *data, size_t dat
 			return control_set_data(c, what, data, data_size);
 	}
 	return false;
+}
+
+void window_show_error(window_t *w, int id, const char *text) {
+	message_box("Žè¨¡ª ", text, dlg_yes, 0, al_center);
+	window_set_focus(w, id);
+	window_draw(w);
 }

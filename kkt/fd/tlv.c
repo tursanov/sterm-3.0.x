@@ -1,6 +1,7 @@
 #include "sysdefs.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "kkt/fd/tlv.h"
 
 int ffd_tlv_vln_length(uint64_t value)
@@ -290,4 +291,36 @@ int ffd_tlv_stlv_end()
 	return 0;
 }
 
+double ffd_fvln_to_double(const ffd_fvln_t *fvln) {
+	double v = fvln->value;
+	for (int i = 0; i < fvln->dot; i++)
+		v /= 10.0;
+	return v;
+}
 
+
+bool ffd_string_to_fvln(const char *s, size_t size, ffd_fvln_t *value) {
+	uint64_t v = 0;
+	uint64_t m = 1;
+	int dot = -1;
+	int i = size - 1;
+
+	s += i;
+	for (; i >= 0; s--, i--) {
+		if (*s == '.') {
+			if (dot >= 0)
+				return false;
+			dot = size - i - 1;
+		} else if (!isdigit(*s)) 
+			return false;
+		else {
+			v += (*s - '0') * m;
+			m *= 10;
+		}
+	}
+
+	value->value = v;
+	value->dot = dot < 0 ? 0 : dot;
+
+	return true;
+}

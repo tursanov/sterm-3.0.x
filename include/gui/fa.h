@@ -20,6 +20,11 @@ extern const char *cashier_get_post();
 extern const char *cashier_get_inn();
 extern const char *cashier_get_cashier();
 
+typedef void (*update_screen_func_t)(void *arg);
+bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
+		size_t pattern_footer_size, update_screen_func_t update_func, 
+		void *update_func_arg);
+
 extern int agents_load();
 extern int articles_load();
 extern int agents_save();

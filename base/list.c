@@ -130,7 +130,7 @@ int list_remove_if(list_t *list, void *arg, list_item_func_t func) {
     for (list_item_t *item = list->head; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
-        if (func(arg, tmp->obj)) {
+        if (func(arg, tmp->obj) == 0) {
 			list_item_t *prev = tmp->prev;
             free(tmp);
             if (prev != NULL)
@@ -254,4 +254,12 @@ void list_it_next(list_it_t *it) {
 		if (it->i != NULL)
 			it->i = it->i->next;
 	}
+}
+
+
+list_item_t *list_item_at(list_t *list, int index) {
+	list_item_t *li = list->head;
+
+	for (int i = 0; i < index && li; li = li->next, i++);
+	return li;
 }

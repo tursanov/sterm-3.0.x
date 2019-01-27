@@ -24,6 +24,7 @@
 #include "gui/cheque_docs.h"
 #include "gui/lvform.h"
 #include "gui/newcheque.h"
+#include "gui/archivefn.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fdo.h"
@@ -71,6 +72,9 @@ bool cashier_load() {
 bool cashier_save() {
 	FILE *f = fopen("/home/sterm/cashier.txt", "w");
 	if (f != NULL) {
+
+		printf("cashier_save\n");
+
 		fprintf(f, "%s\n%s\n%s\n%s\n",
 		(const char *)cashier_name,
 		(const char *)cashier_post,
@@ -127,7 +131,7 @@ bool cashier_set(const char *name, const char *post, const char *inn) {
 	if (changed)
 		return cashier_save();
 
-	return false;
+	return true;
 }
 
 bool cashier_set_name(const char *name) {
@@ -179,8 +183,7 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Печать документов из архива ФН", cmd_archive_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_fndoc_fa, true));
+	add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_archive_fa, true));
 	if (fs_debug)
 		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
@@ -483,11 +486,14 @@ static int fa_tlv_add_cashier(form_t *form) {
 	form_get_data(form, 1203, 1, &inn);
 
 	if (cashier.size == 0) {
-		fa_show_error(form, 1021, "Обязательное поле не заполнено");
+		fa_show_error(form, 1021, "Обязательное поле \"Кассир\" не заполнено");
 		return -1;
 	}
 
-	cashier_set(cashier.data, post.data, inn.data);
+	if (!cashier_set(cashier.data, post.data, inn.data)) {
+		fa_show_error(form, 1021, "Ошибка записи в файл данных о кассире");
+		return -1;
+	}
 
 	if (inn.size > 0) {
 		int ret;
@@ -499,11 +505,10 @@ static int fa_tlv_add_cashier(form_t *form) {
 	return ffd_tlv_add_string(1021, cashier_cashier);
 }
 
-typedef void (*update_screen_func_t)(void *arg);
-
-static bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
+bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 		size_t pattern_footer_size, 
-		update_screen_func_t update_func, void *update_func_arg) {
+		update_screen_func_t update_func, void *update_func_arg) 
+{
 	uint8_t status;
 
 	if ((status = fd_create_doc(doc_type, pattern_footer, pattern_footer_size)) != 0) {
@@ -1272,6 +1277,12 @@ static void fa_newcheque() {
 	draw_menu(fa_sales_menu);
 }
 
+static void fa_archive() {
+	archivefn_execute();
+
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
 static bool process_fa_sales_cmd(int cmd) {
 	bool ret = true;
 	switch (cmd){
@@ -1329,6 +1340,9 @@ static bool process_fa_cmd(int cmd) {
 			break;
 		case cmd_sales_fa:
 			fa_set_group(FAPP_GROUP_SALES_MENU);
+			break;
+		case cmd_archive_fa:
+			fa_archive();
 			break;
 		default:
 			ret = false;

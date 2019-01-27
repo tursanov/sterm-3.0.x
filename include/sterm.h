@@ -166,7 +166,6 @@ enum {
 	cmd_agents_fa,
 	cmd_articles_fa,
 	cmd_archive_fa,
-	cmd_fndoc_fa,
 };
 
 extern int kt;			/* β¨― ͺ«ξη  DS1990A */

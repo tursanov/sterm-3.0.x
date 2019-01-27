@@ -7,20 +7,32 @@ struct window_t;
 typedef struct window_t window_t;
 typedef bool (*window_handle_event_func_t)(window_t *w, const struct kbd_event *e);
 
+typedef enum {
+	align_left,
+	align_center,
+	align_right,
+} align_t;
+
 window_t *window_create(GCPtr gc, const char *title, window_handle_event_func_t handle_event_func);
 void window_destroy(window_t *w);
 void window_set_dialog_result(window_t *w, int result);
 void window_add_control(window_t *w, control_t *c);
-void window_add_label(window_t *w, int x, int y, const char *text);
-void window_add_label_with_id(window_t *w, int id, int x, int y, const char *text);
+void window_add_label(window_t *w, int x, int y, align_t align, const char *text);
+void window_add_label_with_id(window_t *w, int id, int x, int y, align_t align, const char *text);
 void window_draw(window_t *w);
 
 
 int window_show_dialog(window_t *w);
 GCPtr window_get_gc(window_t *w);
 control_t *window_get_control(window_t *w, int id);
-void window_set_label_text(window_t *w, int id, const char *text);
+void window_set_label_text(window_t *w, int id, const char *text, bool redraw);
+static inline void window_redraw_control(window_t *w, int id) {
+	control_t *c = window_get_control(w, id);
+	if (c != NULL)
+		control_draw(c);
+}
 
+control_t *window_get_focus(window_t *w);
 bool window_set_focus(window_t *w, int id);
 
 bool window_get_data(window_t *w, int id, int what, data_t *data);
@@ -40,6 +52,6 @@ static inline void * window_get_ptr_data(window_t *w, int id, int what) {
 	return NULL;
 }
 
-
+void window_show_error(window_t *w, int id, const char *text);
 
 #endif

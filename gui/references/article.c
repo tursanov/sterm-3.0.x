@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include "gui/references/article.h"
 
+static int article_max_id = 0;
+
 static int get_bit(uint8_t v) {
 	switch (v) {
 		case 0x1:
@@ -45,6 +47,7 @@ static const char * str_pay_methods[] =
 	"Ž‹€’€ Š…„ˆ’€",
 
 };
+
 static const char * str_vats[] = 
 {
 	"„‘ 20%",
@@ -136,6 +139,8 @@ article_t* article_load(FILE *f) {
 		article_free(a);
 		return NULL;
 	}
+	if (a->n > article_max_id)
+		article_max_id = a->n;
 	return a;
 }
 
@@ -246,11 +251,12 @@ void* create_new_article(data_source_t *ds) {
 	END_FORM()
 
 	a = article_new();
-   	a->n = ds->list->count + 1;
+   	a->n = ++article_max_id;
 
 	if (!process_article_edit(form, a)) {
 		article_free(a);
 		a = NULL;
+		article_max_id--;
 	}
 
 	destroy_agent_info_list(agent_info_list);

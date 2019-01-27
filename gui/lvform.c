@@ -263,9 +263,9 @@ static void lvform_delete_action(lvform_t *lvform) {
 					if (lvform->top_index > 0)
 						lvform->top_index--;
 
-					lvform_draw(lvform);
 				}
 			}
+			lvform_draw(lvform);
 		}
 	}
 }

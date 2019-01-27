@@ -26,6 +26,7 @@
 #include "gui/log/local.h"
 #include "gui/log/pos.h"
 #include "gui/fa.h"
+#include "gui/newcheque.h"
 #include "gui/menu.h"
 #include "gui/options.h"
 #include "gui/ping.h"
@@ -1614,6 +1615,8 @@ static bool create_term(void)
 	agents_load();
 	/* загрузка справочника товаров/работ/услуг */
 	articles_load();
+	/* загрузка чека */
+	newcheque_load();
 /* FIXME: перенести это в более подходящее место */
 	bmp_up = CreateBitmap(_("pict/pos/up.bmp"));
 	bmp_down = CreateBitmap(_("pict/pos/down.bmp"));

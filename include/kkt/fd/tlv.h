@@ -32,6 +32,7 @@ uint64_t ffd_tlv_data_as_vln(const ffd_tlv_t *tlv);
 int ffd_tlv_data_as_fvln(const ffd_tlv_t *tlv, ffd_fvln_t *value);
 
 double ffd_fvln_to_double(const ffd_fvln_t *value);
+bool ffd_string_to_fvln(const char *s, size_t size, ffd_fvln_t *value);
 
 
 int ffd_tlv_vln_length(uint64_t value);

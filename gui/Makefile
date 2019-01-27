@@ -5,6 +5,7 @@ INCLUDE = ../include
 
 GUI_OBJS =		\
 	adv_calc	\
+	archivefn	\
 	calc		\
 	cheque		\
 	cheque_docs \

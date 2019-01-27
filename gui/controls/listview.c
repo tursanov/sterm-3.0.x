@@ -15,9 +15,7 @@ typedef struct listview_t {
 	size_t column_count;
     list_t *items;
 	int top_index;
-	list_item_t *top_item;
 	int selected_index;
-	list_item_t *selected_item;
 	int header_height;
 	int item_height;
 	int max_items;
@@ -32,7 +30,7 @@ bool listview_get_data(listview_t *listview, int what, data_t *data);
 bool listview_set_data(listview_t *listview, int what, const void *data, size_t data_len);
 
 #define screen listview->control.gc
-
+#define BORDER_WIDTH	2
 
 static bool listview_redraw_row(listview_t *listview, int index);
 
@@ -50,7 +48,7 @@ static void listview_set_selected_index(listview_t *lv, int index, bool refresh)
 			lv->top_index = index;
 			refresh_all = true;
 		} else {
-			int new_top_index = index - lv->max_items;
+			int new_top_index = index - lv->max_items + 1;
 			if (new_top_index > lv->top_index) {
 				if (new_top_index < 0)
 					new_top_index = 0;
@@ -59,19 +57,24 @@ static void listview_set_selected_index(listview_t *lv, int index, bool refresh)
 			}
 		}
 
-		lv->selected_index = index;
-		lv->selected_item = lv->items->head;
-		for (int i = 0; i < index; i++, lv->selected_item = lv->selected_item->next);
+		if (lv->top_index < 0)
+			lv->top_index = 0;
 
-		if (refresh_all) {
-			for (int i = 0; i < lv->top_index; i++, lv->top_item = lv->top_item->next);
-			listview_draw(lv);
-		} else {
-			listview_redraw_row(lv, old);
-			listview_redraw_row(lv, lv->selected_index);
+		lv->selected_index = index;
+		//for (int i = 0; i < index; i++, lv->selected_item = lv->selected_item->next);
+
+		if (refresh) {
+			if (refresh_all) {
+				//for (int i = 0; i < lv->top_index; i++, lv->top_item = lv->top_item->next);
+				listview_draw(lv);
+			} else {
+				listview_redraw_row(lv, old);
+				listview_redraw_row(lv, lv->selected_index);
+			}
 		}
 	}
 }
+
 
 control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height,
 		listview_column_t *columns, size_t column_count,
@@ -89,7 +92,7 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 
     control_init(&listview->control, id, gc, x, y, width, height, &api);
 
-    listview->columns = (listview_column_t *)malloc(sizeof(listview_column_t) * column_count);
+	listview->columns = (listview_column_t *)malloc(sizeof(listview_column_t) * column_count);
 	listview->column_count = column_count;
     listview_column_t *c = listview->columns;
     listview_column_t *c1 = columns;
@@ -103,11 +106,9 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 	listview->header_height = GetTextHeight(screen) + 2;
 	listview->item_height = GetTextHeight(screen) + 2;
 	listview->max_items = (listview->control.height - 
-			listview->header_height - 2*3) / listview->item_height;
+			listview->header_height - BORDER_WIDTH*3) / listview->item_height;
 	listview->top_index = 0;
-	listview->top_item = items->head;
 	listview->selected_index = selected_index + 1;
-
 	listview_set_selected_index(listview, selected_index, false);
 
     return (control_t *)listview;
@@ -144,13 +145,19 @@ static void listview_draw_columns(listview_t *listview) {
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
 
-static void listview_draw_row(listview_t *listview, list_item_t *i, int left, int top, int w, int h) {
+static list_item_t * listview_get_top_item(listview_t *listview) {
+	list_item_t *li = listview->items->head;
+	for (int i = 0; i < listview->top_index; i++, li = li->next);
+	return li;
+}
+
+static void listview_draw_row(listview_t *listview, int index, list_item_t *i, int left, int top, int w, int h) {
 	listview_column_t *c = listview->columns;
-	SetBrushColor(screen, listview->selected_item == i ? 
-			(listview->control.focused ? clNavy : RGB(96, 96, 192)) : 
+	SetBrushColor(screen, listview->selected_index == index ?
+			(listview->control.focused ? clNavy : clGray) : 
 			(listview->control.focused ? clRopnetBrown : clSilver));
-	SetTextColor(screen, listview->selected_item == i ? clWhite : clBlack);
-	
+	SetTextColor(screen, listview->selected_index == index ? clWhite : clBlack);
+
 	SetGCBounds(screen, left, top, w, h);
 	FillBox(screen, 0, 0, w, h);
 
@@ -164,30 +171,34 @@ static void listview_draw_row(listview_t *listview, list_item_t *i, int left, in
 }
 
 static bool listview_redraw_row(listview_t *listview, int index) {
-	if (index >= listview->top_index && index < listview->top_index + listview->max_items) {
-		list_item_t *li = listview->top_item;
-		int x = listview->control.x + 2;
-		int y = listview->control.y + listview->header_height + 4;
-		int w = listview->control.width - 4;
-		int h = listview->item_height;
-		for (int i = 0; i < index - listview->top_index; i++, li = li->next,
-				y += listview->item_height);
-		listview_draw_row(listview, li, x, y, w, h);
-		SetGCBounds(screen, 0, 0, DISCX, DISCY);
-		return true;
+	if (index >= listview->top_index && index < listview->top_index + listview->max_items &&
+			index >= 0 && index < listview->items->count) {
+		list_item_t *li = listview_get_top_item(listview);
+		if (li) {
+			int x = listview->control.x + 2;
+			int y = listview->control.y + listview->header_height + 4;
+			int w = listview->control.width - 4;
+			int h = listview->item_height;
+			for (int i = 0; i < index - listview->top_index; i++, li = li->next,
+					y += listview->item_height);
+			listview_draw_row(listview, index, li, x, y, w, h);
+			SetGCBounds(screen, 0, 0, DISCX, DISCY);
+
+			return true;
+		}
 	}
 	return false;
 }
 
 void listview_draw_items(listview_t *listview) {
-	list_item_t *li = listview->top_item;
+	list_item_t *li = listview_get_top_item(listview);
 	int x = listview->control.x + 2;
 	int y = listview->control.y + listview->header_height + 4;
 	int w = listview->control.width - 4;
 	int h = listview->item_height;
-	for (int i = 0; li && i < listview->max_items; i++, li = li->next,
-			y += listview->item_height) {
-		listview_draw_row(listview, li, x, y, w, h);
+	for (int i = 0; li && i < listview->max_items; i++, li = li->next, y += listview->item_height) {
+		//printf("i = %d, li = %p\n", i, li);
+		listview_draw_row(listview, listview->top_index + i, li, x, y, w, h);
 	}
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
@@ -214,8 +225,18 @@ void listview_draw(listview_t *listview) {
 	SetGCBounds(screen, listview->control.x + BORDER_WIDTH, listview->control.y + BORDER_WIDTH,
 		listview->control.width - BORDER_WIDTH * 2, listview->control.height - BORDER_WIDTH * 2);
 
+	if (listview->items->count > 0) {
+	   	if (listview->selected_index < 0) {
+			listview->top_index = 0;
+			listview->selected_index = 0;
+		} else if (listview->selected_index >= listview->items->count) {
+			listview_set_selected_index(listview, listview->items->count - 1, false);
+		}
+	}
+
 	listview_draw_columns(listview);
-	listview_draw_items(listview);
+	if (listview->items->count > 0)
+		listview_draw_items(listview);
 
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 }
@@ -227,6 +248,8 @@ bool listview_focus(listview_t *listview, bool focus) {
 }
 
 bool listview_handle(listview_t *listview, const struct kbd_event *e) {
+	if (!e->pressed)
+		return false;
 	switch (e->key) {
 	case KEY_DOWN:
 		listview_set_selected_index(listview, listview->selected_index + 1, true);
@@ -259,13 +282,20 @@ bool listview_get_data(listview_t *listview, int what, data_t *data) {
 		data->size = 4;
 		return true;
 	case 1:
-		if (listview->selected_item) {
-			data->data = (void *)listview->selected_item->obj;
-			data->size = sizeof(listview->selected_item);
-		} else {
-			data->data = NULL;
-			data->size = sizeof(listview->selected_item);
+		if (listview->selected_index >= 0) {
+			list_item_t *li = listview->items->head;
+			int si = listview->selected_index - listview->top_index;
+			for (int i = 0; li && i < listview->max_items; i++, li = li->next) {
+				if (i == si) {
+					data->data = (void *)li->obj;
+					data->size = sizeof(list_item_t *);
+					return true;
+				}
+			}
 		}
+
+		data->data = NULL;
+		data->size = sizeof(list_item_t *);
 		return true;
 	}
 	return false;

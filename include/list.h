@@ -33,6 +33,7 @@ int list_clear(list_t* list);
 int list_compare(list_t *list1, list_t *list2,
                   void *arg, list_item_compare_func_t func);
 int list_foreach(list_t* list, void *arg, list_item_func_t func);
+list_item_t *list_item_at(list_t *list, int index);
 
 #define LIST_ITEM(i, type) ((i) ? ((type *)((i)->obj)) : NULL)
 #define USE_LIST_ITEM(x, i, type) type * x = LIST_ITEM(i, type)

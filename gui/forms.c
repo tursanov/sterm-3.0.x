@@ -58,7 +58,7 @@ typedef control_t *(*create_control_func_t)(int x, int y, int w, int h, form_t *
 	form_item_info_t *);
 
 static void form_button_action(control_t *c, int cmd) {
-	(CONTROL_EXTRA(c, form_t))->result = cmd;
+	((form_t *)c->parent.parent)->result = cmd;
 }
 
 static control_t *control_create(GCPtr gc, int x, int y, int w, int h, 
