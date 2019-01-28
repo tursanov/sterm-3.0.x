@@ -457,7 +457,11 @@ static bool parse_fs_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack)
 	}else if (rx_st == st_fix_data){
 		off_t offs = kkt_rx_len - sizeof(struct kkt_fdo_ack);
 		parse_date_time(kkt_rx + offs, &fdo_ack->dt);
-		offs += KKT_FS_DATE_TIME_LEN;
+		fdo_ack->dt.date.year = 2000 + kkt_rx[offs++];
+		fdo_ack->dt.date.month = kkt_rx[offs++];
+		fdo_ack->dt.date.day = kkt_rx[offs++];
+		fdo_ack->dt.time.hour = kkt_rx[offs++];
+		fdo_ack->dt.time.minute = kkt_rx[offs++];
 		memcpy(fdo_ack->fiscal_sign, kkt_rx + offs, sizeof(fdo_ack->fiscal_sign));
 		offs += sizeof(fdo_ack->fiscal_sign);
 		fdo_ack->doc_nr = *(const uint32_t *)(kkt_rx + offs);
