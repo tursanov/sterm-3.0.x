@@ -256,6 +256,10 @@ static uint32_t get_timeout(uint8_t prefix, uint8_t cmd)
 				case KKT_FS_STATUS:
 					ret = KKT_FR_STATUS_TIMEOUT;
 					break;
+				case KKT_FS_FIND_DOC:
+				case KKT_FS_FIND_FDO_ACK:
+					ret = KKT_FR_PRINT_TIMEOUT;
+					break;
 				case KKT_FS_RESET:
 					ret = KKT_FR_RESET_TIMEOUT;
 					break;
