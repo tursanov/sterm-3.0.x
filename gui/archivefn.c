@@ -97,7 +97,7 @@ static void print_hdr(struct kkt_report_hdr *hdr) {
 	out_printf(" Дата/время: %.2d.%.2d.%.4d %.2d:%.2d", 
 			hdr->date_time[2], hdr->date_time[1], (int)hdr->date_time[0] + 2000,
 			hdr->date_time[3], hdr->date_time[4]);
-	out_printf(" Номер док-та: %u", hdr->doc_nr);
+	out_printf(" Номер документа: %u", hdr->doc_nr);
 	out_printf(" ФП: %u", hdr->fiscal_sign);
 }
 
@@ -213,7 +213,7 @@ static bool archivefn_get_archive_doc() {
 	struct kkt_fs_find_doc_info fdi;
 	struct kkt_fs_fdo_ack fdo_ack;
 	uint8_t data[512];
-	size_t data_len;
+	size_t data_len = sizeof(data);
 	uint8_t status;
 
    	if ((status = kkt_find_fs_doc(doc_no, res_out != 0, &fdi, data, &data_len)) != 0) {
@@ -250,8 +250,6 @@ static bool archivefn_get_archive_doc() {
 	fdo_ack.dt.date.day = 27;
 	fdo_ack.dt.time.hour = 17;
 	fdo_ack.dt.time.minute = 43;*/
-
-	list_clear(&output);
 
 	const char *doc_name = get_doc_name(fdi.doc_type);
 	out_printf("%s", doc_name);
@@ -291,37 +289,46 @@ static bool archivefn_get_doc() {
 	uint16_t doc_type;
 	size_t tlv_size;
 	uint8_t *tlv;
-	uint8_t *p;
 
 	if ((status = kkt_get_doc_stlv(doc_no, &doc_type, &tlv_size)) != 0) {
 		archivefn_show_error(status, "Ошибка при получении информации о документе");
 		return false;
 	}
 
+	out_printf("Тип документа: %s, длина: %d", get_doc_name(doc_type), tlv_size);
+
 	tlv = (uint8_t *)malloc(tlv_size);
 	if (!tlv) {
 		message_box("Ошибка", "Ошибка при выделении памти", dlg_yes, 0, al_center);
 		return false;
 	}
-	p = tlv;
 
-	while (true) {
-		size_t len;
-		if ((status = kkt_read_doc_tlv(p, &len)) == 0)
-			p += len;
-		else { 
-			if (status != 0x8) 
-				archivefn_show_error(status, "Ошибка при чтении TLV из ФН");
-			break;
+
+	if ((status = kkt_read_doc_tlv(tlv, &tlv_size)) != 0) {
+		archivefn_show_error(status, "Ошибка при чтении TLV из ФН");
+	} else {
+
+		printf("tlv_size: %d\n", tlv_size);
+
+		uint8_t *p = tlv;
+		size_t i = 0;
+
+		while (i < tlv_size) {
+			ffd_tlv_t *t = (ffd_tlv_t *)p;
+			out_printf("[%.4d] %d", t->tag, t->length);
+			size_t l = t->length + sizeof(*t);
+			i += l;
+			p += l;
 		}
 	}
 
 	free(tlv);
 
-	return !status || status == 8;
+	return status == 0;
 }
 
 static bool archivefn_get_data() {
+	list_clear(&output);
 	if (op_kind == 0)
 		return archivefn_get_archive_doc();
 	return archivefn_get_doc();
