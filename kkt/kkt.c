@@ -570,6 +570,33 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 	return kkt_status;
 }
 
+/* Напечатать документ по номеру */
+uint8_t kkt_print_doc(uint32_t doc_nr, const uint8_t *tmpl, size_t tmpl_len,
+	struct kkt_last_printed_info *lpi, uint8_t *err_info, size_t *err_info_len)
+{
+	assert(tmpl != NULL);
+	assert(lpi != NULL);
+	bool vset = false;
+	if (kkt_lock()){
+		struct last_printed_info_arg arg;
+		if (prepare_cmd(KKT_SRV, KKT_SRV_PRINT_DOC) && write_dword(doc_nr) &&
+				write_word(tmpl_len) &&
+				((tmpl_len == 0) || write_data(tmpl, tmpl_len)) &&
+				kkt_open_dev_if_need()){
+			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_DOC, &arg)){
+				*lpi = arg.lpi;
+				set_var_data(err_info, err_info_len, &arg.err_info);
+				vset = true;
+			}
+			kkt_close_dev();
+		}
+		kkt_unlock();
+	}
+	if (!vset)
+		clr_var_data(err_info, err_info_len);
+	return kkt_status;
+}
+
 /* Настроить сетевой интерфейс ККТ */
 uint8_t kkt_set_eth_cfg(uint32_t ip, uint32_t netmask, uint32_t gw)
 {

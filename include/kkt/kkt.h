@@ -108,6 +108,10 @@ struct kkt_doc_info {
 extern uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 	struct kkt_doc_info *di, uint8_t *err_info, size_t *err_info_len);
 
+/* Напечатать документ по номеру */
+extern uint8_t kkt_print_doc(uint32_t doc_nr, const uint8_t *tmpl, size_t tmpl_len,
+	struct kkt_last_printed_info *lpi, uint8_t *err_info, size_t *err_info_len);
+
 /* Настроить сетевой интерфейс ККТ */
 extern uint8_t kkt_set_net_cfg(uint32_t ip, uint32_t netmask, uint32_t gw);
 /* Настроить GPRS в ККТ */

@@ -536,6 +536,7 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 					ret = parse_last_doc_info;
 					break;
 				case KKT_SRV_PRINT_LAST:
+				case KKT_SRV_PRINT_DOC:
 					ret = parse_print_last_doc;
 					break;
 				case KKT_SRV_BEGIN_DOC:

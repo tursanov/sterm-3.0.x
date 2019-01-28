@@ -85,6 +85,7 @@
 #define KKT_SRV_BEGIN_DOC	0x3a		/* начать документ */
 #define KKT_SRV_SEND_DOC	0x3b		/* передача данных документа */
 #define KKT_SRV_END_DOC		0x3c		/* сформировать документ */
+#define KKT_SRV_PRINT_DOC	0x3e		/* печать документа по номеру */
 
 /* Настройки сетевых интерфейсов ФР */
 #define KKT_SRV_NET_SETTINGS	0x41		/* настройки сети для Ethernet */
