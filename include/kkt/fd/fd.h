@@ -81,6 +81,8 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len);
 int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t pattern_footer_size);
 // печать последнего фискального документа
 int fd_print_last_doc(uint8_t doc_type);
+// печать фискального документа по номеру
+int fd_print_doc(uint8_t doc_type, uint32_t doc_no);
 
 // регистрация/перерегистрация
 int fd_registration();
