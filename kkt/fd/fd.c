@@ -288,6 +288,102 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x30:
 			sprintf(s, "%s", "Нет ошибок");
 			break;
+		case 0x01: // FS_RET_UNKNOWN_CMD_OR_ARGS
+            sprintf(s, "%s", "Неизвестная команда, неверный формат посылки или неизвестные параметры.");
+			break;
+        case 0x02: // FS_RET_INVAL_STATE
+            sprintf(s, "%s", "Неверное состояние ФН");
+			break;
+        case 0x03: // FS_RET_FS_ERROR
+            sprintf(s, "%s", "Ошибка ФН");
+			break;
+        case 0x04: // FS_RET_CC_ERROR
+            sprintf(s, "%s", "Ошибка КС (криптографический сопроцессор)");
+			break;
+        case 0x05: // FS_RET_LIFETIME_OVER
+            sprintf(s, "%s", "Закончен срок эксплуатации ФН");
+			break;
+        case 0x06: // FS_RET_ARCHIVE_OVERFLOW
+            sprintf(s, "%s", "Архив ФН переполнен");
+			break;
+        case 0x07: // FS_RET_INVALID_DATETIME
+            sprintf(s, "%s", "Неверные дата и/или время");
+			break;
+        case 0x08: // FS_RET_NO_DATA
+            sprintf(s, "%s", "Запрошенные данные отсутствуют в Архиве ФН");
+			break;
+        case 0x09: // FS_RET_INVAL_ARG_VALUE
+            sprintf(s, "%s", "Параметры команды имеют правильный формат, но их значение не верно");
+			break;
+        case 0x10: // FS_RET_TLV_OVERSIZE
+            sprintf(s, "%s", "Размер передаваемых TLV данных превысил допустимый");
+			break;
+        case 0x0a: // FS_RET_INVALID_CMD
+            sprintf(s, "%s", "Некорректная команда.");
+			break;
+        case 0x0b: // FS_RET_ILLEGAL_ATTR
+            sprintf(s, "%s", "Неразрешенные реквизиты.");
+			break;
+        case 0x0c: // FS_RET_DUP_ATTR
+            sprintf(s, "%s", "Дублирование данных	ККТ передает данные, которые уже были переданы в составе данного документа.");
+			break;
+        case 0x0d: // FS_RET_MISS_ATTR
+            sprintf(s, "%s", "Отсутствуют данные, необходимые для корректного учета в ФН.");
+			break;
+        case 0x0e: // FS_RET_POS_OVERFLOW
+            sprintf(s, "%s", "Количество позиций в документе, превысило допустимый предел.");
+			break;
+        case 0x11: // FS_RET_NO_TRANSPORT
+            sprintf(s, "%s", "Нет транспортного соединения");
+			break;
+        case 0x12: // FS_RET_CC_OUT
+            sprintf(s, "%s", "Исчерпан ресурс КС (криптографического сопроцессора)");
+			break;
+        case 0x14: // FS_RET_ARCHIVE_OUT
+            sprintf(s, "%s", "Исчерпан ресурс хранения");
+			break;
+        case 0x15: // FS_RET_MSG_SEND_TIMEOUT
+            sprintf(s, "%s", "Исчерпан ресурс Ожидания передачи сообщения");
+			break;
+        case 0x16: // FS_RET_SHIFT_TIMEOUT
+            sprintf(s, "%s", "Продолжительность смены более 24 часов");
+			break;
+        case 0x17: // FS_RET_WRONG_PERIOD
+            sprintf(s, "%s", "Неверная разница во времени между 2 операциями");
+			break;
+        case 0x18: // FS_RET_INVALID_ATTR
+            sprintf(s, "%s", "Некорректный реквизит, переданный ККТ в ФН	Реквизит, переданный ККТ в ФН, не соответствует установленным требованиям.");
+			break;
+        case 0x19: // FS_RET_INVALID_ATTR_EXISABLE
+            sprintf(s, "%s", "Некорректный реквизит с признаком продажи подакцизного товара.");
+			break;
+        case 0x20: // FS_RET_MSG_NOT_ACCEPTED
+            sprintf(s, "%s", "Сообщение от ОФД не может быть принято");
+			break;
+        case 0x21: // FS_RET_INVALID_RESP_DATA_SIZE
+            sprintf(s, "%s", "Длина данных в ответе меньше ожидаемой");
+			break;
+        case 0x22: // FS_RET_INVAL
+            sprintf(s, "%s", "Неправильное значение данных в команде");
+			break;
+        case 0x23: // FS_RET_TRANSPORT_ERROR
+            sprintf(s, "%s", "Ошибка при передаче данных в ФН");
+			break;
+        case 0x24: // FS_RET_SEND_TIMEOUT
+            sprintf(s, "%s", "Таймаут передачи в ФН");
+			break;
+        case 0x25: // FS_RET_RECV_TIMEOUT
+            sprintf(s, "%s", "Таймайт приема из ФН");
+			break;
+        case 0x26: // FS_RET_CRC_ERROR
+            sprintf(s, "%s", "Ошибка CRC");
+			break;
+        case 0x27: // FS_RET_WRITE_ERROR
+            sprintf(s, "%s", "Ошибка записи в ФН");
+			break;
+        case 0x29: // FS_RET_READ_ERROR
+            sprintf(s, "%s", "Ошибка приема из ФН");
+			break;		
 		case 0x41: // STATUS_PAPER_END
 			sprintf(s, "%s", "Конец бумаги");
 		case 0x42: // STATUS_COVER_OPEN

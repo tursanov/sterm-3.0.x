@@ -38,7 +38,7 @@ typedef struct {
 	int pay_type;
 	int pay_kind;
 	char* phone_or_email;
-	double sum;
+	uint64_t sum;
 	list_t articles;
 } newcheque_t;
 
@@ -59,13 +59,16 @@ static newcheque_t newcheque = {
 };
 
 
-static double cheque_article_sum(cheque_article_t *ca) {
+/*static double cheque_article_sum(cheque_article_t *ca) {
 	double count = ffd_fvln_to_double(&ca->count);
 	double price_per_unit = (ca->article ? (double)ca->article->price_per_unit : 0) / 100.0;
 	return (count * price_per_unit);
-}
+}*/
 
 static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
+	printf("price_per_unit: %lld, count->value = %lld, count->dot = %d\n",
+			ca->article->price_per_unit, ca->count.value, ca->count.dot);
+
 	uint64_t sum = ca->article->price_per_unit * ca->count.value;
 	uint64_t rem = 0;
 	for (int i = 0; i < ca->count.dot; i++) {
@@ -74,6 +77,7 @@ static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
 	}
 	if (rem >= 5)
 		sum++;
+	printf("sum: %lld\n", sum);
 	return sum;
 }
 
@@ -111,7 +115,12 @@ static cheque_article_t * cheque_article_load(FILE *f) {
 		}
 	}
 
-	newcheque.sum += cheque_article_sum(a);
+	if (a->article == NULL) {
+		free(a);
+		return NULL;
+	}
+	a->sum = cheque_article_vln_sum(a);
+	newcheque.sum += a->sum;
 
 	return a;
 }
@@ -163,7 +172,8 @@ static int article_get_text(void *obj, int index, char *text, size_t text_size) 
 			snprintf(text, text_size, "%s", a->name);
 			break;
 		case 2:
-			snprintf(text, text_size, "%.lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
+			snprintf(text, text_size, "%.lld.%.2lld",
+					a->price_per_unit / 100, a->price_per_unit % 100);
 			break;
 		case 3:
 			for (list_item_t *li = agents.head; li; li = li->next) { 
@@ -183,7 +193,7 @@ static int article_get_text(void *obj, int index, char *text, size_t text_size) 
 
 static void newcheque_update_sum(window_t *w, bool redraw) {
 	char text[256];
-	sprintf(text, "ˆ’ŽƒŽ: %1.2f", newcheque.sum);
+	sprintf(text, "ˆ’ŽƒŽ: %.1lld.%.2lld", newcheque.sum / 100, newcheque.sum % 100);
 	window_set_label_text(w, 1, text, redraw);
 }
 
@@ -253,7 +263,7 @@ static void article_new(window_t *parent) {
 		ca->count = fvln;
 		ca->sum = cheque_article_vln_sum(ca);
 
-		newcheque.sum += cheque_article_sum(ca);
+		newcheque.sum += ca->sum;
 
 		list_add(&newcheque.articles, ca);
 
@@ -277,7 +287,7 @@ static void article_delete(window_t *parent) {
 
 	if (li) {
 		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
-		double sum = cheque_article_sum(ca);
+		uint64_t sum = ca->sum;
 
 		list_remove(&newcheque.articles, ca);
 
@@ -291,10 +301,11 @@ static void listbox_get_item_text(void *obj, char *text, size_t text_size) {
 	cheque_article_t *ca = (cheque_article_t *)obj;
 
 	double count = ffd_fvln_to_double(&ca->count);
-	double price_per_unit = (ca->article ? (double)ca->article->price_per_unit : 0) / 100.0;
-	double sum = (count * price_per_unit);
-	snprintf(text, text_size, "%1.2f*%.3f=%1.2f %s",
-			price_per_unit, count, sum, 
+	//double price_per_unit = (ca->article ? (double)ca->article->price_per_unit : 0) / 100.0;
+	//double sum = (count * price_per_unit);
+	snprintf(text, text_size, "%.1lld.%.2lld*%.3f=%.1lld.%.2lld %s",
+			ca->article->price_per_unit / 100, ca->article->price_per_unit % 100,
+			count, ca->sum / 100, ca->sum % 100, 
 			ca->article ? ca->article->name :
 			"<’®¢ à/à ¡®â /ãá«ã£  ­¥ ­ ©¤¥­( ) ¢ á¯à ¢®ç­¨ª¥>");
 }
@@ -352,7 +363,21 @@ bool newcheque_print(window_t *w) {
 	}
 
 	while (newcheque.articles.count > 0) {
-		article_group_params_t p = { -1, -1 };
+		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
+		article_group_params_t p = { ca->article->tax_system, ca->article->pay_agent };
+		uint64_t sum = 0;
+		agent_t *agent = NULL;
+
+		if (p.agent_id) {
+			for (list_item_t *li = agents.head; li; li = li->next) {
+				agent_t *a = LIST_ITEM(li, agent_t);
+				if (p.agent_id == a->n) {
+					agent = a;
+					break;
+				}
+			}
+		} else
+			agent = NULL;
 
 		ffd_tlv_reset();
 		ffd_tlv_add_string(1021, cashier_get_cashier());
@@ -360,6 +385,9 @@ bool newcheque_print(window_t *w) {
 		if (cashier_inn[0])
 			ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
 		ffd_tlv_add_uint8(1054, newcheque.pay_type);
+
+		printf("p.tax_system = %d, p.agent = %d\n", p.tax_system, p.agent_id);
+
 		ffd_tlv_add_uint8(1055, p.tax_system);
 		if (newcheque.phone_or_email && newcheque.phone_or_email[0])
 			ffd_tlv_add_string(1008, newcheque.phone_or_email);
@@ -371,27 +399,10 @@ bool newcheque_print(window_t *w) {
 			ffd_tlv_stlv_end();
 		}
 
-		uint64_t sum = 0;
-		agent_t *agent = NULL;
-
 		for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
 			cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
-			if (p.agent_id == -1) {
-				p.agent_id = ca->article->pay_agent;
-				p.tax_system = ca->article->tax_system;
-				if (p.agent_id) {
-					for (list_item_t *li = agents.head; li; li = li->next) {
-						agent_t *a = LIST_ITEM(li, agent_t);
-						if (p.agent_id == a->n) {
-							agent = a;
-							break;
-						}
-					}
-				} else
-					agent = NULL;
-			} 
-			if (ca->article->pay_agent == p.agent_id &&
-					ca->article->tax_system == p.tax_system) {
+			if (ca->article->pay_agent == p.agent_id && ca->article->tax_system == p.tax_system) {
+				printf("add new 1059\n");
 				ffd_tlv_stlv_begin(1059, 1024);
 				ffd_tlv_add_uint8(1214, ca->article->pay_method);
 				ffd_tlv_add_string(1030, ca->article->name);
@@ -401,6 +412,8 @@ bool newcheque_print(window_t *w) {
 				if (agent != NULL)
 					ffd_tlv_add_fixed_string(1226, agent->inn, 12);
 				ffd_tlv_stlv_end();
+
+				printf("sum: %lld\n", ca->sum);
 
 				sum += ca->sum;
 			}
@@ -433,12 +446,12 @@ bool newcheque_print(window_t *w) {
 			}
 		}
 
+		printf("total sum: %lld\n", sum);
 		ffd_tlv_add_vln(1031, newcheque.pay_kind == 0 ? sum : 0);
 		ffd_tlv_add_vln(1081, newcheque.pay_kind == 1 ? sum : 0);
 		ffd_tlv_add_vln(1215, 0);
 		ffd_tlv_add_vln(1216, 0);
 		ffd_tlv_add_vln(1217, 0);
-
 
 		cashier_save();
 
@@ -446,6 +459,9 @@ bool newcheque_print(window_t *w) {
 			return false;
 
 		list_remove_if(&newcheque.articles, &p, (list_item_func_t)remove_articles);
+
+		newcheque.sum -= sum;
+		newcheque_update_sum(w, false);
 
 		newcheque_save();
 		window_draw(w);
@@ -514,7 +530,7 @@ int newcheque_execute() {
 
 
 	char text[256];
-	sprintf(text, "ˆ’ŽƒŽ: %1.2f", newcheque.sum);
+	sprintf(text, "ˆ’ŽƒŽ: %.1lld.%.2lld", newcheque.sum / 100, newcheque.sum % 100);
 	window_add_label_with_id(win, 1, DISCX - GAP, y - th - 4, align_right, text);
 
 	window_add_control(win,
@@ -569,4 +585,16 @@ int newcheque_execute() {
 	window_destroy(win);
 
 	return result;
+}
+
+
+void on_newcheque_article_removed(article_t *a) {
+	for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
+		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
+		if (ca->article == a) {
+			newcheque.sum -= ca->sum;
+			list_remove(&newcheque.articles, ca);
+			break;
+		}
+	}
 }

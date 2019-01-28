@@ -649,18 +649,19 @@ void fa_close_fs() {
 #include "references/agent.c"
 #include "references/article.c"
 
-static const char *tax_modes[8] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН",
-		NULL, NULL, NULL };
-static const char *short_modes[8] = { "ШФД", "АВТОН.Р.", "АВТОМАТ.Р.",
-		"УСЛУГИ", "БСО", "ИНТЕРНЕТ", NULL, NULL };
-static const char *modes[8] = { "Шифрование", "Автономный режим", "Автоматический режим",
-		"Применение в сфере услуг", "Режим БСО", "Применение в Интернет", NULL, NULL };
+const char *str_tax_systems[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН" };
+size_t str_tax_system_count = ASIZE(str_tax_systems);
+const char *str_short_kkt_modes[] = { "ШФД", "АВТОН.Р.", "АВТОМАТ.Р.",
+		"УСЛУГИ", "БСО", "ИНТЕРНЕТ" };
+const char *str_kkt_modes[] = { "Шифрование", "Автономный режим", "Автоматический режим",
+		"Применение в сфере услуг", "Режим БСО", "Применение в Интернет" };
+size_t str_kkt_mode_count = ASIZE(str_kkt_modes);
 
 static int fa_fill_registration_tlv(form_t *form) {
 	ffd_tlv_reset();
 
 	int tax_systems = form_get_int_data(form, 1062, 0, 0);
-	int reg_modes = form_get_int_data(form, 9999, 0, 0);
+	int reg_kkt_modes = form_get_int_data(form, 9999, 0, 0);
 
 	if (fa_tlv_add_cashier(form) != 0 ||
 		fa_tlv_add_string(form, 1048, true) != 0 ||
@@ -669,19 +670,19 @@ static int fa_fill_registration_tlv(form_t *form) {
 		fa_tlv_add_string(form, 1187, false) != 0 ||
 		ffd_tlv_add_uint8(1062, (uint8_t)tax_systems) != 0 ||
 		fa_tlv_add_fixed_string(form, 1037, 20, true) != 0 ||
-		fa_tlv_add_string(form, 1036, (reg_modes & REG_MODE_AUTOMAT) != 0) != 0 ||
+		fa_tlv_add_string(form, 1036, (reg_kkt_modes & REG_MODE_AUTOMAT) != 0) != 0 ||
 //		fa_tlv_add_string(form, 1021, true) != 0 ||
 //		fa_tlv_add_fixed_string(form, 1203, 12, false) != 0 ||
-		fa_tlv_add_string(form, 1060, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_string(form, 1117, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_string(form, 1046, (reg_modes & REG_MODE_OFFLINE) == 0) != 0 ||
-		fa_tlv_add_fixed_string(form, 1017, 12, (reg_modes & REG_MODE_OFFLINE) == 0) != 0) {
+		fa_tlv_add_string(form, 1060, (reg_kkt_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_string(form, 1117, (reg_kkt_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_string(form, 1046, (reg_kkt_modes & REG_MODE_OFFLINE) == 0) != 0 ||
+		fa_tlv_add_fixed_string(form, 1017, 12, (reg_kkt_modes & REG_MODE_OFFLINE) == 0) != 0) {
 		return -1;
 	}
 
 	uint16_t reg_mode_tags[] = { 1056, 1002, 1001, 1109, 1110, 1108 };
 	for (int i = 0; i < ASIZE(reg_mode_tags); i++)
-		if ((reg_modes & (1 << i)) != 0)
+		if ((reg_kkt_modes & (1 << i)) != 0)
 			ffd_tlv_add_uint8(reg_mode_tags[i], 1);
 	return 0;
 }
@@ -692,9 +693,9 @@ void fa_registration() {
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1009, "Адрес расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1187, "Место расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
-		FORM_ITEM_BITSET(1062, "Системы налогообложения:", tax_modes, tax_modes, 5, 0)
+		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 5, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
-		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
+		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
 
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
@@ -816,9 +817,9 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1009, "Адрес расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1187, "Место расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
-		FORM_ITEM_BITSET(1062, "Системы налогообложения:", tax_modes, tax_modes, 5, 0)
+		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 5, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
-		FORM_ITEM_BITSET(9999, "Режимы работы:", short_modes, modes, 6, 0)
+		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
 		
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)

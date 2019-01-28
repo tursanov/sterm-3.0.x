@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include "list.h"
 #include "sysdefs.h"
 #include "kbd.h"
 #include "kkt/fd/tlv.h"
 #include "kkt/fd/ad.h"
+#include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "paths.h"
 #include "serialize.h"
@@ -26,17 +28,297 @@
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
 
+static void text_free(char *text) {
+	free(text);
+}
+
 static int op_kind;
 static int res_out;
 static uint32_t doc_no;
-static list_t output = { NULL, NULL, 0, NULL };
+static list_t output = { NULL, NULL, 0, (list_item_delete_func_t)text_free };
+
+static void archivefn_show_error(uint8_t status, const char *where) {
+	const char *error;
+	char error_text[512];
+
+	fd_set_error(status, NULL, 0);
+	fd_get_last_error(&error);
+	snprintf(error_text, sizeof(error_text) - 1, "%s:\n%s", where, error_text);
+	message_box("Ошибка", error, dlg_yes, 0, al_center);
+}
+
+static void out_printf(const char *fmt, ...) {
+	va_list args;
+#define MAX_LEN	256
+	char *text = malloc(MAX_LEN + 1);
+
+	va_start(args, fmt);
+	vsnprintf(text, MAX_LEN, fmt, args);
+	va_end(args);
+	
+	list_add(&output, text);
+}
+
+static const char *get_doc_name(uint32_t type) {
+	switch (type) {
+		case REGISTRATION:
+			return "Отчет о регистрации";
+		case RE_REGISTRATION:
+			return "Отчет о перерегистрации";
+			break;
+		case OPEN_SHIFT:
+			return "Отчет об открытии смены";
+		case CLOSE_SHIFT:
+			return "Отчет о закрытии смены";
+		case CALC_REPORT:
+			return "Отчет о текущем состоянии рачетов";
+		case CHEQUE:
+			return "Чек";
+		case CHEQUE_CORR:
+			return "Чек коррекции";
+		case BSO:
+			return "БСО";
+		case BSO_CORR:
+			return "БСО коррекции";
+		case CLOSE_FS:
+			return "Отчет о закрытии ФН";
+		default:
+			return NULL;
+	}
+}
+
+struct kkt_report_hdr {
+	uint8_t date_time[5];
+	uint32_t doc_nr;
+	uint32_t fiscal_sign;
+} __attribute__((__packed__));
+
+static void print_hdr(struct kkt_report_hdr *hdr) {
+	out_printf(" Дата/время: %.2d.%.2d.%.4d %.2d:%.2d", 
+			hdr->date_time[2], hdr->date_time[1], (int)hdr->date_time[0] + 2000,
+			hdr->date_time[3], hdr->date_time[4]);
+	out_printf(" Номер док-та: %u", hdr->doc_nr);
+	out_printf(" ФП: %u", hdr->fiscal_sign);
+}
+
+static const char *get_rereg_code(uint8_t code) {
+	switch (code) {
+		case 0:
+			return "Замена ФН";
+		case 1:
+			return "Замена ОФД";
+		case 2:
+			return "Изменение реквизитов";
+		case 3:
+			return "Изменение настроек ККТ";
+		default:
+			return "Неизвестная причина";
+	}
+}
+
+static const char *get_pay_type(uint8_t type) {
+	switch (type) {
+		case 0:
+			return "Приход";
+		case 1:
+			return "Возврат прихода";
+		case 2:
+			return "Расход";
+		case 3:
+			return "Возврпат расхода";
+		default:
+			return "Незвестный тип";
+	}
+}
+
+const char *str_kkt_modes_ex[] = { 
+	"ШФД", "АВТОН. Р.", "АВТОМАТ. Р.",
+	"УСЛУГИ", "БСО", "ИНТЕРНЕТ",
+	"ПЛ. АГ.", "БАНК. АГ."
+};
+
+static void print_reg(struct kkt_reregister_report *p, bool reg) {
+	char tax_systems[256];
+	char kkt_modes[256];
+
+	out_printf(" ИНН: %.12s", p->inn);
+	out_printf(" РНМ: %.20s", p->reg_number);
+
+	char *s = tax_systems;
+	for (int i = 0, n = 0; i < str_tax_system_count; i++) {
+		if (p->tax_system & (1 << i))
+			s += sprintf(s, "%s%s", n++ > 0 ? "," : "", str_tax_systems[i]);
+	}
+	out_printf(" Системы налогообложения: %s", tax_systems);
+
+	s = kkt_modes;
+	for (int i = 0, n = 0; i < ASIZE(str_kkt_modes_ex); i++) {
+		if (p->mode & (1 << i))
+			s += sprintf(s, "%s%s", n++ > 0 ? "," : "", str_kkt_modes_ex[i]);
+	}
+	out_printf(" Режимы работы: %s", kkt_modes);
+
+	if (!reg)
+		out_printf(" Код причины перерегистрации", get_rereg_code(p->rereg_code));
+}
+
+static void print_shift(struct kkt_shift_report *p) {
+	out_printf(" Номер смены: %d", p->shift_nr);
+}
+
+static void print_calc_report(struct kkt_calc_report *p) {
+	out_printf(" Непереданных ФД: %u", p->nr_uncommited);
+	out_printf(" ФД не переданы с: %.2d.%.2d.%4d",
+			p->first_uncommited_dt[2],
+			p->first_uncommited_dt[1],
+			(int)p->first_uncommited_dt[0] + 2000);
+}
+
+static void print_cheque(struct kkt_cheque_report *p) {
+	uint64_t v = 
+		(uint64_t)(p->sum[0] << 0) |
+		((uint64_t)p->sum[1] << 8) |
+		((uint64_t)p->sum[2] << 16) |
+		((uint64_t)p->sum[3] << 24) |
+		((uint64_t)p->sum[4] << 32);
+	out_printf(" Признак расчета: %s", get_pay_type(p->type));
+	out_printf(" Цена: %.1lld.%.2lld", v / 100, v % 100);
+}
+
+static void print_close_fs(struct kkt_close_fs *p) {
+	out_printf(" ИНН: %.12s", p->inn);
+	out_printf(" РНМ: %.20s", p->reg_number);
+}
+
+static void print_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack) {
+	char str_fs[18*2 + 1];
+	char *s;
+
+	out_printf("Квитанция ОФД");
+
+	out_printf(" Дата/время: %.2d.%.2d.%.4d %.2d:%.2d", 
+			fdo_ack->dt.date.day,
+			fdo_ack->dt.date.month,
+			(int)fdo_ack->dt.date.year + 2000,
+			fdo_ack->dt.time.hour,
+			fdo_ack->dt.time.minute);
+
+	s = str_fs;
+	for (int i = 0; i < 18; i++)
+		s += sprintf(s, "%.2X", fdo_ack->fiscal_sign[i]);
+	out_printf(" ФПД ОФД: %s", str_fs);
+}
 
 static bool archivefn_get_archive_doc() {
+	struct kkt_fs_find_doc_info fdi;
+	struct kkt_fs_fdo_ack fdo_ack;
+	uint8_t data[512];
+	size_t data_len;
+	uint8_t status;
+
+   	if ((status = kkt_find_fs_doc(doc_no, res_out != 0, &fdi, data, &data_len)) != 0) {
+		archivefn_show_error(status, "Ошибка при получении документа из архива ФН");
+		return false;
+	}
+
+	if (fdi.fdo_ack) {
+		if ((status = kkt_find_fdo_ack(doc_no, false, &fdo_ack)) != 0) {
+			archivefn_show_error(status, "Ошибка при получении квитанции ОФД из архива ФН");
+			return false;
+		}
+	}
+
+/*	fdi.doc_type = REGISTRATION;
+	fdi.fdo_ack = true;
+
+	struct kkt_reregister_report *p = (struct kkt_reregister_report *)data;
+	p->date_time[0] = 19;
+	p->date_time[1] = 1;
+	p->date_time[2] = 27;
+	p->date_time[3] = 17;
+	p->date_time[4] = 39;
+	p->doc_nr = 25;
+	p->fiscal_sign = 2342453634;
+	memcpy(p->inn, "1234567890  ", 12);
+	memcpy(p->reg_number, "1234567890123456    ", 20);
+	p->tax_system = 4;
+	p->mode = 1 + 8 + 32;
+	p->rereg_code = 1;
+
+	fdo_ack.dt.date.year = 19;
+	fdo_ack.dt.date.month = 1;
+	fdo_ack.dt.date.day = 27;
+	fdo_ack.dt.time.hour = 17;
+	fdo_ack.dt.time.minute = 43;*/
+
+	list_clear(&output);
+
+	const char *doc_name = get_doc_name(fdi.doc_type);
+	out_printf("%s", doc_name);
+	print_hdr((struct kkt_report_hdr *)data);
+	
+	switch (fdi.doc_type) {
+		case REGISTRATION:
+		case RE_REGISTRATION:
+			print_reg((struct kkt_reregister_report *)data, fdi.doc_type == REGISTRATION);
+			break;
+		case OPEN_SHIFT:
+		case CLOSE_SHIFT:
+			print_shift((struct kkt_shift_report *)data);
+			break;
+		case CALC_REPORT:
+			print_calc_report((struct kkt_calc_report *)data);
+			break;
+		case CHEQUE:
+		case CHEQUE_CORR:
+		case BSO:
+		case BSO_CORR:
+			print_cheque((struct kkt_cheque_report *)data);
+			break;
+		case CLOSE_FS:
+			print_close_fs((struct kkt_close_fs *)data);
+			break;
+	}
+
+	if (fdi.fdo_ack)
+		print_fdo_ack(&fdo_ack);
+
 	return true;
 }
 
 static bool archivefn_get_doc() {
-	return true;
+	uint8_t status;
+	uint16_t doc_type;
+	size_t tlv_size;
+	uint8_t *tlv;
+	uint8_t *p;
+
+	if ((status = kkt_get_doc_stlv(doc_no, &doc_type, &tlv_size)) != 0) {
+		archivefn_show_error(status, "Ошибка при получении информации о документе");
+		return false;
+	}
+
+	tlv = (uint8_t *)malloc(tlv_size);
+	if (!tlv) {
+		message_box("Ошибка", "Ошибка при выделении памти", dlg_yes, 0, al_center);
+		return false;
+	}
+	p = tlv;
+
+	while (true) {
+		size_t len;
+		if ((status = kkt_read_doc_tlv(p, &len)) == 0)
+			p += len;
+		else { 
+			if (status != 0x8) 
+				archivefn_show_error(status, "Ошибка при чтении TLV из ФН");
+			break;
+		}
+	}
+
+	free(tlv);
+
+	return !status || status == 8;
 }
 
 static bool archivefn_get_data() {
@@ -50,7 +332,7 @@ static void button_action(control_t *c, int cmd) {
 }
 
 static void listbox_get_item_text(void *obj, char *text, size_t text_size) {
-	text[0] = 0;
+	snprintf(text, text_size, "%s", (char *)obj);
 }
 
 int archivefn_execute() {

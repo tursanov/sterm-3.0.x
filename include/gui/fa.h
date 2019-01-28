@@ -25,6 +25,12 @@ bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 		size_t pattern_footer_size, update_screen_func_t update_func, 
 		void *update_func_arg);
 
+extern const char *str_tax_systems[];
+extern size_t str_tax_system_count;
+extern const char *str_short_kkt_modes[];
+extern const char *str_kkt_modes[];
+extern size_t str_kkt_mode_count;
+
 extern int agents_load();
 extern int articles_load();
 extern int agents_save();
