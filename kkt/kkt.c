@@ -825,6 +825,8 @@ uint8_t kkt_read_doc_tlv(uint8_t *data, size_t *len)
 				else if ((l + 2 + arg.data.len) <= *len){
 					*(uint16_t *)(data + l) = arg.tag;
 					l += 2;
+					*(uint16_t *)(data + l) = arg.data.len;
+					l += 2;
 					if (arg.data.len > 0){
 						memcpy(data + l, arg.data.data, arg.data.len);
 						l += arg.data.len;
