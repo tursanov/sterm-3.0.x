@@ -28,8 +28,8 @@
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
 #include "kkt/fdo.h"
+#include "ds1990a.h"
 #include "kkt/fd/tlv.h"
-
 
 static int fa_active_group = -1;
 static int fa_active_item = -1;
@@ -172,20 +172,27 @@ enum {
 static bool fa_create_menu(void)
 {
 	fa_menu = new_menu(false, false);
-	add_menu_item(fa_menu, new_menu_item("Регистрация", cmd_reg_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Перерегистрация", cmd_rereg_fa, true));
+	if (kt != key_reg) {
+		add_menu_item(fa_menu, new_menu_item("Регистрация", cmd_reg_fa, true));
+		add_menu_item(fa_menu, new_menu_item("Перерегистрация", cmd_rereg_fa, true));
+	}
 	add_menu_item(fa_menu, new_menu_item("Открытие смены", cmd_open_shift_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Закрытие смены", cmd_close_shift_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Чек", cmd_cheque_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Чек коррекции", cmd_cheque_corr_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Отчет о текущeм состоянии расчетов", cmd_calc_report_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
+	if (kt != key_reg) {
+		add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
+		add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
+	}
 	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
-	add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_archive_fa, true));
-	if (fs_debug)
-		add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
+
+	if (kt != key_reg) {
+		add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_archive_fa, true));
+		if (fs_debug)
+			add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
+	}
 	add_menu_item(fa_menu, new_menu_item("Выход", cmd_exit, true));
 
 
@@ -311,10 +318,14 @@ void release_fa(void)
 	}
 	cheque_release();
 	cheque_docs_release();
-	if (fa_menu)
+	if (fa_menu) {
 		release_menu(fa_menu,false);
-	if (fa_sales_menu)
+		fa_menu = NULL;
+	}
+	if (fa_sales_menu) {
 		release_menu(fa_sales_menu,false);
+		fa_sales_menu = NULL;
+	}
 	online = true;
 	pop_term_info();
 	ClearScreen(clBtnFace);

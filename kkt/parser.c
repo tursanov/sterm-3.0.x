@@ -502,7 +502,7 @@ static bool parse_fs_doc_tlv(struct read_doc_tlv_arg *arg)
 		if (ret && (kkt_status == KKT_STATUS_OK))
 			begin_fix_data(2);
 	}else if (rx_st == st_fix_data){
-		arg->tag = *(const uint8_t *)(kkt_rx + kkt_rx_len - 2);
+		arg->tag = *(const uint16_t *)(kkt_rx + kkt_rx_len - 2);
 		begin_var_data_len();
 	}else if (rx_st == st_var_data_len)
 		parse_var_data_len(&arg->data);

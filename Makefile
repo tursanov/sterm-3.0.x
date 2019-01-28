@@ -81,6 +81,7 @@ KKT_XML_OBJS =		\
 KKT_FD_OBJS =		\
 	ad		\
 	fd		\
+	tags	\
 	tlv
 
 LOG_OBJS =		\

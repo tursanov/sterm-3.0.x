@@ -10,6 +10,7 @@
 #include "kkt/fd/tlv.h"
 #include "kkt/fd/ad.h"
 #include "kkt/fd/fd.h"
+#include "kkt/fd/tags.h"
 #include "kkt/kkt.h"
 #include "paths.h"
 #include "serialize.h"
@@ -195,7 +196,6 @@ static void print_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack) {
 	char *s;
 
 	out_printf("Квитанция ОФД");
-
 	out_printf(" Дата/время: %.2d.%.2d.%.4d %.2d:%.2d", 
 			fdo_ack->dt.date.day,
 			fdo_ack->dt.date.month,
@@ -307,15 +307,14 @@ static bool archivefn_get_doc() {
 	if ((status = kkt_read_doc_tlv(tlv, &tlv_size)) != 0) {
 		archivefn_show_error(status, "Ошибка при чтении TLV из ФН");
 	} else {
-
-		printf("tlv_size: %d\n", tlv_size);
-
 		uint8_t *p = tlv;
 		size_t i = 0;
 
+		char text[2048];
 		while (i < tlv_size) {
 			ffd_tlv_t *t = (ffd_tlv_t *)p;
-			out_printf("[%.4d] %d", t->tag, t->length);
+			tags_get_tlv_text(t, text, sizeof(text));
+			out_printf("%s", text);
 			size_t l = t->length + sizeof(*t);
 			i += l;
 			p += l;

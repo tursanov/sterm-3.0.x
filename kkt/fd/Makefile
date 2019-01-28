@@ -5,6 +5,7 @@ INCLUDE = ../../include
 FFD_OBJS =		\
 	ad 		\
 	fd		\
+	tags	\
 	tlv
 
 OBJS = $(addsuffix .o, $(FFD_OBJS))
