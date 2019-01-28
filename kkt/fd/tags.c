@@ -189,7 +189,7 @@ tag_type_t tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 		case tag_type_unixtime:
 			{ 
 				time_t t = *(time_t *)data;
-				struct tm tm = *localtime(&t);
+				struct tm tm = *gmtime(&t);
 				strftime(s, text_size - l, "%d.%m.%Y %H:%M", &tm);
 			}
 			break;
@@ -207,7 +207,14 @@ tag_type_t tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 			}
 			break;
 		case tag_type_bits:
-			snprintf(s, text_size - l, "%d", *(uint32_t *)data);
+			{
+				uint32_t v;
+				if (tlv->length == 1)
+					v = *data;
+				else
+					v = *(uint32_t *)data;
+				snprintf(s, text_size - l, "%d", v);
+			}
 			break;
 		case tag_type_fvln:
 			{

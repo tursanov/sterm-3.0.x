@@ -123,14 +123,14 @@ static const char *get_rereg_code(uint8_t code) {
 
 static const char *get_pay_type(uint8_t type) {
 	switch (type) {
-		case 0:
-			return "Приход";
 		case 1:
-			return "Возврат прихода";
+			return "Приход";
 		case 2:
-			return "Расход";
+			return "Возврат прихода";
 		case 3:
-			return "Возврпат расхода";
+			return "Расход";
+		case 4:
+			return "Возврат расхода";
 		default:
 			return "Незвестный тип";
 	}
@@ -164,7 +164,7 @@ static void print_reg(struct kkt_reregister_report *p, bool reg) {
 	out_printf(" Режимы работы: %s", kkt_modes);
 
 	if (!reg)
-		out_printf(" Код причины перерегистрации", get_rereg_code(p->rereg_code));
+		out_printf(" Код причины перерегистрации: %s", get_rereg_code(p->rereg_code));
 }
 
 static void print_shift(struct kkt_shift_report *p) {
@@ -192,7 +192,7 @@ static void print_cheque(struct kkt_cheque_report *p) {
 
 static void print_close_fs(struct kkt_close_fs *p) {
 	out_printf(" ИНН: %.12s", p->inn);
-	out_printf(" РНМ: %.20s", p->reg_number);
+	out_printf(" Регистрационный номер: %.20s", p->reg_number);
 }
 
 static void print_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack) {
@@ -200,10 +200,10 @@ static void print_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack) {
 	char *s;
 
 	out_printf("Квитанция ОФД");
-	out_printf(" Дата/время: %.2d.%.2d.%.4d %.2d:%.2d", 
+	out_printf(" Дата/время: %.2d.%.2d.%.2d %.2d:%.2d", 
 			fdo_ack->dt.date.day,
 			fdo_ack->dt.date.month,
-			(int)fdo_ack->dt.date.year + 2000,
+			fdo_ack->dt.date.year,
 			fdo_ack->dt.time.hour,
 			fdo_ack->dt.time.minute);
 
@@ -231,29 +231,6 @@ static bool archivefn_get_archive_doc() {
 			return false;
 		}
 	}
-
-/*	fdi.doc_type = REGISTRATION;
-	fdi.fdo_ack = true;
-
-	struct kkt_reregister_report *p = (struct kkt_reregister_report *)data;
-	p->date_time[0] = 19;
-	p->date_time[1] = 1;
-	p->date_time[2] = 27;
-	p->date_time[3] = 17;
-	p->date_time[4] = 39;
-	p->doc_nr = 25;
-	p->fiscal_sign = 2342453634;
-	memcpy(p->inn, "1234567890  ", 12);
-	memcpy(p->reg_number, "1234567890123456    ", 20);
-	p->tax_system = 4;
-	p->mode = 1 + 8 + 32;
-	p->rereg_code = 1;
-
-	fdo_ack.dt.date.year = 19;
-	fdo_ack.dt.date.month = 1;
-	fdo_ack.dt.date.day = 27;
-	fdo_ack.dt.time.hour = 17;
-	fdo_ack.dt.time.minute = 43;*/
 
 	const char *doc_name = get_doc_name(fdi.doc_type);
 	out_printf("%s", doc_name);

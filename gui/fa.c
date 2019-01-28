@@ -270,7 +270,7 @@ bool init_fa(int arg)
 		ClearScreen(clBlack);
 		fa_create_menu();
 		if (_ad->clist.count > 0) {
-			fa_active_item = 4;
+			fa_active_item =  kt != key_reg ? 4 : 2;
 			fa_menu->selected = fa_active_item;
 			printf("fa_active_item = %d\n", fa_active_item);
 		}
