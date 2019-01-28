@@ -38,15 +38,19 @@ static int res_out;
 static uint32_t doc_no;
 static list_t output = { NULL, NULL, 0, (list_item_delete_func_t)text_free };
 
-static void archivefn_show_error(uint8_t status, const char *where) {
-	const char *error;
+static void archivefn_show_error_ex(const char *where) {
 	char error_text[512];
-
-	fd_set_error(status, NULL, 0);
+	const char *error;
 	fd_get_last_error(&error);
 	snprintf(error_text, sizeof(error_text) - 1, "%s:\n%s", where, error_text);
 	message_box("Ошибка", error, dlg_yes, 0, al_center);
 }
+
+static void archivefn_show_error(uint8_t status, const char *where) {
+	fd_set_error(status, NULL, 0);
+	archivefn_show_error_ex(where);
+}
+
 
 static void out_printf(const char *fmt, ...) {
 	va_list args;
@@ -284,6 +288,28 @@ static bool archivefn_get_archive_doc() {
 	return true;
 }
 
+static void print_stlv(uint8_t *p, size_t size, int level) {
+	char text[2048];
+	char tmp[8] = {0};
+
+	memset(tmp, ' ', level);
+	tmp[level] = 0;
+
+	size_t i = 0;
+	while (i < size) {
+		ffd_tlv_t *t = (ffd_tlv_t *)p;
+		tag_type_t type = tags_get_tlv_text(t, text, sizeof(text));
+		out_printf("%s%s", tmp, text);
+
+		if (type == tag_type_stlv)
+			print_stlv(p + 4, t->length, 1);
+
+		size_t l = t->length + sizeof(*t);
+		i += l;
+		p += l;
+	}
+}
+
 static bool archivefn_get_doc() {
 	uint8_t status;
 	uint16_t doc_type;
@@ -303,25 +329,19 @@ static bool archivefn_get_doc() {
 		return false;
 	}
 
-
 	if ((status = kkt_read_doc_tlv(tlv, &tlv_size)) != 0) {
 		archivefn_show_error(status, "Ошибка при чтении TLV из ФН");
-	} else {
-		uint8_t *p = tlv;
-		size_t i = 0;
-
-		char text[2048];
-		while (i < tlv_size) {
-			ffd_tlv_t *t = (ffd_tlv_t *)p;
-			tags_get_tlv_text(t, text, sizeof(text));
-			out_printf("%s", text);
-			size_t l = t->length + sizeof(*t);
-			i += l;
-			p += l;
-		}
-	}
+	} else
+		print_stlv(tlv, tlv_size, 0);
 
 	free(tlv);
+
+
+	if (res_out != 0) {
+		if ((status = fd_print_doc(doc_type, doc_no) != 0)) {
+			archivefn_show_error_ex("Ошибка при печати документа");
+		}
+	}
 
 	return status == 0;
 }
@@ -423,6 +443,7 @@ int archivefn_execute() {
 
 		if (!archivefn_get_data())
 			continue;
+		window_set_focus(win, 9997);
 	}
 
 	window_destroy(win);

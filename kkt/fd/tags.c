@@ -20,7 +20,7 @@ kkt_tag_t tags[] = {
 	{ 1022, "код ответа ОФД", tag_type_byte },
 	{ 1023, "количество предмета расчета", tag_type_fvln },
 	{ 1026, "наименование оператора перевода", tag_type_string },
-	{ 1030, "наименование предмета расчета", tag_type_string },
+	{ 1030, "наименование", tag_type_string },
 	{ 1031, "сумма по чеку (БСО) наличными", tag_type_vln },
 	{ 1036, "номер автомата", tag_type_string },
 	{ 1037, "регистрационный номер ККТ", tag_type_string },
@@ -150,7 +150,7 @@ kkt_tag_t tags[] = {
 };
 static kkt_tag_t unknown = { 0, "неизвестный тэг", tag_type_bytes };
 
-void tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
+tag_type_t tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 	kkt_tag_t *t = tags;
 	uint8_t *data = (uint8_t *)(tlv + 1);
 	size_t i;
@@ -165,15 +165,26 @@ void tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 	l += snprintf(s, text_size - l, "[%.4d] %s: ", tlv->tag, t->desc);
 	s += l;
 
+	if (t->tag == 1077) {
+		uint32_t v = 
+			((uint32_t)data[5] << 0) |
+			((uint32_t)data[4] << 8) |
+			((uint32_t)data[3] << 16) |
+			((uint32_t)data[2] << 24);
+		snprintf(s, text_size - l, "%u", v);
+		return tag_type_bytes;
+	}
+
+
 	switch (t->type) {
 		case tag_type_byte:
-			snprintf(s, text_size - l, "%d", *(uint8_t *)data);
+			snprintf(s, text_size - l, "%u", *(uint8_t *)data);
 			break;
 		case tag_type_uint16:
-			snprintf(s, text_size - l, "%d", *(uint16_t *)data);
+			snprintf(s, text_size - l, "%u", *(uint16_t *)data);
 			break;
 		case tag_type_uint32:
-			snprintf(s, text_size - l, "%d", *(uint32_t *)data);
+			snprintf(s, text_size - l, "%u", *(uint32_t *)data);
 			break;
 		case tag_type_unixtime:
 			{ 
@@ -199,7 +210,21 @@ void tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 			snprintf(s, text_size - l, "%d", *(uint32_t *)data);
 			break;
 		case tag_type_fvln:
+			{
+				double f;
+				uint64_t v = 0;
+				int shift = 0;
+				uint8_t *p = data + 1;
+				for (i = 0; i < tlv->length - 1; i++, p++, shift += 8)
+					v |= (uint64_t)*p << shift;
+
+				f = (double)v;
+				for (i = 0; i < *data; i++)
+					f /= 10;
+				snprintf(s, text_size - l, "%1.3f", f);
+			}
 		case tag_type_stlv:
+			break;
 		case tag_type_bytes:
 		default:
 			{
@@ -213,4 +238,6 @@ void tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 			}
 			break;
 	}
+
+	return t->type;
 }

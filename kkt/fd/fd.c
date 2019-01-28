@@ -12,7 +12,7 @@ static char last_error[1024] = { 0 };
 
 #define DIR_NAME "/home/sterm/patterns"
 
-static uint8_t *load_pattern(uint8_t doc_type, const uint8_t *pattern_footer,
+uint8_t *load_pattern(uint8_t doc_type, const uint8_t *pattern_footer,
 	size_t pattern_footer_size, size_t *pattern_size)
 {
 #define PATTERN_FORMAT DIR_NAME "/%s"
@@ -655,6 +655,47 @@ int fd_print_last_doc(uint8_t doc_type) {
 	err_info_len = sizeof(err_info);
 
 	if ((ret = kkt_print_last_doc(doc_type, pattern, pattern_size, &lpi,
+					err_info, &err_info_len)) != 0) {
+		fd_set_error(ret, err_info, err_info_len);
+
+		if (ret == 0x80 || ret == 0x8c) {
+			if (err_info_len > 0) {
+				uint16_t tag = *(uint16_t *)err_info;
+				uint8_t ex_err = err_info[2];
+
+				printf("error in tag %.4d -> %.2x\n", tag, ex_err);
+			}
+		}
+
+		goto LOut;
+	}
+
+LOut:
+	free(pattern);
+
+	return ret;
+}
+
+// печать фискального документа по номеру
+int fd_print_doc(uint8_t doc_type, uint32_t doc_no) {
+	uint8_t ret;
+	uint8_t err_info[32];
+	size_t err_info_len;
+	uint8_t *pattern;
+	size_t pattern_size;
+	struct kkt_last_printed_info lpi;
+	uint8_t *pattern_footer = NULL;
+	size_t pattern_footer_size = 0;
+
+   	if ((pattern = load_pattern(doc_type, pattern_footer,
+				   	pattern_footer_size, &pattern_size)) == NULL) {
+		printf("load_pattern fail\n");
+		return -1;
+	}
+
+	err_info_len = sizeof(err_info);
+
+	if ((ret = kkt_print_doc(doc_no, pattern, pattern_size, &lpi,
 					err_info, &err_info_len)) != 0) {
 		fd_set_error(ret, err_info, err_info_len);
 

@@ -24,6 +24,6 @@ typedef struct kkt_tag_t {
 	tag_type_t type;
 } kkt_tag_t;
 
-void tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size);
+tag_type_t tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size);
 
 #endif // TAGS_H
