@@ -79,14 +79,11 @@ void window_set_dialog_result(window_t *w, int result) {
 	w->dialog_result = result;
 }
 
-void window_add_control(window_t *w, control_t *c) {
+control_t* window_add_control(window_t *w, control_t *c) {
 	list_add(&w->controls, c);
 	control_parent_t p = { w, (draw_func_t)window_draw };
 	control_set_parent(c, &p);
-	if (w->controls.count == 1) {
-		w->focused = w->controls.head;
-		c->focused = true;	
-	}
+	return c;
 }
 
 void window_add_label_with_id(window_t *w, int id, int x, int y, align_t align, const char *text) {
@@ -251,10 +248,28 @@ static bool window_process(window_t *w, const struct kbd_event *_e) {
 	return true;
 }
 
+static list_item_t *window_get_control_item(window_t *w, int id) {
+	for (list_item_t *li = w->controls.head; li; li = li->next) {
+		control_t *c = LIST_ITEM(li, control_t);
+		if (c->id == id)
+			return li;
+	}
+	return NULL;
+}
 
-int window_show_dialog(window_t *w) {
+
+int window_show_dialog(window_t *w, int focus_id) {
 	struct kbd_event e;
 	kbd_flush_queue();
+
+	if (w->controls.count > 0) {
+		list_item_t *li = window_get_control_item(w, focus_id);
+		if (!li)
+			li = w->controls.head;
+
+		w->focused = li;
+		LIST_ITEM(w->focused, control_t)->focused = true;
+	}
 
 	w->dialog_result = -1;
 	window_draw(w);
@@ -264,15 +279,6 @@ int window_show_dialog(window_t *w) {
 	} while (window_process(w, &e));
 
 	return w->dialog_result;	
-}
-
-static list_item_t *window_get_control_item(window_t *w, int id) {
-	for (list_item_t *li = w->controls.head; li; li = li->next) {
-		control_t *c = LIST_ITEM(li, control_t);
-		if (c->id == id)
-			return li;
-	}
-	return NULL;
 }
 
 control_t *window_get_control(window_t *w, int id) {

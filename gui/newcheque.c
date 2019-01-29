@@ -66,8 +66,8 @@ static newcheque_t newcheque = {
 }*/
 
 static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
-	printf("price_per_unit: %lld, count->value = %lld, count->dot = %d\n",
-			ca->article->price_per_unit, ca->count.value, ca->count.dot);
+//	printf("price_per_unit: %lld, count->value = %lld, count->dot = %d\n",
+//			ca->article->price_per_unit, ca->count.value, ca->count.dot);
 
 	uint64_t sum = ca->article->price_per_unit * ca->count.value;
 	uint64_t rem = 0;
@@ -77,7 +77,7 @@ static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
 	}
 	if (rem >= 5)
 		sum++;
-	printf("sum: %lld\n", sum);
+//	printf("sum: %lld\n", sum);
 	return sum;
 }
 
@@ -239,7 +239,7 @@ static void article_new(window_t *parent) {
 				BUTTON_WIDTH, BUTTON_HEIGHT, 0, "Отмена", button_action));
 
 	int result;
-	while ((result = window_show_dialog(win)) == 1) {
+	while ((result = window_show_dialog(win, -1)) == 1) {
 		article_t *a = window_get_ptr_data(win, 1059, 1);
 		if (a == NULL) {
 			window_show_error(win, 1059, "Не выбран товар/работа/услуга");
@@ -318,7 +318,9 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 	switch (e->key) {
 		case KEY_NUMPLUS:
 		case KEY_PLUS:
-			article_new(w);
+			c = window_get_focus(w);
+			if (c && c->id == 9997)
+				article_new(w);
 			break;
 		case KEY_MINUS:
 		case KEY_NUMMINUS:
@@ -471,7 +473,7 @@ bool newcheque_print(window_t *w) {
 }
 
 int newcheque_execute() {
-	window_t *win = window_create(NULL, "Новый чек (Esc - выход)", newcheque_process);
+	window_t *win = window_create(NULL, "Чек(и) (Esc - выход)", newcheque_process);
 	GCPtr screen = window_get_gc(win);
 
 	int x = CONTROLS_START;
@@ -561,7 +563,7 @@ int newcheque_execute() {
 
 	int result;
 	while (true) {
-		result = window_show_dialog(win);
+		result = window_show_dialog(win, 9997);
 
 		data_t data;
 		window_get_data(win, 1008, 0, &data);

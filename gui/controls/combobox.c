@@ -261,6 +261,8 @@ bool combobox_handle(combobox_t *combobox, const struct kbd_event *e) {
 				combobox->selected_index = combobox->item_count - 1;
 			if (combobox->edit)
 				combobox_sync_edit_text(combobox);
+			else
+				combobox_draw(combobox);
 			return true;
 		}
 		break;
@@ -271,6 +273,8 @@ bool combobox_handle(combobox_t *combobox, const struct kbd_event *e) {
 				combobox->selected_index = 0;
 			if (combobox->edit)
 				combobox_sync_edit_text(combobox);
+			else
+				combobox_draw(combobox);
 			return true;
 		}
 		break;

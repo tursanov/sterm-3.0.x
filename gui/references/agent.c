@@ -142,11 +142,11 @@ static bool process_agent_edit(form_t *form, agent_t *a) {
 		form_get_data(form, 1171, 1, &supplier_phone);
 
 		if (name.size == 0)
-			fa_show_error(form, 100, "Наименование агента не заполнено");
+			fa_show_error(form, 100, "Наименование поставщика не заполнено");
 		else if (inn.size != 10 && inn.size != 12)
 			fa_show_error(form, 101, "ИНН должно содержать 10 или 12 цифр");
         else if (pay_agent == -1)
-			fa_show_error(form, 1054, "Выберите тип агента");
+			fa_show_error(form, 1054, "Выберите тип поставщика");
 		else if (pay_agent == 0 || pay_agent == 1) {
 			ok = fa_check_field(form, &transfer_operator_phone, 1075, "Поле \"Тлф. оп. перевода\" не заполнено") &&
 				fa_check_field(form, &pay_agent_operation, 1044, "Поле \"Оп. агента\" не заполнено") &&
@@ -185,12 +185,12 @@ static bool process_agent_edit(form_t *form, agent_t *a) {
 void* create_new_agent(data_source_t *ds) {
 	agent_t *a = NULL;
 	form_t *form = NULL;
-	BEGIN_FORM(form, "Новый агент")
-		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", NULL, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
+	BEGIN_FORM(form, "Новый поставщик")
+		FORM_ITEM_EDIT_TEXT(100, "Наименование поставщика:", NULL, FORM_INPUT_TYPE_TEXT, 32)
+		FORM_ITEM_EDIT_TEXT(101, "ИНН поставщика:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(102, "Описание:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 
-		FORM_ITEM_COMBOBOX(1054, "Тип агента:", str_pay_agents, ASIZE(str_pay_agents), -1)
+		FORM_ITEM_COMBOBOX(1054, "Тип агентских отношений:", str_pay_agents, ASIZE(str_pay_agents), -1)
         FORM_ITEM_EDIT_TEXT(1075, "Тлф. оп. перевода:", NULL, FORM_INPUT_TYPE_TEXT, 64)
         FORM_ITEM_EDIT_TEXT(1044, "Оп. агента:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1073, "Тлф. платежного агента:", NULL, FORM_INPUT_TYPE_TEXT, 19)
@@ -222,12 +222,12 @@ int edit_agent(data_source_t *ds, void *obj) {
 	int ret = -1;
 	agent_t *a = (agent_t *)obj;
 	form_t *form = NULL;
-	BEGIN_FORM(form, "Изменить данные агента")
-		FORM_ITEM_EDIT_TEXT(100, "Наименование агента:", a->name, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_EDIT_TEXT(101, "ИНН агента:", a->inn, FORM_INPUT_TYPE_NUMBER, 12)
+	BEGIN_FORM(form, "Изменить данные поставщика")
+		FORM_ITEM_EDIT_TEXT(100, "Наименование поставщика:", a->name, FORM_INPUT_TYPE_TEXT, 32)
+		FORM_ITEM_EDIT_TEXT(101, "ИНН поставщика:", a->inn, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(102, "Описание:", a->description, FORM_INPUT_TYPE_TEXT, 64)
 		
-		FORM_ITEM_COMBOBOX(1054, "Тип агента:", str_pay_agents, ASIZE(str_pay_agents), a->pay_agent)
+		FORM_ITEM_COMBOBOX(1054, "Тип агентских отношений:", str_pay_agents, ASIZE(str_pay_agents), a->pay_agent)
 		FORM_ITEM_EDIT_TEXT(1075, "Тлф. оп. перевода:", a->transfer_operator_phone, FORM_INPUT_TYPE_TEXT, 64)
         FORM_ITEM_EDIT_TEXT(1044, "Оп. агента:", a->pay_agent_operation, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1073, "Тлф. платежного агента:", a->pay_agent_phone, FORM_INPUT_TYPE_TEXT, 19)
@@ -256,8 +256,8 @@ int remove_agent(data_source_t *ds, void *obj) {
 		article_t *a = LIST_ITEM(li, article_t);
 		if (a->pay_agent == agent->n) {
 			message_box("Уведомление", 
-						"Данный агент используется в описании товаров/работ/услуг и не может быть удален."
-						"\nСначала необходимо удалить все ссылки на данного агента.",
+						"Данный поствщик используется в описании товаров/работ/услуг и не может быть удален."
+						"\nСначала необходимо удалить все ссылки на данного поставщика.",
 						dlg_yes, 0, al_center);
 			return -1;
 		}
@@ -306,7 +306,7 @@ void fa_agents() {
 
 	lvform_column_t columns[] = {
 		{ "\xfc", 50 },
-		{ "Наименование агента", 250 },
+		{ "Наименование поставщика", 250 },
 		{ "ИНН", 200 },
 		{ "Описание", 278 },
 	};
@@ -318,7 +318,7 @@ void fa_agents() {
 		remove_agent
 	};
 
-	lvform_t *lv = lvform_create("Справочник агентов", columns, ASIZE(columns),	&ds);
+	lvform_t *lv = lvform_create("Справочник поставщиков", columns, ASIZE(columns),	&ds);
 	lvform_execute(lv);
 	lvform_destroy(lv);
 

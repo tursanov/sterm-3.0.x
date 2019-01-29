@@ -197,8 +197,8 @@ static bool fa_create_menu(void)
 
 
 	fa_sales_menu = new_menu(false, false);
-	add_menu_item(fa_sales_menu, new_menu_item("Новый чек", cmd_newcheque_fa, true));
-	add_menu_item(fa_sales_menu, new_menu_item("Справочник агентов", cmd_agents_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Чек(и)", cmd_newcheque_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Справочник поставщиков", cmd_agents_fa, true));
 	add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
 
 	return true;
@@ -660,7 +660,7 @@ void fa_close_fs() {
 #include "references/agent.c"
 #include "references/article.c"
 
-const char *str_tax_systems[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН" };
+const char *str_tax_systems[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН", "ПАТЕНТ" };
 size_t str_tax_system_count = ASIZE(str_tax_systems);
 const char *str_short_kkt_modes[] = { "ШФД", "АВТОН.Р.", "АВТОМАТ.Р.",
 		"УСЛУГИ", "БСО", "ИНТЕРНЕТ" };
@@ -704,7 +704,8 @@ void fa_registration() {
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1009, "Адрес расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1187, "Место расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
-		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 5, 0)
+		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 
+				str_tax_system_count, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
@@ -828,7 +829,8 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
 		FORM_ITEM_EDIT_TEXT(1009, "Адрес расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1187, "Место расчетов:", NULL, FORM_INPUT_TYPE_TEXT, 256)
-		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 5, 0)
+		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 
+				str_tax_system_count, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
 		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)

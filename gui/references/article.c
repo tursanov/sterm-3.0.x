@@ -213,7 +213,7 @@ char **create_agent_info_list() {
 	for (list_item_t *li = agents.head; li; li = li->next, al++) {
 		agent_t *agent = LIST_ITEM(li, agent_t);
 		*al = malloc(64+1);
-		sprintf(*al, "[%d] %s", agent->n, agent->name);
+		sprintf(*al, "%s", agent->name);
 	}
 	return agent_list;
 }
@@ -235,7 +235,7 @@ void* create_new_article(data_source_t *ds) {
 		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), -1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", NULL, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), -1)
-		FORM_ITEM_COMBOBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, 0)
+		FORM_ITEM_COMBOBOX(1054, "Поставщик:", (const char **)agent_info_list, agents.count + 1, 0)
 
 		FORM_ITEM_BUTTON(1, "ОК")
 		FORM_ITEM_BUTTON(2, "Отмена")
@@ -284,7 +284,7 @@ int edit_article(data_source_t *ds, void *obj) {
 		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), a->pay_method - 1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", price_per_unit, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), a->vat_rate - 1)
-		FORM_ITEM_COMBOBOX(1054, "Агент:", (const char **)agent_info_list, agents.count + 1, pay_agent_index)
+		FORM_ITEM_COMBOBOX(1054, "Поставщик:", (const char **)agent_info_list, agents.count + 1, pay_agent_index)
 
 		FORM_ITEM_BUTTON(1, "ОК")
 		FORM_ITEM_BUTTON(2, "Отмена")
@@ -354,7 +354,7 @@ void fa_articles() {
 		{ "Способ расчета", 150 },
 		{ "Цена за ед.", 120 },
 		{ "Ставка НДС", 120 },
-		{ "Признак агента", 158 },
+		{ "Поставщик", 158 },
 	};
 	data_source_t ds = {
 		&articles,

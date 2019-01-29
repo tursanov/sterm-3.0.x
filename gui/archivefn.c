@@ -397,7 +397,7 @@ int archivefn_execute() {
 
 	int result;
 	while (true) {
-		result = window_show_dialog(win);
+		result = window_show_dialog(win, -1);
 		data_t data;
 
 		op_kind = window_get_int_data(win, 9999, 0, 0);
