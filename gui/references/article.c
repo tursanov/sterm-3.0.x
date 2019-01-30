@@ -60,7 +60,7 @@ int article_get_text(void *obj, int index, char *text, size_t text_size) {
 		case 1:
 			snprintf(text, text_size, "%s", a->name);
 			break;
-		case 2: {
+/*		case 2: {
 			const char * str_tax_system;
 			if ((v = get_bit(a->tax_system)) == -1)
 				str_tax_system = "<НЕ УКАЗАНА>";
@@ -68,21 +68,21 @@ int article_get_text(void *obj, int index, char *text, size_t text_size) {
 				str_tax_system = str_tax_systems[v];
 			snprintf(text, text_size, "%s", str_tax_system);
 			break;
-		}
-		case 3:
+		}*/
+		case 2:
 			snprintf(text, text_size, "%s", str_pay_methods[a->pay_method - 1]);
 			break;			
-		case 4:
+		case 3:
 			snprintf(text, text_size, "%.lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
 			break;
-		case 5:
+		case 4:
 			snprintf(text, text_size, "%s", str_vats[a->vat_rate - 1]);
 			break;
-		case 6:
+		case 5:
 			for (list_item_t *li = agents.head; li; li = li->next) { 
 				agent_t *agent = LIST_ITEM(li, agent_t);
 				if (a->pay_agent == agent->n) {
-					snprintf(text, text_size, "[%d] %s", agent->n, agent->name);
+					snprintf(text, text_size, "%s", agent->name);
 					return 0;
 				}
 			}
@@ -342,6 +342,8 @@ int articles_save() {
 	else
 		ret = 0;
 
+	fclose(f);
+
 	return ret;
 }
 
@@ -349,8 +351,8 @@ int articles_save() {
 void fa_articles() {
 	lvform_column_t columns[] = {
 		{ "\xfc", 30 },
-		{ "Наименование", 150 },
-		{ "СНО", 50 },
+		{ "Наименование", 200 },
+		//{ "СНО", 50 },
 		{ "Способ расчета", 150 },
 		{ "Цена за ед.", 120 },
 		{ "Ставка НДС", 120 },

@@ -17,7 +17,7 @@ int agent_get_text(void *obj, int index, char *text, size_t text_size) {
 			snprintf(text, text_size, "%s", a->inn);
 			break;
 		case 3:
-			snprintf(text, text_size, "%s", a->description);
+			snprintf(text, text_size, "%s", a->description ? a->description : "");
 			break;
 		default:
 			return -1;
@@ -298,6 +298,8 @@ int agents_save() {
 		ret = -1;
 	else
 		ret = 0;
+
+	fclose(f);
 
 	return ret;
 }

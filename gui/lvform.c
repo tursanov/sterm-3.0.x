@@ -47,11 +47,13 @@ extern void draw_title(GCPtr screen, FontPtr fnt, const char *title);
 extern void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color);
 
+#define ACTIVE_COLOR	RGB(48,48,48)
+
 static void lvform_draw_column(lvform_column_t *c, int x, int y, int h) {
 	SetGCBounds(screen, x, y, c->width, h);
-	SetTextColor(screen, clGray);
+	SetTextColor(screen, active_element == 0 ? ACTIVE_COLOR : clGray);
 	TextOut(screen, 4, 0, c->title);
-	SetBrushColor(screen, clGray);
+	SetBrushColor(screen, active_element == 0 ? ACTIVE_COLOR : clGray);
 	FillBox(screen, c->width - 2, 0, 2, h);
 }
 
@@ -63,7 +65,7 @@ static void lvform_draw_columns(lvform_t *lvform, int y) {
 	for (int i = 0; i < lvform->column_count; i++, x += c->width, c++)
 		lvform_draw_column(c, x, y, h);
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
-	SetBrushColor(screen, clGray);
+	SetBrushColor(screen, active_element == 0 ? ACTIVE_COLOR : clGray);
 	FillBox(screen, GAP + 2, y + h, DISCX - GAP*2 - 4, 2);
 }
 
@@ -160,20 +162,30 @@ static void lvform_draw_buttons() {
 			BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", active_element == 4);
 }
 
-void lvform_draw(lvform_t *lvform) {
+static void lvform_draw_listview(lvform_t *lvform) {
 	int x = GAP;
-	int y = 0;
+	int y = 30;
 
 	SetGCBounds(screen, 0, 0, DISCX, DISCY);
-	ClearGC(screen, clSilver);
-	draw_title(screen, fnt, lvform->title);
-	y += 30;
-
-	fill_rect(screen, x, y, DISCX - GAP*2, items_bottom - y, 2, clGray, -1);
+	fill_rect(screen, x, y, DISCX - GAP*2, items_bottom - y, 2, 
+			active_element == 0 ? ACTIVE_COLOR : clGray, -1);
 	lvform_draw_columns(lvform, y + 2);
 	lvform_draw_items(lvform);
 	lvform_draw_buttons();
 }
+
+void lvform_draw(lvform_t *lvform) {
+	//int x = GAP;
+	//int y = 0;
+
+	SetGCBounds(screen, 0, 0, DISCX, DISCY);
+	ClearGC(screen, clSilver);
+	draw_title(screen, fnt, lvform->title);
+	//y += 30;
+
+	lvform_draw_listview(lvform);
+}
+
 
 static void lvform_set_selected_index(lvform_t *lvform, int index) {
 	if (lvform->data_source->list->head) {
@@ -215,9 +227,10 @@ static void lvform_next_element(lvform_t *lvform, bool prev) {
 			active_element--;
 	}
 
-	if (old == 0 || active_element == 0)
-		lvform_redraw_rows(lvform, lvform->selected_index, -1);
-	lvform_draw_buttons();
+	//if (old == 0 || active_element == 0)
+	lvform_draw_listview(lvform);
+	//	lvform_redraw_rows(lvform, lvform->selected_index, -1);
+	//lvform_draw_buttons();
 }
 
 static void lvform_new_action(lvform_t *lvform) {

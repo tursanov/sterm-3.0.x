@@ -179,7 +179,7 @@ static int article_get_text(void *obj, int index, char *text, size_t text_size) 
 			for (list_item_t *li = agents.head; li; li = li->next) { 
 				agent_t *agent = LIST_ITEM(li, agent_t);
 				if (a->pay_agent == agent->n) {
-					snprintf(text, text_size, "[%d] %s", agent->n, agent->name);
+					snprintf(text, text_size, "%s", agent->name);
 					return 0;
 				}
 			}
@@ -205,7 +205,7 @@ static void article_new(window_t *parent) {
 		{ "\xfc", 30 },
 		{ "Наименование", 320 },
 		{ "Цена за ед.", 120 },
-		{ "Признак агента", 158 },
+		{ "Поставщик", 158 },
 	};
 
 	int x = CONTROLS_START;

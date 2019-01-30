@@ -51,17 +51,51 @@ static void archivefn_show_error(uint8_t status, const char *where) {
 	archivefn_show_error_ex(where);
 }
 
+static void add_text_to_listbox(const char *text) {
+	int count = 0;
+	const char *start = text;
+	size_t size = 0;
+	int shift = 0;
+
+	for (const char *s = text; *s && *s == ' '; s++, shift++);
+	shift += 2;
+
+
+#define MAX_OUT_CHARS	75
+	for (const char *s = text; true; s++, size++) {
+		if (size >= MAX_OUT_CHARS || !*s) {
+			size_t l = size + (count ? shift : 0);
+			char *txt = malloc(l + 1);
+			char *p = txt;
+			if (count) {
+				for (int i = 0; i < shift; i++)
+					*p++ = ' ';
+			}
+			
+			memcpy(p, start, size);
+			txt[l] = 0;
+			list_add(&output, txt);
+
+			if (!*s)
+				break;
+
+			size = 0;
+			start = s;
+			count++;
+		}
+	}
+}
 
 static void out_printf(const char *fmt, ...) {
 	va_list args;
-#define MAX_LEN	256
-	char *text = malloc(MAX_LEN + 1);
+#define MAX_LEN	512
+	char text[MAX_LEN];
 
 	va_start(args, fmt);
 	vsnprintf(text, MAX_LEN, fmt, args);
 	va_end(args);
-	
-	list_add(&output, text);
+
+	add_text_to_listbox(text);
 }
 
 static const char *get_doc_name(uint32_t type) {
@@ -417,6 +451,8 @@ int archivefn_execute() {
 			window_show_error(win, 1040, "Данное значение поля \"Номер документа\" недопустимо");
 			continue;
 		}
+		
+		window_set_data(win, 9997, 0, (const void *)-1, 0);
 
 		if (!archivefn_get_data())
 			continue;

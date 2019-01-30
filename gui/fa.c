@@ -198,8 +198,10 @@ static bool fa_create_menu(void)
 
 	fa_sales_menu = new_menu(false, false);
 	add_menu_item(fa_sales_menu, new_menu_item("Чек(и)", cmd_newcheque_fa, true));
-	add_menu_item(fa_sales_menu, new_menu_item("Справочник поставщиков", cmd_agents_fa, true));
-	add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
+	if (kt != key_reg) {
+		add_menu_item(fa_sales_menu, new_menu_item("Справочник поставщиков", cmd_agents_fa, true));
+		add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
+	}
 
 	return true;
 }
