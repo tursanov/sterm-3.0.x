@@ -365,6 +365,7 @@ int lvform_execute(lvform_t *lvform) {
    	screen = CreateGC(0, 0, DISCX, DISCY);
     SetFont(screen, fnt);
 
+	active_element = 0;
 	item_h = fnt->max_height + 2;
 	items_y = 30 + item_h + 4;
 	items_bottom = DISCY - 100;
