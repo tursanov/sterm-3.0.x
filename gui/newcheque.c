@@ -381,6 +381,8 @@ bool newcheque_print(window_t *w) {
 		} else
 			agent = NULL;
 
+		printf("cashier: %s\n", cashier_get_cashier());
+
 		ffd_tlv_reset();
 		ffd_tlv_add_string(1021, cashier_get_cashier());
 		const char *cashier_inn = cashier_get_inn();

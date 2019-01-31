@@ -47,6 +47,23 @@ static char cashier_post[64+1] = {0};
 static char cashier_inn[12+1] = {0};
 static char cashier_cashier[64+1] = {0};
 
+static void make_cashier() {
+	size_t cashier_name_size = strlen(cashier_name);
+	size_t cashier_post_size = strlen(cashier_post);
+	size_t cashier_cashier_size = cashier_name_size;
+
+	memcpy(cashier_cashier, cashier_name, cashier_name_size);
+	if (cashier_post_size > 0 && cashier_name_size < 63) {
+		size_t l = 64 - cashier_name_size - 1;
+		l = MIN(l, cashier_post_size);
+
+		cashier_cashier[cashier_name_size] = ' ';
+		memcpy(cashier_cashier + cashier_name_size + 1, cashier_post, l);
+		cashier_cashier_size += l + 1;
+	}
+	cashier_cashier[cashier_cashier_size] = 0;
+}
+
 bool cashier_load() {
 	FILE *f = fopen("/home/sterm/cashier.txt", "r");
 	if (f != NULL) {
@@ -64,6 +81,8 @@ bool cashier_load() {
 		}
 		fclose(f);
 
+		make_cashier();
+
 		return 0;
 	}
 	return -1;
@@ -76,10 +95,10 @@ bool cashier_save() {
 		printf("cashier_save\n");
 
 		fprintf(f, "%s\n%s\n%s\n%s\n",
-		(const char *)cashier_name,
-		(const char *)cashier_post,
-		(const char *)cashier_inn,
-		(const char *)cashier_cashier);
+			(const char *)cashier_name,
+			(const char *)cashier_post,
+			(const char *)cashier_inn,
+			(const char *)cashier_cashier);
 		fclose(f);
 		return true;
 	}
@@ -111,27 +130,8 @@ bool cashier_set(const char *name, const char *post, const char *inn) {
 		changed = true;
 	}
 
-	if (cashier_changed) {
-		size_t cashier_name_size = strlen(cashier_name);
-		size_t cashier_post_size = strlen(cashier_post);
-		size_t cashier_cashier_size = cashier_name_size;
-
-		memcpy(cashier_cashier, cashier_name, cashier_name_size);
-		if (cashier_post_size > 0 && cashier_name_size < 63) {
-			size_t l = 64 - cashier_name_size - 1;
-			l = MIN(l, cashier_post_size);
-
-			cashier_cashier[cashier_name_size] = ' ';
-			memcpy(cashier_cashier + cashier_name_size + 1, cashier_post, l);
-			cashier_cashier_size += l + 1;
-		}
-		cashier_cashier[cashier_cashier_size] = 0;
-	}
-
-	if (changed)
-		return cashier_save();
-
-	return true;
+	make_cashier();
+	return cashier_save();
 }
 
 bool cashier_set_name(const char *name) {
