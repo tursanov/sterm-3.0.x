@@ -1262,7 +1262,7 @@ void fa_print_last_doc() {
 		fd_set_error(status, err_info, err_info_len);
 	} else {
 		if (message_box("Уведомление",
-			"Будет напечатан последний неотпечатанный документ.\n"
+			"Будет напечатан последний сформированный документ.\n"
 			"Продолжить?",
 					dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
 					
