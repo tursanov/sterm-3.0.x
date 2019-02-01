@@ -528,7 +528,7 @@ bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 		if (status == 0x46) {
 			struct kkt_last_doc_info ldi;
 			uint8_t err_info[32];
-			size_t err_info_len;
+			size_t err_info_len = sizeof(err_info);
 
 			//printf("#1 %d\n", doc_type);
 LCheckLastDocNo:
