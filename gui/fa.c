@@ -528,10 +528,11 @@ bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 		if (status == 0x46) {
 			struct kkt_last_doc_info ldi;
 			uint8_t err_info[32];
-			size_t err_info_len = sizeof(err_info);
+			size_t err_info_len;
 
 			//printf("#1 %d\n", doc_type);
 LCheckLastDocNo:
+			err_info_len = sizeof(err_info);
 			status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
 			if (status != 0) {
 				//printf("#2: %d\n", status);
@@ -556,11 +557,15 @@ LCheckLastDocNo:
 			}
 		}
 
-		const char *error;
-		fd_get_last_error(&error);
-		message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
-		if (update_func)
-			update_func(update_func_arg);
+		if (status != 0) {
+			const char *error;
+			fd_get_last_error(&error);
+			message_box("Žè¨¡ª ", error, dlg_yes, 0, al_center);
+			if (update_func)
+				update_func(update_func_arg);
+		}
+
+		printf("status: %.2X\n", status);
 
 		if (status == 0x41 || status == 0x42 || status == 0x44)
 			goto LCheckLastDocNo;

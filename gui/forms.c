@@ -58,6 +58,7 @@ typedef control_t *(*create_control_func_t)(int x, int y, int w, int h, form_t *
 	form_item_info_t *);
 
 static void form_button_action(control_t *c, int cmd) {
+	printf("form_button_action: %d\n", cmd);
 	((form_t *)c->parent.parent)->result = cmd;
 }
 
@@ -232,6 +233,7 @@ static void form_draw_title(form_t *form) {
 }
 
 void form_draw(form_t *form) {
+	SetGCBounds(screen, 0, 0, DISCX, DISCY);
 	ClearGC(screen, clSilver);
 	form_draw_title(form);
     for (int i = 0; i < form->item_count; i++) {
@@ -317,6 +319,9 @@ int form_execute(form_t *form)
 
 	if (form == NULL)
 		return -1;
+
+	form->result = -1;
+
 	do {
 		kbd_get_event(&e);
 	} while ((ret = form_process(form, &e)) > 0);
