@@ -1143,7 +1143,7 @@ void fa_cheque() {
 						ffd_tlv_add_vln(1079, l->t);
 						ffd_tlv_add_fvln(1023, 1, 0);
 						if (l->n > 0)
-							ffd_tlv_add_vln(1199, l->n);
+							ffd_tlv_add_uint8(1199, l->n);
 						if (l->n >= 1 && l->n <= 4) {
 							ffd_tlv_add_vln(1198, l->c);
 							ffd_tlv_add_vln(1200, l->c);
