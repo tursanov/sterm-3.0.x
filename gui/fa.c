@@ -1255,7 +1255,7 @@ void fa_reset_fs() {
 void fa_print_last_doc() {
 	struct kkt_last_doc_info ldi;
 	uint8_t err_info[32];
-	size_t err_info_len;
+	size_t err_info_len = sizeof(err_info);
 
 	uint8_t status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
 	if (status != 0) {
