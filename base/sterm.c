@@ -966,6 +966,11 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 {
 	if (kkt == NULL)
 		return false;
+	if (strcmp(kkt->name, "‘…Š’-”") != 0){
+		static int n = 0;
+		struct serial_settings *ss = (struct serial_settings *)&kkt->ss;
+		ss->parity = (n++ & 1) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN;
+	}
 	cfg.fdo_iface = get_dev_param_uint(kkt, KKT_FDO_IFACE);
 	cfg.fdo_ip = get_dev_param_ip(kkt, KKT_FDO_IP);
 	cfg.fdo_port = get_dev_param_uint(kkt, KKT_FDO_PORT);

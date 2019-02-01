@@ -137,13 +137,13 @@ SUBDIRS =		\
 	prn		\
 	usb		\
 	helpers		\
-	scripts	\
-#	modules
+	scripts		\
+	modules
 
 .PHONY:	$(SUBDIRS)
 
-#all:	inc_build $(SUBDIRS) sterm mk_env
-all:	$(SUBDIRS) sterm
+all:	inc_build $(SUBDIRS) sterm mk_env
+#all:	$(SUBDIRS) sterm
 
 inc_build:
 	@./helpers/setbuild.pl
