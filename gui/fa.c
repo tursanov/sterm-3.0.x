@@ -107,28 +107,14 @@ bool cashier_save() {
 
 
 bool cashier_set(const char *name, const char *post, const char *inn) {
-	bool cashier_changed = false;
-	bool changed = false;
-	
-	if (strcmp(name, cashier_name) != 0) {
-		strncpy(cashier_name, name, sizeof(cashier_name) - 1);
-		cashier_name[sizeof(cashier_name) - 1] = 0;
-		changed = true;
-		cashier_changed = true;
-	}
+	strncpy(cashier_name, name, sizeof(cashier_name) - 1);
+	cashier_name[sizeof(cashier_name) - 1] = 0;
 
-	if (strcmp(post, cashier_post) != 0) {
-		strncpy(cashier_post, post, sizeof(cashier_post) - 1);
-		cashier_post[sizeof(cashier_post) - 1] = 0;
-		changed = true;
-		cashier_changed = true;
-	}
+	strncpy(cashier_post, post, sizeof(cashier_post) - 1);
+	cashier_post[sizeof(cashier_post) - 1] = 0;
 
-	if (strcmp(inn, cashier_inn) != 0) {
-		strncpy(cashier_inn, inn, sizeof(cashier_inn) - 1);
-		cashier_inn[sizeof(cashier_inn) - 1] = 0;
-		changed = true;
-	}
+	strncpy(cashier_inn, inn, sizeof(cashier_inn) - 1);
+	cashier_inn[sizeof(cashier_inn) - 1] = 0;
 
 	make_cashier();
 	return cashier_save();
@@ -188,8 +174,8 @@ static bool fa_create_menu(void)
 	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
 
+	add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_archive_fa, true));
 	if (kt != key_reg) {
-		add_menu_item(fa_menu, new_menu_item("Печать документов из ФН", cmd_archive_fa, true));
 		if (fs_debug)
 			add_menu_item(fa_menu, new_menu_item("Сброс ФН", cmd_reset_fs_fa, true));
 	}
@@ -197,7 +183,7 @@ static bool fa_create_menu(void)
 
 
 	fa_sales_menu = new_menu(false, false);
-	add_menu_item(fa_sales_menu, new_menu_item("Чек(и)", cmd_newcheque_fa, true));
+	add_menu_item(fa_sales_menu, new_menu_item("Чек(и)           ", cmd_newcheque_fa, true));
 	if (kt != key_reg) {
 		add_menu_item(fa_sales_menu, new_menu_item("Справочник поставщиков", cmd_agents_fa, true));
 		add_menu_item(fa_sales_menu, new_menu_item("Справочник товаров/работ/услуг", cmd_articles_fa, true));
@@ -585,7 +571,16 @@ static void update_cheque(void *arg) {
 	cheque_draw();
 }
 
+static void fa_set_cashier_info(form_t * form) {
+	if (form != NULL) {
+		form_set_data(form, 1021, 0, cashier_name, strlen(cashier_name));
+		form_set_data(form, 9999, 0, cashier_post, strlen(cashier_post));
+		form_set_data(form, 1203, 0, cashier_inn, strlen(cashier_inn));
+	}
+}
+
 void fa_open_shift() {
+	fa_set_cashier_info(open_shift_form);
 	BEGIN_FORM(open_shift_form, "Открытие смены")
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
@@ -608,6 +603,7 @@ void fa_open_shift() {
 }
 
 void fa_close_shift() {
+	fa_set_cashier_info(close_shift_form);
 	BEGIN_FORM(close_shift_form, "Закрытие смены")
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
@@ -645,6 +641,7 @@ void fa_calc_report() {
 }
 
 void fa_close_fs() {
+	fa_set_cashier_info(close_fs_form);
 	BEGIN_FORM(close_fs_form, "Закрытие ФН")
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(9999, "Должность кассира:", cashier_post, FORM_INPUT_TYPE_TEXT, 64)
@@ -679,7 +676,7 @@ static int fa_fill_registration_tlv(form_t *form) {
 	ffd_tlv_reset();
 
 	int tax_systems = form_get_int_data(form, 1062, 0, 0);
-	int reg_kkt_modes = form_get_int_data(form, 9999, 0, 0);
+	int reg_kkt_modes = form_get_int_data(form, 9998, 0, 0);
 
 	if (fa_tlv_add_cashier(form) != 0 ||
 		fa_tlv_add_string(form, 1048, true) != 0 ||
@@ -706,6 +703,7 @@ static int fa_fill_registration_tlv(form_t *form) {
 }
 
 void fa_registration() {
+	fa_set_cashier_info(reg_form);
 	BEGIN_FORM(reg_form, "Регистрация")
 		FORM_ITEM_EDIT_TEXT(1048, "Наименование пользователя:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
@@ -714,7 +712,7 @@ void fa_registration() {
 		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 
 				str_tax_system_count, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
-		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
+		FORM_ITEM_BITSET(9998, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
 
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
@@ -824,13 +822,14 @@ static int fa_fill_reregistration_form(form_t *form) {
 				break;
 			}
 		}
-		FORM_BITSET_SET_VALUE(form, 9999, modes);
+		FORM_BITSET_SET_VALUE(form, 9998, modes);
 	}
 	return 0;
 }
 
 void fa_reregistration() {
 	bool empty = rereg_form == NULL;
+	fa_set_cashier_info(rereg_form);
 	BEGIN_FORM(rereg_form, "Перерегистрация")
 		FORM_ITEM_EDIT_TEXT(1048, "Наименование пользователя:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1018, "ИНН пользователя:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
@@ -839,7 +838,7 @@ void fa_reregistration() {
 		FORM_ITEM_BITSET(1062, "Системы налогообложения:", str_tax_systems, str_tax_systems, 
 				str_tax_system_count, 0)
 		FORM_ITEM_EDIT_TEXT(1037, "Регистрационный номер ККТ:", NULL, FORM_INPUT_TYPE_NUMBER, 16)
-		FORM_ITEM_BITSET(9999, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
+		FORM_ITEM_BITSET(9998, "Режимы работы:", str_short_kkt_modes, str_kkt_modes, 6, 0)
 		FORM_ITEM_EDIT_TEXT(1036, "Номер автомата:", NULL, FORM_INPUT_TYPE_TEXT, 20)
 		
 		FORM_ITEM_EDIT_TEXT(1021, "Кассир:", cashier_name, FORM_INPUT_TYPE_TEXT, 64)
@@ -903,6 +902,7 @@ void fa_cheque_corr() {
 	const char *str_tax_mode[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН" };
 	const char *str_corr_type[] = { "Самостоятельно", "По предписанию" };
 
+	fa_set_cashier_info(cheque_corr_form);
 	BEGIN_FORM(cheque_corr_form, "Чек коррекции")
 		FORM_ITEM_COMBOBOX(1054, "Признак расчета:", str_pay_type, ASIZE(str_pay_type), -1)
 		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_mode, ASIZE(str_tax_mode), -1)
@@ -1035,7 +1035,6 @@ void fa_cheque() {
 					sumN > 0 ? "Необходимо получить от пассажира" : 
 					"Необходимо выдать пассажиру",
 					sn / 100, sn % 100);
-					
 		
 				BEGIN_FORM(form, title)
 					FORM_ITEM_EDIT_TEXT(1031, "Введите сумму, принятую от пассажира:", "", FORM_INPUT_TYPE_MONEY, 16)

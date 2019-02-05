@@ -51,7 +51,7 @@ static const char * str_vats[] =
 
 int article_get_text(void *obj, int index, char *text, size_t text_size) {
 	article_t *a = (article_t *)obj;
-	int v;
+	//int v;
 
 	switch (index) {
 		case 0:
