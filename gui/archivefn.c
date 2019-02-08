@@ -233,7 +233,8 @@ static void print_fdo_ack(struct kkt_fs_fdo_ack *fdo_ack) {
 	char str_fs[18*2 + 1];
 	char *s;
 
-	out_printf("Квитанция ОФД");
+	out_printf("Подтверждение оператора (Квитанция ОФД)");
+	out_printf(" Номер док-та: %u\n", fdo_ack->doc_nr);
 	out_printf(" Дата/время: %.2d.%.2d.%.2d %.2d:%.2d", 
 			fdo_ack->dt.date.day,
 			fdo_ack->dt.date.month,
@@ -359,7 +360,7 @@ static bool archivefn_get_doc() {
 
 static bool archivefn_get_data() {
 	list_clear(&output);
-	if (op_kind == 0)
+	if (op_kind == 0 || op_kind == 1)
 		return archivefn_get_archive_doc();
 	return archivefn_get_doc();
 }
@@ -384,7 +385,8 @@ int archivefn_execute() {
 	int h = th + 8;
 
 	const char *str_op_kind[] = {
-		"Документ из архива ФН",	
+		"Документ из архива ФН",
+		"Подтверждение оператора (Квитанция ОФД)",	
 		"Документ из ФН",
 	};
 	const char *str_res_out[] = {

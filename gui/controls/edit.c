@@ -490,10 +490,14 @@ bool edit_set_data(edit_t *edit, int what, const void *data, size_t data_len) {
 	switch (what) {
 	case 0:
 		if (data != NULL) {
+			if (data_len > edit->max_length)
+				data_len = edit->max_length;
 			edit_grow_text(edit, data_len);
 			memcpy(edit->text, data, data_len);
 			edit->text[data_len] = 0;
 		    edit->length = data_len;
+   			edit->text_draw_start = edit->text_draw_x = 0;
+			edit->cur_pos = 0;
 			edit_draw(edit);
 			return true;
 		}
