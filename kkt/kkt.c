@@ -757,7 +757,8 @@ uint8_t kkt_find_fs_doc(uint32_t nr, bool need_print,
 		if (prepare_cmd(KKT_FS, KKT_FS_FIND_DOC) && write_dword(nr) &&
 				write_byte(need_print) && kkt_open_dev_if_need()){
 			struct find_doc_info_arg arg;
-			if (do_transaction(KKT_FS, KKT_FS_FIND_DOC, &arg)){
+			if (do_transaction(KKT_FS, KKT_FS_FIND_DOC, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*fdi = arg.fdi;
 				set_var_data(data, data_len, &arg.data);
 				vset = true;
