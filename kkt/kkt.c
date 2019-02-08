@@ -462,7 +462,8 @@ uint8_t kkt_get_last_doc_info(struct kkt_last_doc_info *ldi, uint8_t *err_info,
 	if (kkt_lock()){
 		struct last_doc_info_arg arg;
 		if (prepare_cmd(KKT_SRV, KKT_SRV_LAST_DOC_INFO) && kkt_open_dev_if_need()){
-			if (do_transaction(KKT_SRV, KKT_SRV_LAST_DOC_INFO, &arg)){
+			if (do_transaction(KKT_SRV, KKT_SRV_LAST_DOC_INFO, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*ldi = arg.ldi;
 				set_var_data(err_info, err_info_len, &arg.err_info);
 				vset = true;
@@ -489,7 +490,8 @@ uint8_t kkt_print_last_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_l
 				write_word(tmpl_len) &&
 				((tmpl_len == 0) || write_data(tmpl, tmpl_len)) &&
 				kkt_open_dev_if_need()){
-			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_LAST, &arg)){
+			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_LAST, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*lpi = arg.lpi;
 				set_var_data(err_info, err_info_len, &arg.err_info);
 				vset = true;
@@ -561,7 +563,8 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 		if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(doc_type) &&
 				write_word(tmpl_len) && write_data(tmpl, tmpl_len) &&
 				kkt_open_dev_if_need()){
-			if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg)){
+			if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*di = arg.di;
 				set_var_data(err_info, err_info_len, &arg.err_info);
 				vset = true;
@@ -588,7 +591,8 @@ uint8_t kkt_print_doc(uint32_t doc_nr, const uint8_t *tmpl, size_t tmpl_len,
 				write_word(tmpl_len) &&
 				((tmpl_len == 0) || write_data(tmpl, tmpl_len)) &&
 				kkt_open_dev_if_need()){
-			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_DOC, &arg)){
+			if (do_transaction(KKT_SRV, KKT_SRV_PRINT_DOC, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*lpi = arg.lpi;
 				set_var_data(err_info, err_info_len, &arg.err_info);
 				vset = true;
@@ -807,7 +811,7 @@ uint8_t kkt_get_last_reg_data(uint8_t *data, size_t *data_len)
 	assert(data_len != NULL);
 	if (kkt_lock()){
 		struct kkt_var_data arg;
-		if (do_cmd(KKT_FS, KKT_FS_LAST_REG_DATA, &arg))
+		if (do_cmd(KKT_FS, KKT_FS_LAST_REG_DATA, &arg) && (kkt_status == KKT_STATUS_OK))
 			set_var_data(data, data_len, &arg);
 		else
 			clr_var_data(data, data_len);
@@ -825,7 +829,8 @@ uint8_t kkt_get_doc_stlv(uint32_t doc_nr, uint16_t *doc_type, size_t *len)
 		struct kkt_fs_doc_stlv_info arg;
 		if (prepare_cmd(KKT_FS, KKT_FS_GET_DOC_STLV) && write_dword(doc_nr) &&
 				kkt_open_dev_if_need()){
-			if (do_transaction(KKT_FS, KKT_FS_GET_DOC_STLV, &arg)){
+			if (do_transaction(KKT_FS, KKT_FS_GET_DOC_STLV, &arg) &&
+					(kkt_status == KKT_STATUS_OK)){
 				*doc_type = arg.doc_type;
 				*len = arg.len;
 			}
