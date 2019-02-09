@@ -263,6 +263,27 @@ static bool parse_end_doc(struct doc_info_arg *arg)
 	return ret;
 }
 
+static bool parse_brightness(struct kkt_brightness *arg)
+{
+	assert(arg != NULL);
+	bool ret = true;
+	if (rx_st == st_prefix){
+		ret = parse_prefix();
+		if (ret){
+			if (kkt_status == KKT_STATUS_OK)
+				begin_fix_data(3);
+			else
+				arg->current = arg->def = arg->max = 0;
+		}
+	}else if (rx_st == st_fix_data){
+		off_t offs = kkt_rx_len - 3;
+		arg->current = kkt_rx[offs++];
+		arg->def = kkt_rx[offs++];
+		arg->max = kkt_rx[offs++];
+	}
+	return ret;
+}
+
 static bool parse_fs_status(struct kkt_fs_status *fs_status)
 {
 	assert(fs_status != NULL);
@@ -528,6 +549,7 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 				case KKT_SRV_RTC_SET:
 				case KKT_SRV_NET_SETTINGS:
 				case KKT_SRV_GPRS_SETTINGS:
+				case KKT_SRV_SET_BRIGHTNESS:
 					ret = parse_status;
 					break;
 				case KKT_SRV_FDO_REQ:
@@ -549,6 +571,9 @@ parser_t get_parser(uint8_t prefix, uint8_t cmd)
 					break;
 				case KKT_SRV_END_DOC:
 					ret = parse_end_doc;
+					break;
+				case KKT_SRV_GET_BRIGHTNESS:
+					ret = parse_brightness;
 					break;
 
 			}

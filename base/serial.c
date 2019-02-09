@@ -70,7 +70,6 @@ bool serial_close(int fd)
 /* Установка параметров работы COM-порта */
 bool serial_configure(int dev, const struct serial_settings *cfg)
 {
-	struct termios tio;
 	if (dev == -1){
 		fprintf(stderr, "%s: COM-порт не открыт.\n", __func__);
 		return false;
@@ -78,6 +77,7 @@ bool serial_configure(int dev, const struct serial_settings *cfg)
 		fprintf(stderr, "%s: cfg == NULL.\n", __func__);
 		return false;
 	}
+	struct termios tio;
 	memset(&tio, 0 , sizeof(tio));
 	tio.c_iflag = IGNBRK;
 /* Скорость обмена и размер символа */
@@ -104,6 +104,42 @@ bool serial_configure(int dev, const struct serial_settings *cfg)
 		return false;
 	}else
 		return true;
+}
+
+bool serial_configure2(int dev, const struct serial_settings *cfg)
+{
+	if (dev == -1){
+		fprintf(stderr, "%s: COM-порт не открыт.\n", __func__);
+		return false;
+	}else if (cfg == NULL){
+		fprintf(stderr, "%s: cfg == NULL.\n", __func__);
+		return false;
+	}
+	static int n = 0;
+	struct termios tio;
+	memset(&tio, 0 , sizeof(tio));
+	tio.c_iflag = IGNBRK;
+/* Скорость обмена и размер символа */
+	cfsetspeed(&tio, cfg->baud);
+	tio.c_cflag |= cfg->csize | CLOCAL | CREAD;
+/* Контроль четности */
+	if (cfg->parity != SERIAL_PARITY_NONE){
+		tio.c_cflag |= PARENB;
+		if (cfg->parity == SERIAL_PARITY_ODD)
+			tio.c_cflag |= PARODD;
+	}
+	struct serial_settings *ss = (struct serial_settings *)cfg;
+	ss->parity = (n++ & 1) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN;
+/* Количество стоп-бит */
+	if (cfg->stop_bits != SERIAL_STOPB_1)
+		tio.c_cflag |= CSTOPB;
+/* Управление потоком */
+	if (cfg->control == SERIAL_FLOW_RTSCTS)
+		tio.c_cflag |= CRTSCTS;
+	else if (cfg->control == SERIAL_FLOW_XONXOFF)
+		tio.c_iflag |= IXON | IXOFF;
+//	tio.c_cc[VMIN] = 1;	/* без этого не работает dsd */
+	return n > 0;
 }
 
 /* Очистка очередей COM-порта */

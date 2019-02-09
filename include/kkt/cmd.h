@@ -3,6 +3,8 @@
 #if !defined KKT_CMD_H
 #define KKT_CMD_H
 
+#include "sysdefs.h"
+
 /* Однобайтовые команды */
 #define KKT_NUL			0x00		/* пустая команда */
 #define KKT_STX			0x02		/* начало текста КЛ */
@@ -90,6 +92,10 @@
 /* Настройки сетевых интерфейсов ФР */
 #define KKT_SRV_NET_SETTINGS	0x41		/* настройки сети для Ethernet */
 #define KKT_SRV_GPRS_SETTINGS	0x42		/* настройки GPRS-модема */
+
+/* Яркость печати */
+#define KKT_SRV_GET_BRIGHTNESS	0x46		/* определение параметров яркости печати */
+#define KKT_SRV_SET_BRIGHTNESS	0x47		/* установка яркости печати */
 
 /* Команды печати */
 #define KKT_WR_BCODE		0x1a		/* нанесение штрих-кода заданного типа */
@@ -287,12 +293,15 @@
 #define KKT_STATUS_OVERFLOW		0xf5	/* переполнение буфера */
 
 /* Таймауты в сотых сек операций с ККТ */
-#define KKT_DEF_TIMEOUT			100
-#define KKT_FDO_IFACE_TIMEOUT		100
-#define KKT_FDO_ADDR_TIMEOUT		100
-#define KKT_FDO_DATA_TIMEOUT		300
-#define KKT_FR_STATUS_TIMEOUT		10
-#define KKT_FR_PRINT_TIMEOUT		500
-#define KKT_FR_RESET_TIMEOUT		2000
+extern uint32_t kkt_base_timeout;
+#define KKT_BASE_TIMEOUT		10
+#define KKT_DEF_TIMEOUT			10 * kkt_base_timeout	// 100
+#define KKT_STATUS_TIMEOUT		kkt_base_timeout	// 10
+#define KKT_FDO_IFACE_TIMEOUT		10 * kkt_base_timeout	// 100
+#define KKT_FDO_ADDR_TIMEOUT		10 *kkt_base_timeout	// 100
+#define KKT_FDO_DATA_TIMEOUT		30 * kkt_base_timeout	// 300
+#define KKT_FR_STATUS_TIMEOUT		kkt_base_timeout	// 10
+#define KKT_FR_PRINT_TIMEOUT		50 * kkt_base_timeout	// 500
+#define KKT_FR_RESET_TIMEOUT		200 * kkt_base_timeout	// 2000
 
 #endif		/* KKT_CMD_H */

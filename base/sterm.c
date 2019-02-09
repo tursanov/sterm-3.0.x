@@ -383,6 +383,8 @@ static bool set_term_defaults(void)
 	cfg.kkt_log_level = 0;
 	cfg.kkt_log_stream = KLOG_STREAM_ALL;
 	cfg.tz_offs = 0;
+	cfg.kkt_base_timeout = KKT_BASE_TIMEOUT * 10;
+	cfg.kkt_brightness = 2;
 
 	cfg.blank_time = 0;
 	cfg.color_scheme = 0;
@@ -403,7 +405,9 @@ static bool set_term_defaults(void)
 static bool load_term_props(void)
 {
 	set_term_defaults();
-	return read_cfg();
+	bool ret = read_cfg();
+	kkt_base_timeout = cfg.kkt_base_timeout / 10;
+	return ret;
 }
 
 /* Чтение номеров ключей DALLAS из файла tki */
@@ -961,16 +965,31 @@ static bool init_lprn(void)
 	return flag;
 }
 
+static bool is_kkt(const struct dev_info *dev)
+{
+	if ((dev == NULL) || (dev->type != DEV_KKT) || strcmp(kkt->name, "СПЕКТР-Ф"))
+		return false;
+	uint32_t sn = get_dev_param_uint(dev, "SN-FISCAL");
+	if (sn == 0)
+		return false;
+	uint32_t year = sn / 10000000, mon = (sn / 100000) % 100, nr = sn % 100000;
+	if ((year < 18) || (mon < 1) || (mon > 12) || (nr == 0))
+		return false;
+	const char *ver = get_dev_param_str(dev, "VERSION");
+	if (ver == NULL)
+		return false;
+	uint32_t v[3] = {[0 ... ASIZE(v) - 1] = 0};
+	char c = 0;
+	return sscanf(ver, "%u.%u.%u%c", v, v + 1, v + 2, &c) == 3;
+}
+
 /* Корректировка настроек ККТ в соответствии с информацией, полученной из устройства */
 static bool adjust_kkt_cfg(const struct dev_info *kkt)
 {
 	if (kkt == NULL)
 		return false;
-	if (strcmp(kkt->name, "СПЕКТР-Ф") != 0){
-		static int n = 0;
-		struct serial_settings *ss = (struct serial_settings *)&kkt->ss;
-		ss->parity = (n++ & 1) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN;
-	}
+	if (!is_kkt(kkt))
+		serial_configure2(0, &kkt->ss);
 	cfg.fdo_iface = get_dev_param_uint(kkt, KKT_FDO_IFACE);
 	cfg.fdo_ip = get_dev_param_ip(kkt, KKT_FDO_IP);
 	cfg.fdo_port = get_dev_param_uint(kkt, KKT_FDO_PORT);
@@ -998,6 +1017,10 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 		snprintf(cfg.kkt_gprs_passwd, sizeof(cfg.kkt_gprs_passwd), "%s", s);
 		recode_str(cfg.kkt_gprs_passwd, -1);
 	}
+	uint8_t rc = kkt_get_brightness(&kkt_brightness);
+	if (rc != KKT_STATUS_OK)
+		kkt_brightness.current = kkt_brightness.def = kkt_brightness.max;
+	cfg.kkt_brightness = kkt_brightness.current;
 	char fs_nr[KKT_FS_NR_LEN + 1];
 	kkt_get_fs_nr(fs_nr);
 	return write_cfg();
@@ -2767,6 +2790,7 @@ static void show_options(void)
 		if (s_state == ss_ready)
 			guess_term_state();
 		prev_kkt_log_stream = cfg.kkt_log_stream;
+		adjust_kkt_brightness(kkt_brightness.max + 1);
 		prev_s_state = s_state;
 		s_state = ss_ready;
 		push_term_info();

@@ -11,6 +11,8 @@
 #include "log/kkt.h"
 #include "cfg.h"
 
+uint32_t kkt_base_timeout = KKT_BASE_TIMEOUT;
+
 const struct dev_info *kkt = NULL;
 
 static char kkt_nr_buf[KKT_NR_LEN + 1];
@@ -31,6 +33,12 @@ static void set_fs_nr(const char *fs_nr)
 		kkt_fs_nr = kkt_fs_nr_buf;
 	}
 }
+
+struct kkt_brightness kkt_brightness = {
+	.current = 0,
+	.def = 0,
+	.max = 0
+};
 
 void kkt_init(const struct dev_info *di)
 {
@@ -636,6 +644,33 @@ uint8_t kkt_set_gprs_cfg(const char *apn, const char *user, const char *password
 	return kkt_status;
 }
 
+/* Получить информацию о яркости печати ККТ */
+uint8_t kkt_get_brightness(struct kkt_brightness *brightness)
+{
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_GET_BRIGHTNESS) && kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_GET_BRIGHTNESS, brightness);
+			kkt_close_dev();
+		}
+		kkt_unlock();
+	}
+	return kkt_status;
+}
+
+/* Настроить яркость печати в ККТ */
+uint8_t kkt_set_brightness(uint8_t brightness)
+{
+	if (kkt_lock()){
+		if (prepare_cmd(KKT_SRV, KKT_SRV_SET_BRIGHTNESS) && write_byte(brightness) &&
+				kkt_open_dev_if_need()){
+			do_transaction(KKT_SRV, KKT_SRV_SET_BRIGHTNESS, NULL);
+			kkt_close_dev();
+		}
+		kkt_unlock();
+	}
+	return kkt_status;
+}
+
 /* Настроить ККТ в соответствии с конфигурацией терминала */
 uint8_t kkt_set_cfg(void)
 {
@@ -652,6 +687,9 @@ uint8_t kkt_set_cfg(void)
 		if (ret != NET_SETTINGS_STATUS_OK)
 			break;
 		ret = kkt_set_gprs_cfg(cfg.kkt_gprs_apn, cfg.kkt_gprs_user, cfg.kkt_gprs_passwd);
+		if (ret != GPRS_CFG_STATUS_OK)
+			break;
+		ret = kkt_set_brightness(cfg.kkt_brightness);
 	} while (false);
 	kkt_end_batch_mode();
 	return ret;

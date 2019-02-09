@@ -116,6 +116,21 @@ extern uint8_t kkt_print_doc(uint32_t doc_nr, const uint8_t *tmpl, size_t tmpl_l
 extern uint8_t kkt_set_net_cfg(uint32_t ip, uint32_t netmask, uint32_t gw);
 /* Настроить GPRS в ККТ */
 extern uint8_t kkt_set_gprs_cfg(const char *apn, const char *user, const char *password);
+
+/* Информация о яркости печати ККТ */
+struct kkt_brightness {
+	uint8_t current;
+	uint8_t def;
+	uint8_t max;
+};
+
+extern struct kkt_brightness kkt_brightness;
+
+/* Получить информацию о яркости печати ККТ */
+extern uint8_t kkt_get_brightness(struct kkt_brightness *brightness);
+/* Настроить яркость печати в ККТ */
+extern uint8_t kkt_set_brightness(uint8_t brightness);
+
 /* Настроить ККТ в соответствии с конфигурацией терминала */
 extern uint8_t kkt_set_cfg(void);
 

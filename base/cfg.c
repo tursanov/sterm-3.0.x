@@ -434,6 +434,8 @@ static struct {
 	CFG_ENTRY_INT		("kkt-log-level",	kkt_log_level),
 	CFG_ENTRY_UINT32	("kkt-log-stream",	kkt_log_stream),
 	CFG_ENTRY_INT		("tz-offs",		tz_offs),
+	CFG_ENTRY_UINT32	("kkt-base-timeout",	kkt_base_timeout),
+	CFG_ENTRY_UINT32	("kkt-brightness",	kkt_brightness),
 /* Настройки экрана */
 	CFG_ENTRY_UINT32	("blank-time",		blank_time),
 	CFG_ENTRY_INT		("color-scheme",	color_scheme),

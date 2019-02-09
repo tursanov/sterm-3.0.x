@@ -50,6 +50,7 @@ extern int serial_open(const char *name, const struct serial_settings *cfg, int 
 extern bool serial_close(int fd);
 /* Установка параметров работы COM-порта */
 extern bool serial_configure(int dev, const struct serial_settings *cfg);
+extern bool serial_configure2(int dev, const struct serial_settings *cfg);
 
 /* Очистка очередей COM-порта */
 extern bool serial_flush(int dev, int what);

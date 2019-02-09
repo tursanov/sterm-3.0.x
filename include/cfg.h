@@ -99,6 +99,8 @@ struct term_cfg{
 	int		kkt_log_level;	/* уровень детализации КЛ ККТ */
 	uint32_t	kkt_log_stream;	/* поток для просмотра в КЛ ККТ */
 	int		tz_offs;	/* смещение местного времени относительно московского (ч) */
+	uint32_t	kkt_base_timeout;	/* опорный таймаут ККТ */
+	uint32_t	kkt_brightness;	/* яркость печати */
 /* Настройки экрана */
 	uint32_t	blank_time;	/* время гашения экрана (мин) (0 -- нет гашения) */
 	int		color_scheme;	/* цветовая схема */

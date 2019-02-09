@@ -146,6 +146,7 @@ static const char *optn_kkt_log_stream[] =
 	{"Управление", "Печать", "ОФД", "Всё"};
 static int optn_tz_offs[] = {-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0,
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+static uint32_t optn_kkt_base_timeout[] = {100, 200, 300, 400, 500, 1000};
 
 /* Экран */
 static int optn_ssaver[] = {0, 1, 2, 5, 7, 10, 15, 20};
@@ -198,7 +199,7 @@ static const char *optn_bool3[] = {"Выкл.", "Вкл."};
 		.v		= {.i = 0}, \
 		.vv		= {.i = 0}, \
 		.d		= lst, \
-		.n		= ASIZE(lst), \
+		.n		= lst == NULL ? 0 : ASIZE(lst), \
 		.enabled	= true, \
 		.at		= atype, \
 		.offset		= offsetof(struct term_cfg, fld), \
@@ -441,6 +442,12 @@ static struct optn_item kkt_optn_items[] = {
 		"в КЛ работы с ККТ", optn_kkt_log_stream, ini_uint32, kkt_log_stream, NULL),
 	OPTN_INT_ENUM("Часовой пояс", "Смещение в часах местного времени\r\n"
 		"относительно московского", optn_tz_offs, ini_int, tz_offs, NULL),
+	OPTN_ENUM("Опорный таймаут, мс", "Все таймауты работы с ККТ вычисляются\r\n"
+		"на основании опорного", optn_int_enum, optn_kkt_base_timeout,
+		ini_uint32, kkt_base_timeout, NULL),
+	OPTN_INT_ENUM("Яркость печати", "Яркость печати ККТ.\r\n"
+		"Чем больше значение, тем выше яркость",
+		NULL, ini_uint32, kkt_brightness, NULL),
 };
 
 /* Экран */
@@ -848,12 +855,16 @@ static bool optn_edit_clear(void)
 /* Определение индекса перечислимого типа по его значению */
 static int optn_index_by_val(struct optn_item *item, int w)
 {
+	int ret = 0;
 	if (item != NULL){
-		for (int i = 0; i < item->n; i++)
-			if (((int *)item->d)[i] == w)
-				return i;
+		for (int i = 0; i < item->n; i++){
+			if (((int *)item->d)[i] == w){
+				ret = i;
+				break;
+			}
+		}
 	}
-	return 0;
+	return ret;
 }
 
 /* Получение элемента редактирования по смещению параметра в term_cfg */
@@ -1023,7 +1034,7 @@ static bool optn_read_group(const struct term_cfg *cfg, int group)
 				break;
 			case ini_int:{
 				int v = *((const int *)p);
-				if (items[i].ot == optn_int_enum)
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
 					items[i].vv.i = optn_index_by_val(items + i, v);
 				else
 					items[i].vv.i = v;
@@ -1031,15 +1042,15 @@ static bool optn_read_group(const struct term_cfg *cfg, int group)
 			}
 			case ini_uint16:{
 				uint16_t v = *((const uint16_t *)p);
-				if (items[i].ot == optn_int_enum)
-					items[i].vv.u16 = optn_index_by_val(items + i, v);
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
+						items[i].vv.u16 = optn_index_by_val(items + i, v);
 				else
 					items[i].vv.u16 = v;
 				break;
 			}
 			case ini_uint32:{
 				uint32_t v = *((const uint32_t *)p);
-				if (items[i].ot == optn_int_enum)
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
 					items[i].vv.u32 = optn_index_by_val(items + i, v);
 				else
 					items[i].vv.u32 = v;
@@ -1077,7 +1088,7 @@ static bool optn_write_group(struct term_cfg *cfg, int group)
 				break;
 			case ini_int:{
 				int v = items[i].v.i;
-				if (items[i].ot == optn_int_enum)
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
 					*((int *)p) = ((int *)items[i].d)[v];
 				else
 					*((int *)p) = v;
@@ -1085,7 +1096,7 @@ static bool optn_write_group(struct term_cfg *cfg, int group)
 			}
 			case ini_uint16:{
 				uint16_t v = items[i].v.u16;
-				if (items[i].ot == optn_int_enum)
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
 					*((uint16_t *)p) = ((uint16_t *)items[i].d)[v];
 				else
 					*((uint16_t *)p) = v;
@@ -1093,7 +1104,7 @@ static bool optn_write_group(struct term_cfg *cfg, int group)
 			}
 			case ini_uint32:{
 				uint32_t v = items[i].v.u32;
-				if (items[i].ot == optn_int_enum)
+				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
 					*((uint32_t *)p) = ((uint32_t *)items[i].d)[v];
 				else
 					*((uint32_t *)p) = v;
@@ -1328,7 +1339,7 @@ static void draw_optn_int_enum(int n)
 {
 	char v[OPTN_EDIT_BUF_LEN + 1];
 	struct optn_item *itm = get_optn_item(n);
-	snprintf(v, sizeof(v), "%d", ((int *)itm->d)[itm->vv.i]);
+	snprintf(v, sizeof(v), "%d", (itm->d == NULL) ? itm->vv.i : ((int *)itm->d)[itm->vv.i]);
 	draw_optn_str(n, v);
 }
 
@@ -2275,4 +2286,10 @@ static void on_scheme_change(struct optn_item *item)
 			(item == &optn_groups[optn_active_group].items[optn_active_item])){
 		scheme_changed = true;
 	}
+}
+
+void adjust_kkt_brightness(uint32_t n)
+{
+	struct optn_item *itm = optn_item_by_offset(kkt_brightness);
+	itm->n = n;
 }

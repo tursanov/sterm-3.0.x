@@ -13,6 +13,7 @@ extern int	optn_cm;
 
 extern void	init_options(void);
 extern void	release_options(bool need_clear);
+extern void	adjust_kkt_brightness(uint32_t n);
 extern bool	optn_get_items(struct term_cfg *p);
 extern bool	draw_options(void);
 extern bool	process_options(const struct kbd_event *e);
