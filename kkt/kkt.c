@@ -18,7 +18,7 @@ const struct dev_info *kkt = NULL;
 static char kkt_nr_buf[KKT_NR_LEN + 1];
 const char *kkt_nr = NULL;
 
-static char kkt_version_buf[10];
+static char kkt_version_buf[MAX_DEV_PARAM_VAL_LEN + 1];
 const char *kkt_ver = NULL;
 
 static char kkt_fs_nr_buf[KKT_FS_NR_LEN + 1];

@@ -970,7 +970,7 @@ static bool is_kkt(const struct dev_info *dev)
 	if ((dev == NULL) || (dev->type != DEV_KKT) || strcmp(kkt->name, "‘…Š’-”"))
 		return false;
 	uint32_t sn = get_dev_param_uint(dev, "SN-FISCAL");
-	if (sn == 0)
+	if (sn == UINT32_MAX)
 		return false;
 	uint32_t year = sn / 10000000, mon = (sn / 100000) % 100, nr = sn % 100000;
 	if ((year < 18) || (mon < 1) || (mon > 12) || (nr == 0))
@@ -991,6 +991,8 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 	if (!is_kkt(kkt))
 		serial_configure2(0, &kkt->ss);
 	cfg.fdo_iface = get_dev_param_uint(kkt, KKT_FDO_IFACE);
+	if (cfg.fdo_iface == UINT32_MAX)
+		cfg.fdo_iface = KKT_FDO_IFACE_USB;
 	cfg.fdo_ip = get_dev_param_ip(kkt, KKT_FDO_IP);
 	cfg.fdo_port = get_dev_param_uint(kkt, KKT_FDO_PORT);
 	cfg.kkt_ip = get_dev_param_ip(kkt, KKT_ETH_IP);
@@ -1023,6 +1025,19 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 	cfg.kkt_brightness = kkt_brightness.current;
 	char fs_nr[KKT_FS_NR_LEN + 1];
 	kkt_get_fs_nr(fs_nr);
+	struct serial_settings *ss = (struct serial_settings *)&kkt->ss;
+	uint32_t fc = get_dev_param_uint(kkt, "FLOW_CONTROL");
+	switch (fc){
+		case 0:
+			ss->control = SERIAL_FLOW_NONE;
+			break;
+		case 1:
+			ss->control = SERIAL_FLOW_XONXOFF;
+			break;
+		case 2:
+			ss->control = SERIAL_FLOW_RTSCTS;
+			break;
+	}
 	return write_cfg();
 }
 

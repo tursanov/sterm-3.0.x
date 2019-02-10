@@ -209,13 +209,13 @@ const char *get_dev_param_str(const struct dev_info *dev, const char *name)
 
 uint32_t get_dev_param_uint(const struct dev_info *dev, const char *name)
 {
-	uint32_t ret = 0;
+	uint32_t ret = UINT32_MAX;
 	const char *str = get_dev_param_str(dev, name);
 	if (str != NULL){
 		char *p = NULL;
 		ret = strtoul(str, &p, 10);
 		if (*p != 0)
-			ret = 0;
+			ret = UINT32_MAX;
 	}
 	return ret;
 }
