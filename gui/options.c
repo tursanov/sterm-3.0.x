@@ -1,4 +1,4 @@
-/* Настройка параметров терминала. (c) gsr & alex 2000-2004, 2018. */
+/* Настройка параметров терминала. (c) gsr & alex 2000-2004, 2018-2019. */
 
 #include <sys/socket.h>
 #include <sys/times.h>
@@ -16,6 +16,7 @@
 #include "gui/menu.h"
 #include "gui/options.h"
 #include "gui/scr.h"
+#include "kkt/kkt.h"
 #include "log/express.h"
 #include "prn/express.h"
 #include "prn/local.h"
@@ -1043,7 +1044,7 @@ static bool optn_read_group(const struct term_cfg *cfg, int group)
 			case ini_uint16:{
 				uint16_t v = *((const uint16_t *)p);
 				if ((items[i].ot == optn_int_enum) && (items[i].d != NULL))
-						items[i].vv.u16 = optn_index_by_val(items + i, v);
+					items[i].vv.u16 = optn_index_by_val(items + i, v);
 				else
 					items[i].vv.u16 = v;
 				break;
@@ -1339,7 +1340,11 @@ static void draw_optn_int_enum(int n)
 {
 	char v[OPTN_EDIT_BUF_LEN + 1];
 	struct optn_item *itm = get_optn_item(n);
-	snprintf(v, sizeof(v), "%d", (itm->d == NULL) ? itm->vv.i : ((int *)itm->d)[itm->vv.i]);
+	if ((itm->offset == offsetof(struct term_cfg, kkt_brightness)) && (itm->vv.i == 0))
+		snprintf(v, sizeof(v), "По умолчанию:%d", kkt_brightness.def);
+	else
+		snprintf(v, sizeof(v), "%d",
+			(itm->d == NULL) ? itm->vv.i : ((int *)itm->d)[itm->vv.i]);
 	draw_optn_str(n, v);
 }
 
