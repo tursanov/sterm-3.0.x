@@ -110,7 +110,7 @@ static const char *get_doc_name(uint32_t type) {
 		case CLOSE_SHIFT:
 			return "Отчет о закрытии смены";
 		case CALC_REPORT:
-			return "Отчет о текущем состоянии рачетов";
+			return "Отчет о текущем состоянии расчетов";
 		case CHEQUE:
 			return "Чек";
 		case CHEQUE_CORR:
@@ -296,6 +296,10 @@ static bool archivefn_get_archive_doc() {
 
 	if (fdi.fdo_ack)
 		print_fdo_ack(&fdo_ack);
+	else {
+		out_printf("Подтверждение оператора (Квитанция ОФД)");
+		out_printf(" Нет");
+	}
 
 	return true;
 }

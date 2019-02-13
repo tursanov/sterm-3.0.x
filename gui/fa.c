@@ -72,12 +72,14 @@ bool cashier_load() {
 			sizeof(cashier_inn), sizeof(cashier_cashier) } ;
 
 		for (int i = 0; i < ASIZE(strings); i++) {
-			char *s;
+			char *s, *se;
 			if ((s = fgets(strings[i], sizes[i], f)) == NULL)
 				strings[i][0] = 0;
 			int len = strlen(s);
-			if (s[len - 1] == '\n')
-				s[len - 1] = 0;
+			se = s + len;
+			*se-- = 0;
+			while (*se == '\n' && se > s)
+				*se-- = 0;
 		}
 		fclose(f);
 
@@ -1262,9 +1264,10 @@ void fa_print_last_doc() {
 	size_t err_info_len = sizeof(err_info);
 
 	uint8_t status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
+	printf("status = 0x%x\n", status);
 	if (status != 0) {
 		fd_set_error(status, err_info, err_info_len);
-	} else {
+	} else if (ldi.last_type != 0) {
 		if (message_box("Уведомление",
 			"Будет напечатан последний сформированный документ.\n"
 			"Продолжить?",
@@ -1279,7 +1282,9 @@ void fa_print_last_doc() {
 				fd_set_error(status, err_info, err_info_len);
 			}
 		}
-	}
+	} else
+		message_box("Уведомление", "Нет сформированных документов для печати",
+				dlg_yes, 0, al_center);
 
 	if (status != 0) {
 		const char *error;
