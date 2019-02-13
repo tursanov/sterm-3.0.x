@@ -542,9 +542,9 @@ static void change_cashier() {
 			continue;
 		}
 		
-		if (inn.size != 12) {
+		if (inn.size > 0 && inn.size != 12 && inn.size != 10) {
 			form_focus(form, 1203);
-			message_box("Ошибка", "Длина поля \"ИНН кассира\" должна быть 12 цифр", dlg_yes, 0, al_center);
+			message_box("Ошибка", "Длина поля \"ИНН кассира\" должна быть 10 или 12 цифр", dlg_yes, 0, al_center);
 			form_draw(form);
 			continue;
 		}

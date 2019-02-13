@@ -78,12 +78,18 @@ bool cashier_load() {
 			int len = strlen(s);
 			se = s + len;
 			*se-- = 0;
-			while (*se == '\n' && se > s)
+			while (*se == '\n' && se >= s) {
 				*se-- = 0;
+			}
 		}
 		fclose(f);
 
 		make_cashier();
+
+		printf("cashier_name: \"%s\"\n", cashier_name);
+		printf("cashier_post: \"%s\"\n", cashier_post);
+		printf("cashier_inn: \"%s\"\n", cashier_inn);
+		printf("cashier_cashier: \"%s\"\n", cashier_cashier);
 
 		return 0;
 	}
