@@ -571,7 +571,7 @@ uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
 		if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(doc_type) &&
 				write_word(tmpl_len) && write_data(tmpl, tmpl_len) &&
 				kkt_open_dev_if_need()){
-			if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg))
+			if (do_transaction(KKT_SRV, KKT_SRV_END_DOC, &arg)){
 				*di = arg.di;
 				set_var_data(err_info, err_info_len, &arg.err_info);
 				vset = true;
