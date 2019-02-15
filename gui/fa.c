@@ -101,6 +101,10 @@ bool cashier_save() {
 	if (f != NULL) {
 
 		printf("cashier_save\n");
+		printf(" cashier_name: \"%s\"\n", cashier_name);
+		printf(" cashier_post: \"%s\"\n", cashier_post);
+		printf(" cashier_inn: \"%s\"\n", cashier_inn);
+		printf(" cashier_cashier: \"%s\"\n", cashier_cashier);
 
 		fprintf(f, "%s\n%s\n%s\n%s\n",
 			(const char *)cashier_name,
@@ -384,6 +388,8 @@ static int fa_tlv_add_string(form_t *form, uint16_t tag, bool required) {
 	if (data.size == 0)
 		return 0;
 
+	printf("tlv_add_string(%.4d, %s)\n", tag, (const char *)data.data);
+
 	if ((ret = ffd_tlv_add_string(tag, (const char *)data.data)) != 0) {
 		fa_show_error(form, tag, "Ошибка при добавлении TLV. Обратитесь к разработчикам");
 		return ret;
@@ -401,6 +407,8 @@ static int fa_tlv_add_fixed_string(form_t *form, uint16_t tag, size_t fixed_leng
 	if (data.size == 0)
 		return 0;
 		
+	printf("tlv_add_fixed_string(%.4d, %s, %d)\n", tag, (const char *)data.data, fixed_length);
+
 	if ((ret = ffd_tlv_add_fixed_string(tag, (const char *)data.data, fixed_length)) != 0) {
 		fa_show_error(form, tag, "Ошибка при добавлении TLV. Обратитесь к разработчикам");
 		return ret;
@@ -496,6 +504,11 @@ static int fa_tlv_add_cashier(form_t *form) {
 		fa_show_error(form, 1021, "Обязательное поле \"Кассир\" не заполнено");
 		return -1;
 	}
+
+	printf("fa_tlv_add_cashier\n");
+		printf(" cashier_name: \"%s\"\n", (char *)cashier.data);
+		printf(" cashier_post: \"%s\"\n", (char *)post.data);
+		printf(" cashier_inn: \"%s\"\n", (char *)inn.data);
 
 	if (!cashier_set(cashier.data, post.data, inn.data)) {
 		fa_show_error(form, 1021, "Ошибка записи в файл данных о кассире");
@@ -859,7 +872,7 @@ void fa_reregistration() {
 		FORM_ITEM_EDIT_TEXT(1117, "Адрес эл. почты отпр. чека:", NULL, FORM_INPUT_TYPE_TEXT, 64)
 		FORM_ITEM_EDIT_TEXT(1046, "Наименование ОФД:", NULL, FORM_INPUT_TYPE_TEXT, 256)
 		FORM_ITEM_EDIT_TEXT(1017, "ИНН ОФД:", NULL, FORM_INPUT_TYPE_NUMBER, 12)
-		FORM_ITEM_BITSET(9998, "Причины перерегистрации", short_rereg_reason, rereg_reason, 4, 0)
+		FORM_ITEM_BITSET(9997, "Причины перерегистрации", short_rereg_reason, rereg_reason, 4, 0)
 		FORM_ITEM_BUTTON(1, "Печать")
 		FORM_ITEM_BUTTON(0, "Отмена")
 	END_FORM()
@@ -874,7 +887,7 @@ void fa_reregistration() {
 			continue;
 		}
 
-		int rereg_reason = form_get_int_data(form, 9998, 0, 0);
+		int rereg_reason = form_get_int_data(form, 9997, 0, 0);
 		printf("rereg_reason = %d\n", rereg_reason);
 		if (rereg_reason == 0) {
 			message_box("Ошибка", "Не указана ни одна причина перерегистрации", dlg_yes, 0, al_center);

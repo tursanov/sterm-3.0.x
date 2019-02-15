@@ -112,10 +112,10 @@ control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
     edit->text_draw_width = width - BORDER_WIDTH * 2;
     edit->max_length = max_length;
 
-    if (edit->max_length <= DEFAULT_CAPACITY)
+    /*if (edit->max_length <= DEFAULT_CAPACITY)
         edit->capacity = edit->max_length;
-    else
-        edit->capacity = DEFAULT_CAPACITY;
+    else*/
+    edit->capacity = DEFAULT_CAPACITY;
 
     if (text != NULL) {
     	size_t len = strlen(text);
@@ -128,6 +128,7 @@ control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
     	edit->length = 0;
 
     edit->text = (char *)malloc(edit->capacity + 1);
+	memset(edit->text, 'M', edit->capacity);
     if (edit->length > 0)
     	memcpy(edit->text, text, edit->length);
    	edit->text[edit->length] = 0;
@@ -201,12 +202,17 @@ bool edit_focus(edit_t *edit, bool focus) {
 }
 
 static void edit_grow_text(edit_t *edit, size_t grow_size) {
+	size_t new_capacity = edit->capacity;
 	while (edit->length + grow_size > edit->capacity)
-		edit->capacity *= 2;
-	if (edit->capacity > edit->max_length)
-		edit->capacity = edit->max_length;
-	edit->text = (char *)realloc(edit->text, edit->capacity + 1);
-	assert(edit->text != NULL);
+		new_capacity *= 2;
+
+	if (new_capacity > edit->capacity) {
+		edit->capacity = new_capacity;
+		//if (edit->capacity > edit->max_length)
+		//	edit->capacity = edit->max_length;
+		edit->text = (char *)realloc(edit->text, edit->capacity + 1);
+		assert(edit->text != NULL);
+	}
 }
 
 static void edit_calc_draw_params(edit_t *edit, int cursorX) {
@@ -290,8 +296,7 @@ bool edit_insert_char(edit_t *edit, char ch) {
 	edit->text[edit->cur_pos] = ch;
     edit->cur_pos++;
 	edit->length++;
-	if (edit->cur_pos == edit->length)
-		edit->text[edit->cur_pos] = 0;
+	edit->text[edit->length] = 0;
 
 	int x = edit->text_draw_x + (edit->cur_pos - edit->text_draw_start) * GetMaxCharWidth(screen);
 	if (x > edit->text_draw_width)
@@ -338,8 +343,7 @@ bool edit_remove_char(edit_t *edit) {
 	if (edit->cur_pos < edit->length)
 		memmove(edit->text + edit->cur_pos, edit->text + edit->cur_pos + 1,
 				edit->length - edit->cur_pos + 1);
-	else
-		edit->text[edit->length] = 0;
+	edit->text[edit->length] = 0;
 
 	int x = edit->text_draw_x + (edit->cur_pos - edit->text_draw_start) * GetMaxCharWidth(screen);
 	int rtw = (edit->length - edit->cur_pos) * GetMaxCharWidth(screen);
