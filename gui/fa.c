@@ -64,24 +64,35 @@ static void make_cashier() {
 	cashier_cashier[cashier_cashier_size] = 0;
 }
 
+static void cashier_data_read(FILE *f, char *s, size_t max_size) {
+	char *end = s + max_size - 1;
+	while (true) {
+		int ch = fgetc(f);
+		if (ch == -1 || ch == '\n')
+			break;
+		if (s < end)
+			*s++ = (char)ch;
+	}
+	*s = 0;
+}
+
 bool cashier_load() {
 	FILE *f = fopen("/home/sterm/cashier.txt", "r");
 	if (f != NULL) {
-		char *strings[] = { cashier_name, cashier_post, cashier_inn, cashier_cashier };
-		size_t sizes[] = { sizeof(cashier_name), sizeof(cashier_post),
-			sizeof(cashier_inn), sizeof(cashier_cashier) } ;
-
-		for (int i = 0; i < ASIZE(strings); i++) {
-			char *s, *se;
-			if ((s = fgets(strings[i], sizes[i], f)) == NULL)
-				strings[i][0] = 0;
-			int len = strlen(s);
-			se = s + len;
-			*se-- = 0;
-			while (*se == '\n' && se >= s) {
-				*se-- = 0;
+		for (int i = 0; i < 3; i++) {
+			switch (i) {
+				case 0:
+					cashier_data_read(f, cashier_name, sizeof(cashier_name));
+					break;
+				case 1:
+					cashier_data_read(f, cashier_post, sizeof(cashier_post));
+					break;
+				case 2:
+					cashier_data_read(f, cashier_inn, sizeof(cashier_inn));
+					break;
 			}
 		}
+
 		fclose(f);
 
 		make_cashier();
@@ -891,7 +902,7 @@ void fa_reregistration() {
 		printf("rereg_reason = %d\n", rereg_reason);
 		if (rereg_reason == 0) {
 			message_box("Ошибка", "Не указана ни одна причина перерегистрации", dlg_yes, 0, al_center);
-			form_focus(form, 9998);
+			form_focus(form, 9997);
 			form_draw(form);
 			continue;
 		} else {

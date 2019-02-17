@@ -372,7 +372,7 @@ FontPtr CreateFont(const char *file_name, bool var_size)
 	for (i = 0, bit_pos = 0, glyph = font->glyphs;
 			i < MAX_GLYPHS; i++, glyph++, bit_pos += glyph_bits)
 	{
-		if (!(glyph->buffer = malloc(glyph_size)))
+		if (!(glyph->buffer = malloc(glyph_size + 10)))
 		{
 			glyph--;
 			while (i--)
@@ -392,6 +392,7 @@ FontPtr CreateFont(const char *file_name, bool var_size)
 
 	font->var_size = var_size;
 	font->glyphs[(uint8_t)' '].width = font->glyphs[(uint8_t)'^'].width;
+	free(buffer);
 
 	return font;
 }
@@ -510,6 +511,8 @@ BitmapPtr CreateBitmap(const char *file_name)
 		for (i = 0; i < bmp->width; i++, buf_ptr += 3)
 			*ptr++ = (uint16_t)(RGB(buf_ptr[2], buf_ptr[1], buf_ptr[0]));
 	}
+
+	free(buffer);
 
 	fclose(f);
 	
@@ -1163,7 +1166,8 @@ void CopyGC(GCPtr pGC, int x, int y,
 
 			for (i = 0; i < nh; i++)
 			{
-				__memcpy(bp1, bp, nw*2);
+				memmove(bp1, bp, nw*2);
+				//__memcpy(bp1, bp, nw*2);
 				bp += pSrc->scanline; 
 				bp1 += pGC->scanline;
 			}

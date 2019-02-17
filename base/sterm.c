@@ -216,6 +216,7 @@ static uint16_t make_check_sum(char *fname)
 		}
 	}while (l == CHKSUM_BLOCK_SIZE);
 	close(fd);
+	free(buf);
 	return (uint16_t)s;
 }
 
