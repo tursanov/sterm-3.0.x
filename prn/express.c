@@ -23,18 +23,22 @@ static int pcmd_len = 0;
 void xprn_init(void)
 {
 	xprn = open(XPRN_DEV_NAME, O_RDONLY);
-	xprn_flush();
+	if (xprn != -1)
+		xprn_flush();
 }
 
 void xprn_release(void)
 {
-	close(xprn);
-	xprn = -1;
+	if (xprn != -1){
+		close(xprn);
+		xprn = -1;
+	}
 }
 
 void xprn_flush(void)
 {
-	ioctl(xprn, XPRN_IO_RESET);
+	if (xprn != -1)
+		ioctl(xprn, XPRN_IO_RESET);
 	prn_buf_len = 0;
 	need_persist = false;
 }

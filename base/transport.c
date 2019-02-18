@@ -137,7 +137,10 @@ static bool init_tcpip(void)
 
 static void release_tcpip(void)
 {
-	close(term_socket);
+	if (term_socket != -1){
+		close(term_socket);
+		term_socket = -1;
+	}
 	signal(SIGPIPE, SIG_DFL);
 }
 

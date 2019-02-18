@@ -189,34 +189,31 @@ void flush_home(void)
 #define CHKSUM_BLOCK_SIZE	4096
 static uint16_t make_check_sum(char *fname)
 {
-	uint8_t *buf;
-	uint32_t s = 0UL;
-	uint16_t div = ((uint16_t)1 << 0) | ((uint16_t)1 << 13) | ((uint16_t)1 << 15), w = 0;
-	int fd, i,l;
 	if (fname == NULL)
 		return 0;
-	buf = malloc(CHKSUM_BLOCK_SIZE);
-	if (buf == NULL)
-		return 0;
-	fd = open(fname, O_RDONLY);
-	if (fd == -1)
-		return 0;
-	do{
-		l = read(fd, buf, CHKSUM_BLOCK_SIZE);
-		for (i = 0; i < l; ){
-			w = buf[i++];
-			s <<= 8;
-			if (i < l){
-				w <<= 8;
-				w |= buf[i++];
+	static uint8_t buf[CHKSUM_BLOCK_SIZE];
+	uint32_t s = 0UL;
+	uint16_t div = ((uint16_t)1 << 0) | ((uint16_t)1 << 13) | ((uint16_t)1 << 15), w = 0;
+	int fd = open(fname, O_RDONLY);
+	if (fd != -1){
+		while (true){
+			int l = read(fd, buf, CHKSUM_BLOCK_SIZE);
+			for (int i = 0; i < l;){
+				w = buf[i++];
 				s <<= 8;
+				if (i < l){
+					w <<= 8;
+					w |= buf[i++];
+					s <<= 8;
+				}
+				s |= w;
+				s %= div;
 			}
-			s |= w;
-			s %= div;
+			if (l != CHKSUM_BLOCK_SIZE)
+				break;
 		}
-	}while (l == CHKSUM_BLOCK_SIZE);
-	close(fd);
-	free(buf);
+		close(fd);
+	}
 	return (uint16_t)s;
 }
 
@@ -989,8 +986,6 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 {
 	if (kkt == NULL)
 		return false;
-	if (!is_kkt(kkt))
-		serial_configure2(0, &kkt->ss);
 	cfg.fdo_iface = get_dev_param_uint(kkt, KKT_FDO_IFACE);
 	if (cfg.fdo_iface == UINT32_MAX)
 		cfg.fdo_iface = KKT_FDO_IFACE_USB;
@@ -1027,6 +1022,7 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 	char fs_nr[KKT_FS_NR_LEN + 1];
 	kkt_get_fs_nr(fs_nr);
 	struct serial_settings *ss = (struct serial_settings *)&kkt->ss;
+	int fc0 = ss->control;
 	uint32_t fc = get_dev_param_uint(kkt, "FLOW_CONTROL");
 	switch (fc){
 		case 0:
@@ -1039,6 +1035,8 @@ static bool adjust_kkt_cfg(const struct dev_info *kkt)
 			ss->control = SERIAL_FLOW_RTSCTS;
 			break;
 	}
+	if (!is_kkt(kkt) || (ss->control != fc0))
+		serial_configure2(0, &kkt->ss);
 	return write_cfg();
 }
 

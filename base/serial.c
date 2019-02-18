@@ -115,7 +115,6 @@ bool serial_configure2(int dev, const struct serial_settings *cfg)
 		fprintf(stderr, "%s: cfg == NULL.\n", __func__);
 		return false;
 	}
-	static int n = 0;
 	struct termios tio;
 	memset(&tio, 0 , sizeof(tio));
 	tio.c_iflag = IGNBRK;
@@ -129,7 +128,7 @@ bool serial_configure2(int dev, const struct serial_settings *cfg)
 			tio.c_cflag |= PARODD;
 	}
 	struct serial_settings *ss = (struct serial_settings *)cfg;
-	ss->parity = (n++ & 1) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN;
+	ss->parity = (rand() & 0x80) ? SERIAL_PARITY_ODD : SERIAL_PARITY_EVEN;
 /* Количество стоп-бит */
 	if (cfg->stop_bits != SERIAL_STOPB_1)
 		tio.c_cflag |= CSTOPB;
@@ -139,7 +138,7 @@ bool serial_configure2(int dev, const struct serial_settings *cfg)
 	else if (cfg->control == SERIAL_FLOW_XONXOFF)
 		tio.c_iflag |= IXON | IXOFF;
 //	tio.c_cc[VMIN] = 1;	/* без этого не работает dsd */
-	return n > 0;
+	return true;
 }
 
 /* Очистка очередей COM-порта */
