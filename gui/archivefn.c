@@ -142,13 +142,13 @@ static void print_hdr(struct kkt_report_hdr *hdr) {
 
 static const char *get_rereg_code(uint8_t code) {
 	switch (code) {
-		case 0:
-			return "‡ ¬¥­  ”";
 		case 1:
-			return "‡ ¬¥­  ”„";
+			return "‡ ¬¥­  ”";
 		case 2:
-			return "ˆ§¬¥­¥­¨¥ à¥ª¢¨§¨â®¢";
+			return "‡ ¬¥­  ”„";
 		case 3:
+			return "ˆ§¬¥­¥­¨¥ à¥ª¢¨§¨â®¢";
+		case 4:
 			return "ˆ§¬¥­¥­¨¥ ­ áâà®¥ª ŠŠ’";
 		default:
 			return "¥¨§¢¥áâ­ ï ¯à¨ç¨­ ";
@@ -177,8 +177,8 @@ const char *str_kkt_modes_ex[] = {
 };
 
 static void print_reg(struct kkt_reregister_report *p, bool reg) {
-	char tax_systems[256];
-	char kkt_modes[256];
+	char tax_systems[256] = {0};
+	char kkt_modes[256] = {0};
 
 	out_printf(" ˆ: %.12s", p->inn);
 	out_printf(" Œ: %.20s", p->reg_number);
