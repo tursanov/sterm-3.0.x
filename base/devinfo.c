@@ -483,7 +483,7 @@ static void on_st_param_val(uint8_t b)
 				}
 			}
 		}
-	}else if ((b > 0x20) && (b < 0x7f) && (idx < MAX_DEV_PARAM_VAL_LEN))
+	}else if ((b >= 0x20) && (idx < MAX_DEV_PARAM_VAL_LEN))
 		dev_param_val[idx++] = recode(b);
 	else
 		st = st_err;
