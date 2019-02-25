@@ -215,9 +215,11 @@ bool combobox_handle(combobox_t *combobox, const struct kbd_event *e) {
 	case KEY_SPACE:
 		if (e->pressed && !e->repeated) {
 			if (!combobox->expanded) {
-				combobox->tmp_selected_index = combobox->selected_index;
-				combobox->expanded = true;
-				combobox_draw(combobox);
+				if (combobox->item_count > 0) {
+					combobox->tmp_selected_index = combobox->selected_index;
+					combobox->expanded = true;
+					combobox_draw(combobox);
+				}
 			} else if (e->key == KEY_ENTER) {
 				combobox->selected_index = combobox->tmp_selected_index;
 				combobox->expanded = false;
