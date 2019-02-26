@@ -15,7 +15,7 @@ uint32_t kkt_base_timeout = KKT_BASE_TIMEOUT;
 
 const struct dev_info *kkt = NULL;
 
-static char kkt_nr_buf[KKT_NR_LEN + 1];
+static char kkt_nr_buf[KKT_NR_MAX_LEN + 1];
 const char *kkt_nr = NULL;
 
 static char kkt_version_buf[MAX_DEV_PARAM_VAL_LEN + 1];

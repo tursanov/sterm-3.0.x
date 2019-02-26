@@ -11,7 +11,7 @@ extern const struct dev_info *kkt;
 
 extern uint8_t kkt_status;
 
-#define KKT_NR_LEN		9
+#define KKT_NR_MAX_LEN		20
 
 extern const char *kkt_nr;
 extern const char *kkt_ver;
