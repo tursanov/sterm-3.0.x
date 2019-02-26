@@ -18,6 +18,7 @@ typedef struct control_api_t {
 	bool (*handle)(struct control_t *control, const struct kbd_event *e);
 	bool (*get_data)(struct control_t *control, int what, data_t *data);
 	bool (*set_data)(struct control_t *control, int what, const void *data, size_t data_len);
+	bool (*is_empty)(struct control_t *control);
 } control_api_t;
 
 typedef void (*draw_func_t)(void *obj);
@@ -53,6 +54,7 @@ void* control_get_extra(struct control_t *control);
 void control_set_extra(struct control_t *control, void *extra);
 bool control_get_data(struct control_t *control, int what, data_t *data);
 bool control_set_data(struct control_t *control, int what, const void *data, size_t data_len);
+bool control_is_empty(struct control_t * control);
 void control_set_parent(struct control_t *control, control_parent_t *parent);
 void control_refresh_parent(struct control_t *control);
 

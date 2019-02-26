@@ -27,6 +27,7 @@ bool combobox_focus(combobox_t *combobox, bool focus);
 bool combobox_handle(combobox_t *combobox, const struct kbd_event *e);
 bool combobox_get_data(combobox_t *combobox, int what, data_t *data);
 bool combobox_set_data(combobox_t *combobox, int what, const void *data, size_t data_len);
+bool combobox_is_empty(combobox_t *combobox);
 
 #define screen combobox->control.gc
 
@@ -41,7 +42,8 @@ control_t* combobox_create(int id, GCPtr gc, int x, int y, int width, int height
 		(bool (*)(struct control_t *, bool))combobox_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))combobox_handle,
 		(bool (*)(struct control_t *, int, data_t *))combobox_get_data,
-		(bool (*)(struct control_t *control, int, const void *, size_t))combobox_set_data
+		(bool (*)(struct control_t *control, int, const void *, size_t))combobox_set_data,
+		(bool (*)(struct control_t *control))combobox_is_empty,
     };
 
     control_init(&combobox->control, id, gc, x, y, width, height, &api);
@@ -219,7 +221,8 @@ bool combobox_handle(combobox_t *combobox, const struct kbd_event *e) {
 					combobox->tmp_selected_index = combobox->selected_index;
 					combobox->expanded = true;
 					combobox_draw(combobox);
-				}
+				} else
+					return false;
 			} else if (e->key == KEY_ENTER) {
 				combobox->selected_index = combobox->tmp_selected_index;
 				combobox->expanded = false;
@@ -307,3 +310,13 @@ bool combobox_set_data(combobox_t *combobox, int what, const void *data, size_t 
 	}
 	return false;
 }
+
+bool combobox_is_empty(combobox_t *combobox) {
+	if (combobox->edit) {
+		data_t data;
+		if (control_get_data(combobox->edit, 0, &data))
+			return data.size == 0;
+		return true;
+	} else
+		return combobox->selected_index < 0;
+}	

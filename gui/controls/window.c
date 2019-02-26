@@ -198,6 +198,11 @@ bool window_handle_focus_event(window_t *w, const struct kbd_event *e) {
 		return false;
 	bool next;
 	switch (e->key) {
+		case KEY_ENTER:
+			//if (!w->focused || control_is_empty(LIST_ITEM(w->focused, control_t)))
+			//	return false;
+			next = true;
+			break;
 		case KEY_TAB:
 			next = (e->shift_state & SHIFT_SHIFT) == 0;
 			break;

@@ -284,6 +284,9 @@ static bool form_process(form_t *form, const struct kbd_event *_e) {
 				case KEY_ESCAPE:
 					form->result = 0;
 					return false;
+				case KEY_ENTER:
+					//if (control_is_empty(active_control))
+					//	return true; 
 				case KEY_TAB:
 				case KEY_DOWN:
 				case KEY_UP:

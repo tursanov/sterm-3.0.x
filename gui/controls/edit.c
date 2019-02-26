@@ -32,6 +32,7 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e);
 bool edit_set_cursor_pos(edit_t *edit, int pos);
 bool edit_get_data(edit_t *edit, int what, data_t *text);
 bool edit_set_data(edit_t *edit, int what, const void *data, size_t data_len);
+bool edit_is_empty(edit_t *edit);
 
 /* Программный курсор */
 #define CURSOR_BLINK_DELAY	50	/* ссек */
@@ -102,7 +103,8 @@ control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, bool))edit_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))edit_handle,
 		(bool (*)(struct control_t *, int, data_t *))edit_get_data,
-		(bool (*)(struct control_t *control, int, const void *, size_t))edit_set_data
+		(bool (*)(struct control_t *control, int, const void *, size_t))edit_set_data,
+		(bool (*)(struct control_t *control))edit_is_empty,
     };
 
     control_init(&edit->control, id, gc, x, y, width, height, &api);
@@ -507,4 +509,8 @@ bool edit_set_data(edit_t *edit, int what, const void *data, size_t data_len) {
 		}
 	}
 	return false;
+}
+
+bool edit_is_empty(edit_t *edit) {
+	return edit->length == 0;
 }

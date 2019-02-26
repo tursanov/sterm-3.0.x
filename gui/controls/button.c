@@ -36,6 +36,7 @@ control_t* button_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, const struct kbd_event *))button_handle,
 		NULL,
 		NULL,
+		NULL,
     };
 
     control_init(&button->control, id, gc, x, y, width, height, &api);

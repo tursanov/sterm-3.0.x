@@ -28,6 +28,7 @@ bool listview_focus(listview_t *listview, bool focus);
 bool listview_handle(listview_t *listview, const struct kbd_event *e);
 bool listview_get_data(listview_t *listview, int what, data_t *data);
 bool listview_set_data(listview_t *listview, int what, const void *data, size_t data_len);
+bool listview_is_empty(listview_t *listview);
 
 #define screen listview->control.gc
 #define BORDER_WIDTH	2
@@ -87,7 +88,8 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 		(bool (*)(struct control_t *, bool))listview_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))listview_handle,
 		(bool (*)(struct control_t *, int, data_t *))listview_get_data,
-		(bool (*)(struct control_t *control, int, const void *, size_t))listview_set_data
+		(bool (*)(struct control_t *control, int, const void *, size_t))listview_set_data,
+		(bool (*)(struct control_t *control))listview_is_empty,
     };
 
     control_init(&listview->control, id, gc, x, y, width, height, &api);
@@ -309,4 +311,8 @@ bool listview_set_data(listview_t *listview, int what, const void *data, size_t 
 		return true;
 	}
 	return false;
+}
+
+bool listview_is_empty(listview_t *listview) {
+	return listview->selected_index < 0;
 }

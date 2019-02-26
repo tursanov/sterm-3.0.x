@@ -74,6 +74,12 @@ bool control_set_data(struct control_t *control, int what, const void *data, siz
 	return false;
 }
 
+bool control_is_empty(struct control_t * control) {
+	if (control->api.is_empty)
+		return control->api.is_empty(control);
+	return true;
+}
+
 void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color) {
 	// рамка

@@ -25,6 +25,7 @@ bool listbox_focus(listbox_t *listbox, bool focus);
 bool listbox_handle(listbox_t *listbox, const struct kbd_event *e);
 bool listbox_get_data(listbox_t *listbox, int what, data_t *data);
 bool listbox_set_data(listbox_t *listbox, int what, const void *data, size_t data_len);
+bool listbox_is_empty(listbox_t *listbox);
 
 #define screen listbox->control.gc
 #define BORDER_WIDTH	2
@@ -82,7 +83,8 @@ control_t* listbox_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, bool))listbox_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))listbox_handle,
 		(bool (*)(struct control_t *, int, data_t *))listbox_get_data,
-		(bool (*)(struct control_t *control, int, const void *, size_t))listbox_set_data
+		(bool (*)(struct control_t *control, int, const void *, size_t))listbox_set_data,
+		(bool (*)(struct control_t *control))listbox_is_empty,
     };
 
     control_init(&listbox->control, id, gc, x, y, width, height, &api);
@@ -260,4 +262,8 @@ bool listbox_set_data(listbox_t *listbox, int what, const void *data, size_t dat
 		return true;
 	}
 	return false;
+}
+
+bool listbox_is_empty(listbox_t *listbox) {
+	return listbox->selected_index < 0;
 }

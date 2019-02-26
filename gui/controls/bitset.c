@@ -29,6 +29,7 @@ bool bitset_focus(bitset_t *bitset, bool focus);
 bool bitset_handle(bitset_t *bitset, const struct kbd_event *e);
 bool bitset_get_data(bitset_t *bitset, int what, data_t *data);
 bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_len);
+bool bitset_is_empty(bitset_t *bitset);
 
 #define screen	(bitset->control.gc)
 
@@ -43,7 +44,8 @@ control_t* bitset_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, bool))bitset_focus,
 		(bool (*)(struct control_t *, const struct kbd_event *))bitset_handle,
 		(bool (*)(struct control_t *, int, data_t *))bitset_get_data,
-		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data
+		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data,
+		(bool (*)(struct control_t *control))bitset_is_empty,
     };
 
     control_init(&bitset->control, id, gc, x, y, width, height, &api);
@@ -246,4 +248,9 @@ bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_l
 		return true;
 	}
 	return false;
+}
+
+
+bool bitset_is_empty(bitset_t *bitset) {
+	return bitset->value == 0;
 }
