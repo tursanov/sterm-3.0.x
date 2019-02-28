@@ -1222,9 +1222,11 @@ void fa_cheque() {
 						if (sumE > 0)
 							n += sprintf(p + n, "‚‘…ƒ Š ˆ…Œ“: \x5%.1lld.%.2lld “.\r\n",
 								sumE / 100, sumE % 100);
-						else
+						else {
+							sumE = -sumE;
 							n += sprintf(p + n, "‚‘…ƒ Š ‚\x9b‹€’…: \x5%.1lld.%.2lld “.\r\n",
 								sumE / 100, sumE % 100);
+						}
 					}
 
 					pattern_footer_size = n;
