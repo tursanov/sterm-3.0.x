@@ -169,7 +169,7 @@ int K_save(FILE *f, K *k) {
 }
 
 static void K_after_add(K *k) {
-    int64_array_add(&_ad->docs, k->d, true);
+    /*int64_array_add(&_ad->docs, k->d, true);*/
     if (k->t != NULL) {
 	    string_array_add(&_ad->phones, k->t, true, 0);
 	}
@@ -537,16 +537,6 @@ int AD_delete_doc(int64_t doc) {
 			list_it_remove(&i1);
 	}
 
-	_ad->docs.count = 0;
-
-	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
-		C *c = LIST_ITEM(li1, C);
-		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
-			K *k = LIST_ITEM(li2, K);
-			int64_array_add(&_ad->docs, k->d, true);
-		}
-	}
-
 	AD_calc_sum();
 	
     if (count)
@@ -600,8 +590,10 @@ int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
                 if (k1->i1 == k->r && k1->m == k->m && k1->o == o) {
                     if (K_equalByL(k, k1)) {
                         list_it_remove(&i2);
-                        if (c->klist.count == 0)
+                        if (c->klist.count == 0) {
                             list_it_remove(&i1);
+                        }
+                        printf("Удаляем K из корзины\n");
 						K_destroy(k);
 						return 0;
 					}
@@ -998,11 +990,14 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
 
 void AD_calc_sum() {
 	memset(_ad->sum, 0, sizeof(_ad->sum));
+	_ad->docs.count = 0;
+
 	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
 		memset(&c->sum, 0, sizeof(c->sum));
 		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
+			int64_array_add(&_ad->docs, k->d, true);
 			for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
 				L *l = LIST_ITEM(li3, L);
 				S *s = &_ad->sum[l->p - 1];
