@@ -108,7 +108,7 @@ K *K_divide(K *k, uint8_t p) {
 			if (tmp == k->llist.head)
 				k->llist.head = item;
 			count++;
-			
+
 			if (k1 == NULL) {
 				k1 = (K*)malloc(sizeof(K));
 				memset(&k1->llist, 0, sizeof(k1->llist));

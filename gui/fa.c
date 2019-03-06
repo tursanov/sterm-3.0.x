@@ -931,7 +931,7 @@ static int fa_get_int_field(form_t *form, uint16_t tag) {
 
 void fa_cheque_corr() {
 	const char *str_pay_type[] = { "Коррекция прихода", "Коррекция расхода" };
-	const char *str_tax_mode[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН" };
+	const char *str_tax_mode[] = { "ОСН", "УСН ДОХОД", "УСН ДОХОД-РАСХОД", "ЕНВД", "ЕСХН", "ПАТЕНТ" };
 	const char *str_corr_type[] = { "Самостоятельно", "По предписанию" };
 
 	fa_set_cashier_info(cheque_corr_form);
@@ -952,7 +952,7 @@ void fa_cheque_corr() {
 		FORM_ITEM_EDIT_TEXT(1081, "Безналичными:", "0", FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_EDIT_TEXT(1215, "Предоплатой:", "0", FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_EDIT_TEXT(1216, "Постоплатой:", "0", FORM_INPUT_TYPE_MONEY, 16)
-		FORM_ITEM_EDIT_TEXT(1217, "Встречным представлением:", "0", FORM_INPUT_TYPE_MONEY, 16)
+		FORM_ITEM_EDIT_TEXT(1217, "Встречным предоставлением:", "0", FORM_INPUT_TYPE_MONEY, 16)
 
 		FORM_ITEM_EDIT_TEXT(1102, "НДС 20%:", NULL, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_EDIT_TEXT(1103, "НДС 10%:", NULL, FORM_INPUT_TYPE_MONEY, 16)
