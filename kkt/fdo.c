@@ -144,12 +144,12 @@ bool fdo_unlock(void)
 static bool fdo_set_thread_state(int state)
 {
 	bool ret = false;
-	if ((state != fdo_thread_state) && (pthread_mutex_lock(&fdo_mtx) == 0)){
+	if ((state != fdo_thread_state) && fdo_lock()){
 		dbg("%d --> %d", fdo_thread_state, state);
 		fdo_thread_state = state;
 		if (state == fdo_thread_active)
 			fdo_reset_rx();
-		pthread_mutex_unlock(&fdo_mtx);
+		fdo_unlock();
 		int rc = pthread_kill(fdo_thread, SIG_THREAD_STATE_CHANGED);
 		if (rc == 0)
 			ret = true;
@@ -508,6 +508,7 @@ static void fdo_poll_kkt(void)
 		fdo_prev_op = cmd;
 		switch (cmd){
 			case FDO_REQ_NOP:
+				fdo_prev_op_status = 0;
 				fdo_sleep(cfg.fdo_poll_period * 1000);
 				break;
 			case FDO_REQ_OPEN:
@@ -528,6 +529,7 @@ static void fdo_poll_kkt(void)
 					fdo_prev_op_status = fdo_send_kkt();
 				break;
 			case FDO_REQ_MESSAGE:
+				fdo_prev_op_status = FDO_MSG_OK;
 				break;
 		}
 	}else

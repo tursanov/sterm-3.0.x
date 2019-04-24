@@ -1977,7 +1977,7 @@ static bool execute_prn(struct para_info *p, int l, int *n_para)
 	}
 	if (printed){
 		if (wm == wm_main)
-			xlog_mark_rec_printed(hxlog, log_number, *n_para);
+			xlog_set_rec_flags(hxlog, log_number, *n_para, XLOG_REC_PRINTED);
 		else
 			llog_mark_rec_printed(hllog, log_number, *n_para);
 	}
@@ -2152,8 +2152,8 @@ bool execute_resp(void)
 					}
 					break;
 				case dst_kkt:
-					execute_kkt(p, l);	/* pass through */
-					has_kkt_resp = true;
+					execute_kkt(p, l);
+					has_kkt_resp = true;	/* pass through */
 				default:
 					p->handled = true;
 					n--;

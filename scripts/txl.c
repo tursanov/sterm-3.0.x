@@ -29,7 +29,7 @@ static void write_header(void)
 		xlog_rec_hdr.dt.day + 1, xlog_rec_hdr.dt.mon + 1, xlog_rec_hdr.dt.year,
 		xlog_rec_hdr.dt.hour, xlog_rec_hdr.dt.min, xlog_rec_hdr.dt.sec,
 		xlog_rec_hdr.addr.gaddr, xlog_rec_hdr.addr.iaddr,
-		xlog_rec_hdr.printed ? '+' : '-');
+		(xlog_rec_hdr.flags & XLOG_REC_PRINTED) ? '+' : '-');
 }
 
 /* Вывод содержимого текущей записи */

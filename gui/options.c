@@ -449,6 +449,8 @@ static struct optn_item kkt_optn_items[] = {
 	OPTN_INT_ENUM("Яркость печати", "Яркость печати ККТ.\r\n"
 		"Чем больше значение, тем выше яркость",
 		NULL, ini_uint32, kkt_brightness, NULL),
+	OPTN_BOOL1("Автопечать чеков", "Автоматическая печать чеков на ККТ",
+		kkt_apc, NULL),
 };
 
 /* Экран */
@@ -2238,8 +2240,9 @@ static void on_aprn_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	optn_set_item_enable(aprn_number, item->vv.flag);
-	optn_set_item_enable(aprn_tty, item->vv.flag);
+	bool flag = item->vv.flag;
+	optn_set_item_enable(aprn_number, flag);
+	optn_set_item_enable(aprn_tty, flag);
 }
 
 /* Вызывается при изменении параметра "Связь с ИПТ" */
@@ -2247,8 +2250,9 @@ static void on_bank_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	optn_set_item_enable(bank_proc_ip, item->vv.flag);
-	optn_set_item_enable(bank_pos_port, item->vv.flag);
+	bool flag = item->vv.flag;
+	optn_set_item_enable(bank_proc_ip, flag);
+	optn_set_item_enable(bank_pos_port, flag);
 }
 
 /* Вызывается при изменении параметра "Наличие ККТ" */
@@ -2256,15 +2260,19 @@ static void on_kkt_change(struct optn_item *item)
 {
 	if (item == NULL)
 		return;
-	optn_set_item_enable(fiscal_mode, item->vv.flag);
-	optn_set_item_enable(fdo_iface, item->vv.flag);
-	optn_set_item_enable(fdo_ip, item->vv.flag);
-	optn_set_item_enable(fdo_port, item->vv.flag);
-	optn_set_item_enable(fdo_poll_period, item->vv.flag);
-	optn_set_item_enable(tax_system, item->vv.flag);
-	optn_set_item_enable(kkt_log_level, item->vv.flag);
-	optn_set_item_enable(kkt_log_stream, item->vv.flag);
-	optn_set_item_enable(tz_offs, item->vv.flag);
+	bool flag = item->vv.flag;
+	optn_set_item_enable(fiscal_mode, flag);
+	optn_set_item_enable(fdo_iface, flag);
+	optn_set_item_enable(fdo_ip, flag);
+	optn_set_item_enable(fdo_port, flag);
+	optn_set_item_enable(fdo_poll_period, flag);
+	optn_set_item_enable(tax_system, flag);
+	optn_set_item_enable(kkt_log_level, flag);
+	optn_set_item_enable(kkt_log_stream, flag);
+	optn_set_item_enable(tz_offs, flag);
+	optn_set_item_enable(kkt_base_timeout, flag);
+	optn_set_item_enable(kkt_brightness, flag);
+	optn_set_item_enable(kkt_apc, flag);
 	on_fdo_iface_change(optn_item_by_offset(fdo_iface));
 }
 

@@ -377,7 +377,7 @@ static void xlog_init_rec_hdr(struct log_handle *hlog,
 	hdr->ONtz = ONtz;
 	hdr->OBp  = OBp;
 	hdr->reaction_time = (reaction_time + 50) / 100;
-	hdr->printed = false;
+	hdr->flags = 0;
 	hdr->crc32 = 0;
 }
 
@@ -458,13 +458,14 @@ bool xlog_read_rec(struct log_handle *hlog, uint32_t index)
 	return true;
 }
 
-/* Установка отметки о печати записи на КЛ */
-bool xlog_mark_rec_printed(struct log_handle *hlog, uint32_t number, uint32_t n_para)
+/* Установка флагов записи на КЛ */
+bool xlog_set_rec_flags(struct log_handle *hlog, uint32_t number, uint32_t n_para,
+	uint32_t flags)
 {
 	bool ret = false;
 	uint32_t index = xlog_index_for_number(hlog, number, n_para);
 	if ((index != -1UL) && xlog_read_rec(hlog, index)){
-		xlog_rec_hdr.printed = true;
+		xlog_rec_hdr.flags |= flags;
 		xlog_rec_hdr.crc32 = 0;
 		xlog_rec_hdr.crc32 = xlog_rec_crc32();
 		if (log_begin_write(hlog))
@@ -519,7 +520,7 @@ static bool xlog_print_rec_header(void)
 		xlog_rec_hdr.dsn[6], xlog_rec_hdr.dsn[5],
 		xlog_rec_hdr.dsn[4], xlog_rec_hdr.dsn[3],
 		xlog_rec_hdr.dsn[2], xlog_rec_hdr.dsn[1]);
-	if (xlog_rec_hdr.printed)
+	if (xlog_rec_hdr.flags & XLOG_REC_PRINTED)
 		strcat(s, " [+]");
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());

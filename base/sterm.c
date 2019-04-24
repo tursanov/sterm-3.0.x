@@ -1,4 +1,4 @@
-/* Основные функции терминала. (c) gsr 2000-2018 */
+/* Основные функции терминала. (c) gsr 2000-2019 */
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -382,7 +382,7 @@ static bool set_term_defaults(void)
 	cfg.kkt_log_stream = KLOG_STREAM_ALL;
 	cfg.tz_offs = 0;
 	cfg.kkt_base_timeout = KKT_BASE_TIMEOUT * 10;
-	cfg.kkt_brightness = 2;
+	cfg.kkt_brightness = 0;
 
 	cfg.blank_time = 0;
 	cfg.color_scheme = 0;

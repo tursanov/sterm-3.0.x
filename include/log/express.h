@@ -48,7 +48,10 @@ struct xlog_rec_header {
 	uint16_t ONpo;
 	uint8_t OBp;
 	uint8_t reaction_time;	/* время реакции */
-	bool printed;		/* абзац распечатан при обработке ответа */
+	uint32_t flags;		/* различные флаги */
+#define XLOG_REC_PRINTED	0x00000001	/* абзац распечатан при обработке ответа */
+#define XLOG_REC_CAP		0x00000002	/* автоматическая печать чека на ККТ (АПЧ) */
+#define XLOG_REC_CPC		0x00000004	/* в корзине ФП есть данные для печати чеков (ЧвКФП) */
 	uint32_t crc32;		/* контрольная сумма записи вместе с заголовком */
 } __attribute__((__packed__));
 
@@ -80,8 +83,8 @@ extern uint32_t xlog_write_rec(struct log_handle *hlog, uint8_t *data, uint32_t 
 extern bool  xlog_write_foreign(struct log_handle *hlog, uint8_t gaddr, uint8_t iaddr);
 extern bool  xlog_write_ipchange(struct log_handle *hlog, uint32_t old, uint32_t new);
 extern bool  xlog_read_rec(struct log_handle *hlog, uint32_t index);
-extern bool  xlog_mark_rec_printed(struct log_handle *hlog, uint32_t number,
-		uint32_t n_para);
+extern bool  xlog_set_rec_flags(struct log_handle *hlog, uint32_t number,
+		uint32_t n_para, uint32_t flags);
 extern bool  xlog_can_write(struct log_handle *hlog);
 extern bool  xlog_can_clear(struct log_handle *hlog);
 extern bool  xlog_can_print_range(struct log_handle *hlog);
