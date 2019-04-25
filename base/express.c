@@ -27,7 +27,7 @@
 #include "transport.h"
 
 static uint32_t log_number;		/* номер текущей записи на КЛ при обработке ответа */
-uint32_t log_para = 0;			/* номер абзаца ответа на КЛ при обработке ответа */
+uint32_t log_para = 0;			/* номер абзаца ответа на ЦКЛ при обработке ответа */
 
 extern uint8_t text_buf[TEXT_BUF_LEN];
 extern uint8_t *err_ptr;
@@ -1765,8 +1765,9 @@ static void preexecute_resp(void)
 			case dst_lprn:
 				no_print = false;
 				transition_flag = -1;
-				log_number = llog_write_rec(hllog,
-					text_buf, l, LLRT_NORMAL, log_para++);
+				if (wm == wm_local)
+					log_number = llog_write_rec(hllog,
+						text_buf, l, LLRT_NORMAL, log_para++);
 				break;
 			case dst_bank:
 				scan_bank_info(text_buf);
@@ -1788,9 +1789,14 @@ static void preexecute_resp(void)
 				break;
 			case dst_kkt:
 				no_print = false;
-				if (wm == wm_main)
+				if (wm == wm_main){
 					log_number = xlog_write_rec(hxlog, text_buf, l,
-						XLRT_KKT, log_para++);
+						XLRT_KKT, log_para);
+					if (cfg.kkt_apc)
+						xlog_set_rec_flags(hxlog, log_number, log_para,
+							XLOG_REC_APC);
+					log_para++;
+				}
 				break;
 			case dst_text:
 				if (transition_flag != -1)
@@ -1900,7 +1906,7 @@ static int show_lprn_error(int lprn_ret, bool rejectable)
  * Обработка абзаца для печати. Возвращает false, если дальнейшая обработка
  * ответа невозможна.
  */
-static bool execute_prn(struct para_info *p, int l, int *n_para)
+static bool execute_prn(struct para_info *p, int l, int n_para)
 {
 	bool ret = true, printed = false;
 	set_term_astate(ast_none);
@@ -1977,11 +1983,10 @@ static bool execute_prn(struct para_info *p, int l, int *n_para)
 	}
 	if (printed){
 		if (wm == wm_main)
-			xlog_set_rec_flags(hxlog, log_number, *n_para, XLOG_REC_PRINTED);
+			xlog_set_rec_flags(hxlog, log_number, n_para, XLOG_REC_PRINTED);
 		else
-			llog_mark_rec_printed(hllog, log_number, *n_para);
+			llog_mark_rec_printed(hllog, log_number, n_para);
 	}
-	(*n_para)++;
 	return ret;
 }
 
@@ -2060,7 +2065,7 @@ extern void show_llog(void);
 /* Обработка текста ответа. Возвращает false, если надо перейти к ОЗУ заказа */
 bool execute_resp(void)
 {
-	int n = n_unhandled(), l = 0, k, m = 0;
+	int n = n_unhandled(), l = 0, n_para = 0;
 	int next = 0;
 	struct para_info *p = NULL;
 	bool parsed = false;
@@ -2085,7 +2090,7 @@ bool execute_resp(void)
 	while ((n > 0) && !has_req && resp_executing){
 		if (jump_next && !lprn_error_shown){
 			jump_next = false;
-			k = 0;
+			int k = 0;
 			do {
 				cur_para = next_para(cur_para);
 				k++;
@@ -2117,7 +2122,7 @@ bool execute_resp(void)
 				case dst_lprn:
 					if (p->auto_handle && (next_printable() == cur_para)){
 						if (p->can_print){
-							if (execute_prn(p, l, &m))
+							if (execute_prn(p, l, n_para++))
 								ndest_shown = false;
 							else{
 								lprn_error_shown = false;
@@ -2142,9 +2147,10 @@ bool execute_resp(void)
 					}
 					break;
 				case dst_log:
-					if (try_print_llog(text_buf, l)){
+					if ((wm == wm_main) || try_print_llog(text_buf, l)){
 						p->handled = true;
 						n--;
+						n_para++;
 					}else{
 						lprn_error_shown = false;
 						set_term_led(hbyte = n2hbyte(0));
@@ -2154,6 +2160,8 @@ bool execute_resp(void)
 				case dst_kkt:
 					execute_kkt(p, l);
 					has_kkt_resp = true;	/* pass through */
+				case dst_bank:
+					n_para++;		/* pass through */
 				default:
 					p->handled = true;
 					n--;

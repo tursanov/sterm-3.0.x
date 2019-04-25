@@ -47,6 +47,9 @@
 #define XPRN_PRNOP_INP_TICKET	0x74	/* ввод бланка */
 #define XPRN_PRNOP_LINE_FW	0x76	/* переключение строк вперёд */
 
+/* Устанавливается во время печати на принтере */
+extern bool xprn_printing;
+
 extern void xprn_init(void);
 extern void xprn_release(void);
 extern void xprn_flush(void);

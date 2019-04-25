@@ -228,22 +228,28 @@ static int xprn_write_text(const char *p, int l)
 		return -1;
 }
 
+bool xprn_printing = false;
+
 /* Печать текста на ОПУ */
 bool xprn_print(const char *txt, int l)
 {
 	bool said = false;
 	uint8_t *ptr = prn_buf;
-	int i = 0, ii = 0, ret = prn_ready;
+	int i = 0, ii = 0, rc = prn_ready;
 	bool ch_buf = false;
 	bool lflag = true;
 	if (xprn_write_text(txt,l) <= 0)
 		return true;
 	ch_buf = need_persist;
 	set_term_astate(ast_none);
+	xprn_printing = true;
+	bool ret = true;
 	while (lflag){
-		if (prn_buf_len == 0)
-			return false;		/* Имел место сброс терминала */
-		if (ch_buf){			/* Смена текущего буфера */
+		if (prn_buf_len == 0){		/* имел место сброс терминала */
+			ret = false;
+			break;
+		}
+		if (ch_buf){			/* смена текущего буфера */
 			if (ptr != pcmd){
 				ptr = pcmd;
 				ii = i;
@@ -255,9 +261,9 @@ bool xprn_print(const char *txt, int l)
 #if defined __DEBUG_PRINT__
 			putchar(ptr[i] & 0x7f);
 #else
-			ret = ioctl(xprn, XPRN_IO_OUTCHAR, ptr[i] & 0x7f);
+			rc = ioctl(xprn, XPRN_IO_OUTCHAR, ptr[i] & 0x7f);
 #endif
-			switch (ret){
+			switch (rc){
 				case prn_ready:
 					i++;
 					if (said){
@@ -283,9 +289,13 @@ bool xprn_print(const char *txt, int l)
 		}
 		if ((get_cmd(false, true) == cmd_reset) && reset_term(false)){
 			xprn_flush();
-			return false;
+			ret = false;
+			break;
 		}
 	}
 	prn_buf_len = 0;
-	return true;
+	if (ret)
+		usleep(500000);
+	xprn_printing = false;
+	return ret;
 }

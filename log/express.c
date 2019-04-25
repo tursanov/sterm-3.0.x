@@ -520,8 +520,10 @@ static bool xlog_print_rec_header(void)
 		xlog_rec_hdr.dsn[6], xlog_rec_hdr.dsn[5],
 		xlog_rec_hdr.dsn[4], xlog_rec_hdr.dsn[3],
 		xlog_rec_hdr.dsn[2], xlog_rec_hdr.dsn[1]);
-	if (xlog_rec_hdr.flags & XLOG_REC_PRINTED)
+	if ((xlog_rec_hdr.type == XLRT_NORMAL) && (xlog_rec_hdr.flags & XLOG_REC_PRINTED))
 		strcat(s, " [+]");
+	if ((xlog_rec_hdr.type == XLRT_KKT) && (xlog_rec_hdr.flags & XLOG_REC_APC))
+		strcat(s, " [Äèó]");
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "ZNíá: %.3hX  ZNèé: %.3hX  ZÅè: %.2hhX      "

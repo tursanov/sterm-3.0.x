@@ -419,6 +419,8 @@ void get_dallas_keys(void)
 int get_key_type(void)
 {
 #if defined __REAL_KEYS__
+	if (xprn_printing)
+		return kt;
 	struct md5_hash md5;
 	int i;
 	ds_read(dsn);
