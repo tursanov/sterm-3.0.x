@@ -901,14 +901,6 @@ static uint8_t *check_lprn(uint8_t *txt, int l, int *ecode)
 	return txt;
 }
 
-__attribute__((__weak__)) int kkt_xml_callback(uint32_t check, int evt, const char *name,
-	const char *val)
-{
-	printf("%s: check = %u; evt = %d; name = [%s]; val = [%s]\n", __func__,
-		check, evt, name, val);
-	return E_OK;
-}
-
 /* Проверка XML для ККТ */
 static uint8_t *check_kkt_xml(uint8_t *txt, int l, int *ecode)
 {
@@ -2253,6 +2245,6 @@ bool execute_resp(void)
 		if (has_req && resp_handling)
 			send_request();
 		return (p != NULL) ? !p->jump_next : false;
-	} else
+	}else
 		return true;
 }

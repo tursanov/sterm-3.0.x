@@ -1,5 +1,3 @@
-/* Настройка параметров терминала. (c) gsr & alex 2000-2004, 2018. */
-
 #include <sys/socket.h>
 #include <sys/param.h>
 #include <sys/times.h>

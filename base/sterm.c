@@ -160,6 +160,9 @@ static bool into_on_response;
 /* Устанавливается при выводе на экран сообщений об ошибках ППУ */
 bool lprn_error_shown = false;;
 
+/* Устанавливается во время автоматической печати чека на ККТ */
+static bool _apc = false;
+
 /*
  * При загрузке терминала файловая система на DiskOnChip/DiskOnModule
  * монтируется в режиме ro. Когда терминалу необходимо записать данные на диск,
@@ -1310,6 +1313,7 @@ static void init_term(bool need_init)
 	reset_bank_info();
 	lprn_error_shown = false;
 	rollback_keys(true);
+	_apc = false;
 	init_devices();
 	set_iplir_params();
 	if (cfg.use_iplir)
@@ -2301,6 +2305,8 @@ static int handle_ping(struct kbd_event *e)
 	return cmd_none;
 }
 
+static void show_cheque_fa(void);
+
 /* Обработчик окна POS-терминала */
 static int handle_pos(struct kbd_event *e)
 {
@@ -2320,9 +2326,17 @@ static int handle_pos(struct kbd_event *e)
 			pos_active = false;
 			online = true;
 			pop_term_info();
-			if (pos_err_xdesc != NULL)
+			if (pos_err_xdesc == NULL){
+				if (_apc){
+					show_cheque_fa();
+					_apc = fa_active;
+				}
+			}else{
+				_apc = false;
 				set_term_astate(ast_pos_error);
-			redraw_term(true, main_title);
+			}
+			if (!_apc)
+				redraw_term(true, main_title);
 	}
 	return cmd_none;
 }
@@ -2336,7 +2350,7 @@ static int handle_fa(struct kbd_event *e)
 		pop_term_info();
 		scr_visible = true;
 		show_cursor();
-
+		_apc = false;
 		redraw_term(true, main_title);
 	}
 
@@ -3895,6 +3909,11 @@ static void show_syntax_error_msg(uint8_t code)
 
 extern int cm_clear(void);
 
+static bool need_apc(void)
+{
+	return cfg.kkt_apc && (_ad != NULL) && (_ad->clist.count > 0);
+}
+
 /* Вызывается при приходе ответа */
 static void on_response(void)
 {
@@ -3927,7 +3946,26 @@ static void on_response(void)
 			set_term_state(st_resp);
 			if (!execute_resp() && !rejecting_req)
 				show_req();
-			set_term_busy(false);
+			if ((c_state != cs_hasreq) && need_apc()){
+				show_req();
+				_apc = true;
+				bool need_pos = false;
+				for (int i = 0; i < ASIZE(_ad->sum); i++){
+					if (_ad->sum[i].e > 0){
+						need_pos = true;
+						break;
+					}
+				}
+				if (need_pos){
+					show_pos();
+					_apc = pos_active;
+				}else{
+					show_cheque_fa();
+					_apc = fa_active;
+				}
+			}
+			if (!_apc)
+				set_term_busy(false);
 		}
 		if (wm_transition){
 			if (TST_FLAG(ZBp, GDF_REQ_FIRST))
