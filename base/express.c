@@ -1,6 +1,6 @@
 /*
  * Синтаксический разбор и обработка текста ответа из "Экспресс-3".
- * (c) gsr 2009-2018.
+ * (c) gsr 2009-2019.
  */
 
 #include <ctype.h>
@@ -9,6 +9,7 @@
 #include <string.h>
 #include "gui/dialog.h"
 #include "gui/scr.h"
+#include "kkt/fd/ad.h"
 #include "kkt/kkt.h"
 #include "kkt/xml.h"
 #include "log/express.h"
@@ -2057,16 +2058,8 @@ extern void show_llog(void);
 /* Обработка текста ответа. Возвращает false, если надо перейти к ОЗУ заказа */
 bool execute_resp(void)
 {
-	int n = n_unhandled(), l = 0, n_para = 0;
-	int next = 0;
-	struct para_info *p = NULL;
-	bool parsed = false;
-	bool jump_next = true;
-	bool has_req = false;
-	bool ndest_shown = false;
-	bool has_kkt_resp = false;
-	
 	set_term_state(st_resp);
+	int n = n_unhandled();
 	set_term_led(hbyte = n2hbyte(n));
 	astate_for_req = ast_none;
 	cur_para = -1;
@@ -2079,7 +2072,16 @@ bool execute_resp(void)
 	preexecute_resp();
 	if (need_lock_term)
 		return true;	/* не переключаться на ОЗУ заказа */
+	int n_para = 0;		/* номер абзаца на ЦКЛ */
+	int next = 0;
+	struct para_info *p = NULL;
+	bool parsed = false;
+	bool jump_next = true;
+	bool has_req = false;
+	bool ndest_shown = false;
+	bool has_kkt_resp = false;
 	while ((n > 0) && !has_req && resp_executing){
+		int l = 0;
 		if (jump_next && !lprn_error_shown){
 			jump_next = false;
 			int k = 0;
@@ -2151,6 +2153,9 @@ bool execute_resp(void)
 					break;
 				case dst_kkt:
 					execute_kkt(p, l);
+					if ((_ad != NULL) && (_ad->clist.count > 0))
+						xlog_set_rec_flags(hxlog, log_number, n_para,
+							XLOG_REC_CPC);
 					has_kkt_resp = true;	/* pass through */
 				case dst_bank:
 					n_para++;		/* pass through */
