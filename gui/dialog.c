@@ -24,7 +24,7 @@
 /* Вертикальный размер кнопки окна диалога */
 #define DLG_BTN_HEIGHT		2
 /* Максимальное количество кнопок в окне диалога */
-#define DLG_MAX_BTNS		2
+#define DLG_MAX_BTNS		3
 /* Расстояние между соседними кнопками по горизонтали */
 #define DLG_BTN_HGAP		5
 /* Горизонтальный зазор между границей окна и текстом */
@@ -32,7 +32,7 @@
 /* Вертикальный зазор между границей окна и текстом */
 #define DLG_VMARGIN		1
 /* Максимальная длина строки текста в окне */
-#define DLG_MAX_STR_LEN		60
+#define DLG_MAX_STR_LEN		80	//60
 /* Максимальное число строк в диалоговом окне */
 #define DLG_MAX_LINES		30
 /* Горизонтальный размер диалогового окна */
@@ -222,23 +222,19 @@ static void draw_dlg_buttons(struct dlg_win *dlg)
 	pGC = CreateGC(x, y, w, h);
 	SetFont(pGC, pFont);
 	bw *= pFont->max_width;
+	int dx = bw + DLG_BTN_HGAP * pFont->max_width;
 	if (dlg->buttons < dlg_custom){
 		DrawButton(pGC, 0, 0, bw, h, BTN_YES_TXT, false);
 		if (dlg->buttons == dlg_yes_no)
 			DrawButton(pGC, w - bw, 0, bw, h, BTN_NO_TXT, false);
 	}else{
-		int dx = bw + DLG_BTN_HGAP * pFont->max_width;
-		struct custom_btn *btn;
-		for (btn = (struct custom_btn *)dlg->buttons, x = 0;
+		x = 0;
+		for (struct custom_btn *btn = (struct custom_btn *)dlg->buttons;
 				btn->text != NULL; btn++, x += dx)
 			DrawButton(pGC, x, 0, bw, h, btn->text, false);
 	}
 	SetPenColor(pGC, clNavy);
-/* FIXME: здесь неявно предполагается, что в окне не может быть больше двух кнопок */
-	if (dlg->active_btn == 0)
-		DrawRect(pGC, 4, 4, bw - 8, h - 8);
-	else
-		DrawRect(pGC, w - bw + 4, 4, bw - 8, h - 8);
+	DrawRect(pGC, dlg->active_btn * dx + 4, 4, bw - 8, h - 8);
 	DeleteGC(pGC);
 }
 

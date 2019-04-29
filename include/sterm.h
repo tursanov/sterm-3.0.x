@@ -171,6 +171,9 @@ enum {
 extern int kt;			/* тип ключа DS1990A */
 extern ds_number dsn;		/* номер ключа DS1990A */
 
+/* Устанавливается во время автоматической печати чека на ККТ */
+extern bool apc;
+
 extern uint16_t	term_check_sum;	/* контрольная сумма терминала */
 extern time_t	time_delta;	/* Tхост - Tтерм. */
 extern int	_term_state;

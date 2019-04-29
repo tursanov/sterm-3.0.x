@@ -24,6 +24,8 @@ enum {
 enum {
 	DLG_BTN_YES = 0,
 	DLG_BTN_NO,
+	DLG_BTN_CANCEL,
+	DLG_BTN_RETRY,
 };
 
 extern int message_box(const char *title, const char *message,

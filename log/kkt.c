@@ -111,7 +111,7 @@ static uint32_t klog_rec_crc32(void)
 {
 	init_crc32_tbl_if_need();
 	uint32_t crc32 = 0xffffffff;
-	size_t len = sizeof(klog_rec_hdr) + klog_rec_hdr.len;
+	size_t len = sizeof(klog_rec_hdr) + KLOG_REC_LEN(klog_rec_hdr.len);
 	for (int i = 0; i < len; i++){
 		uint8_t b = (i < sizeof(klog_rec_hdr)) ?
 			*((uint8_t *)&klog_rec_hdr + i) :
@@ -196,14 +196,15 @@ static bool klog_fill_map(struct log_handle *hlog)
 			fprintf(stderr, "Неверный формат заголовка записи %s #%u (%.8x).\n",
 				hlog->log_type, i, klog_rec_hdr.tag);
 			return log_truncate(hlog, i, tail);
-		}else if (klog_rec_hdr.len > LOG_BUF_LEN){
+		}else if (KLOG_REC_LEN(klog_rec_hdr.len) > LOG_BUF_LEN){
 			fprintf(stderr, "Слишком длинная запись %s #%u: %u байт (max %u).\n",
-				hlog->log_type, i, klog_rec_hdr.len, LOG_BUF_LEN);
+				hlog->log_type, i, KLOG_REC_LEN(klog_rec_hdr.len), LOG_BUF_LEN);
 			return log_truncate(hlog, i, tail);
-		}else if (klog_rec_hdr.len != (klog_rec_hdr.req_len + klog_rec_hdr.resp_len)){
+		}else if (KLOG_REC_LEN(klog_rec_hdr.len) !=
+				(klog_rec_hdr.req_len + klog_rec_hdr.resp_len)){
 			fprintf(stderr, "Неверные данные о длине записи %s #%u: %u != %u + %u.\n",
-				hlog->log_type, i, klog_rec_hdr.len, klog_rec_hdr.req_len,
-				klog_rec_hdr.resp_len);
+				hlog->log_type, i, KLOG_REC_LEN(klog_rec_hdr.len),
+				klog_rec_hdr.req_len, klog_rec_hdr.resp_len);
 			return log_truncate(hlog, i, tail);
 		}
 		hlog->map[i].offset = offs;
@@ -211,7 +212,7 @@ static bool klog_fill_map(struct log_handle *hlog)
 		hlog->map[i].dt = klog_rec_hdr.dt;
 		hlog->map[i].tag = KLOG_STREAM(klog_rec_hdr.stream);
 		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
-		log_data_len = klog_rec_hdr.len;
+		log_data_len = KLOG_REC_LEN(klog_rec_hdr.len);
 		if (log_data_len > 0)
 			try_fn(log_read(hlog, offs, log_data, log_data_len));
 		uint32_t crc = klog_rec_hdr.crc32;
@@ -222,7 +223,7 @@ static bool klog_fill_map(struct log_handle *hlog)
 			return log_truncate(hlog, i, tail);
 		}
 		klog_rec_hdr.crc32 = crc;
-		offs = log_inc_index(hlog, offs, klog_rec_hdr.len);
+		offs = log_inc_index(hlog, offs, KLOG_REC_LEN(klog_rec_hdr.len));
 		if ((i + 1) == hdr->n_recs){
 			last_is_fdo_empty = is_fdo_empty(KLOG_STREAM(klog_rec_hdr.stream),
 					klog_rec_hdr.cmd, klog_rec_hdr.status) &&

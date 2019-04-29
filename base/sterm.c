@@ -158,10 +158,10 @@ static int prev_s_state;		/* используется при работе с окном настроек */
 static bool into_on_response;
 
 /* Устанавливается при выводе на экран сообщений об ошибках ППУ */
-bool lprn_error_shown = false;;
+bool lprn_error_shown = false;
 
 /* Устанавливается во время автоматической печати чека на ККТ */
-static bool _apc = false;
+bool apc = false;
 
 /*
  * При загрузке терминала файловая система на DiskOnChip/DiskOnModule
@@ -1313,7 +1313,7 @@ static void init_term(bool need_init)
 	reset_bank_info();
 	lprn_error_shown = false;
 	rollback_keys(true);
-	_apc = false;
+	apc = false;
 	init_devices();
 	set_iplir_params();
 	if (cfg.use_iplir)
@@ -2305,7 +2305,62 @@ static int handle_ping(struct kbd_event *e)
 	return cmd_none;
 }
 
+static void show_pos(void);
 static void show_cheque_fa(void);
+
+/* Завершение работы банковского приложения */
+static void on_end_pos(void)
+{
+	reset_bank_info();
+	pos_active = false;
+	online = true;
+	pop_term_info();
+	if (pos_err_xdesc == NULL){
+		if (apc){
+			static struct custom_btn btns[] = {
+				{
+					.text	= "Успешная оплата",
+					.cmd	= DLG_BTN_YES,
+				},
+				{
+					.text	= "Повтор оплаты",
+					.cmd	= DLG_BTN_RETRY,
+				},
+				{
+					.text	= "Отказ от оплаты",
+					.cmd	= DLG_BTN_CANCEL,
+				},
+				{
+					.text	= NULL,
+					.cmd	= 0,
+				},
+			};
+			int rc = message_box("АВТОМАТИЧЕСКАЯ ПЕЧАТЬ ЧЕКА",
+				"Выберите дальнейшее действие", (int)btns, 0, al_center);
+			switch (rc){
+				case DLG_BTN_YES:
+					show_cheque_fa();
+					apc = fa_active;
+					break;
+				case DLG_BTN_RETRY:
+/* FIXME: в этом случае по окончании работы с ИПТ мы не посылаем INIT CHECK (pos_new) */
+					if (pos_get_state() == pos_finish)
+						pos_set_state(pos_idle);
+					show_pos();
+					apc = pos_active;
+					break;
+				default:
+					apc = false;
+			}
+		}
+	}else{
+		apc = false;
+		set_term_astate(ast_pos_error);
+	}
+	if (!apc)
+		redraw_term(true, main_title);
+
+}
 
 /* Обработчик окна POS-терминала */
 static int handle_pos(struct kbd_event *e)
@@ -2322,21 +2377,7 @@ static int handle_pos(struct kbd_event *e)
 		case pos_ewait:
 			break;
 		default:
-			reset_bank_info();
-			pos_active = false;
-			online = true;
-			pop_term_info();
-			if (pos_err_xdesc == NULL){
-				if (_apc){
-					show_cheque_fa();
-					_apc = fa_active;
-				}
-			}else{
-				_apc = false;
-				set_term_astate(ast_pos_error);
-			}
-			if (!_apc)
-				redraw_term(true, main_title);
+			on_end_pos();
 	}
 	return cmd_none;
 }
@@ -2350,7 +2391,7 @@ static int handle_fa(struct kbd_event *e)
 		pop_term_info();
 		scr_visible = true;
 		show_cursor();
-		_apc = false;
+		apc = false;
 		redraw_term(true, main_title);
 	}
 
@@ -3948,7 +3989,7 @@ static void on_response(void)
 				show_req();
 			if ((c_state != cs_hasreq) && need_apc()){
 				show_req();
-				_apc = true;
+				apc = true;
 				bool need_pos = false;
 				for (int i = 0; i < ASIZE(_ad->sum); i++){
 					if (_ad->sum[i].e > 0){
@@ -3958,13 +3999,13 @@ static void on_response(void)
 				}
 				if (need_pos){
 					show_pos();
-					_apc = pos_active;
+					apc = pos_active;
 				}else{
 					show_cheque_fa();
-					_apc = fa_active;
+					apc = fa_active;
 				}
 			}
-			if (!_apc)
+			if (!apc)
 				set_term_busy(false);
 		}
 		if (wm_transition){
