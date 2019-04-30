@@ -336,7 +336,7 @@ bool klog_can_find(struct log_handle *hlog)
 static bool klog_add_rec(struct log_handle *hlog)
 {
 	uint32_t offs;
-	uint32_t rec_len = klog_rec_hdr.len + sizeof(klog_rec_hdr);
+	uint32_t rec_len = KLOG_REC_LEN(klog_rec_hdr.len) + sizeof(klog_rec_hdr);
 	if (rec_len > hlog->hdr->len){
 		fprintf(stderr, "Длина записи (%u байт) превышает длину %s (%u байт).\n",
 				rec_len, hlog->log_type, hlog->hdr->len);
@@ -375,12 +375,12 @@ static bool klog_add_rec(struct log_handle *hlog)
 		hlog->hdr->head = hlog->map[hlog->map_head].offset;
 		offs = hlog->hdr->tail;
 		hlog->hdr->tail = log_inc_index(hlog, hlog->hdr->tail,
-				sizeof(klog_rec_hdr) + klog_rec_hdr.len);
+				sizeof(klog_rec_hdr) + KLOG_REC_LEN(klog_rec_hdr.len));
 		ret = hlog->write_header(hlog) &&
 			log_write(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)) &&
-			((klog_rec_hdr.len == 0) ||
+			((KLOG_REC_LEN(klog_rec_hdr.len) == 0) ||
 			log_write(hlog, log_inc_index(hlog, offs, sizeof(klog_rec_hdr)),
-				log_data, klog_rec_hdr.len));
+				log_data, KLOG_REC_LEN(klog_rec_hdr.len)));
 	}
 	log_end_write(hlog);
 	return ret;
@@ -604,7 +604,7 @@ static uint32_t klog_write_fdo_empty(struct log_handle *hlog, const uint8_t *req
 /* Занесение записи на ККЛ. Возвращает номер записи */
 uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	const uint8_t *req, uint16_t req_len,
-	uint8_t status, const uint8_t *resp, uint16_t resp_len)
+	uint8_t status, const uint8_t *resp, uint16_t resp_len, uint32_t flags)
 {
 	uint32_t ret = -1UL;
 	if ((hlog == NULL) || (t0 == NULL) || (req == NULL) || (req_len < 2))
@@ -617,7 +617,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	}
 	klog_push_data();
 	do {
-		size_t len = req_len + resp_len;
+		uint32_t len = req_len + resp_len;
 		if (len > sizeof(log_data)){
 			fprintf(stderr, "Переполнение буфера данных при записи на %s (%u байт).\n",
 				hlog->log_type, len);
@@ -651,14 +651,14 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 			if ((resp != NULL) && (resp_len > 0))
 				memcpy(log_data + req_len, resp, resp_len);
 			log_data_len = len;
-			klog_rec_hdr.len = len;
+			klog_rec_hdr.len = len | (flags & KLOG_REC_FLAG_MASK);
 			klog_rec_hdr.req_len = req_len;
 			klog_rec_hdr.resp_len = resp_len;
 		}
 		klog_rec_hdr.stream = stream;
 		klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
 		klog_rec_hdr.status = status;
-		if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
+/*		if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
 			memcpy(log_data, req, req_len);
 			if ((resp != NULL) && (resp_len > 0))
 				memcpy(log_data + req_len, resp, resp_len);
@@ -666,7 +666,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 			klog_rec_hdr.len = len;
 			klog_rec_hdr.req_len = req_len;
 			klog_rec_hdr.resp_len = resp_len;
-		}
+		}*/
 		klog_rec_hdr.crc32 = klog_rec_crc32();
 		if (klog_add_rec(hlog))
 			ret = klog_rec_hdr.number;
@@ -697,13 +697,14 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 		uint32_t offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
 		if (!log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)))
 			break;
-		if (klog_rec_hdr.len > sizeof(log_data)){
+		if (KLOG_REC_LEN(klog_rec_hdr.len) > sizeof(log_data)){
 			fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
-					hlog->log_type, index, klog_rec_hdr.len);
+				hlog->log_type, index, KLOG_REC_LEN(klog_rec_hdr.len));
 			break;
 		}
 		offs = log_inc_index(hlog, offs, sizeof(klog_rec_hdr));
-		if ((klog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data, klog_rec_hdr.len))
+		if ((KLOG_REC_LEN(klog_rec_hdr.len) > 0) &&
+				!log_read(hlog, offs, log_data, KLOG_REC_LEN(klog_rec_hdr.len)))
 			break;
 		uint32_t crc = klog_rec_hdr.crc32;
 		klog_rec_hdr.crc32 = 0;
@@ -713,7 +714,7 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 			break;
 		}
 		klog_rec_hdr.crc32 = crc;
-		log_data_len = klog_rec_hdr.len;
+		log_data_len = KLOG_REC_LEN(klog_rec_hdr.len);
 		ret = true;
 	} while (false);
 	if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
@@ -824,6 +825,7 @@ static bool klog_print_rec_header(void)
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
 			klog_rec_hdr.dsn[4], klog_rec_hdr.dsn[3],
 			klog_rec_hdr.dsn[2], klog_rec_hdr.dsn[1]) &&
+		(!(klog_rec_hdr.len & KLOG_REC_APC) || prn_write_str(" [АПЧ]")) &&
 		prn_write_eol();
 }
 
@@ -835,11 +837,11 @@ static inline bool is_print(uint8_t b)
 /* Вывод на печать строки контрольной ленты */
 static bool klog_print_line(bool recode)
 {
-	if (log_data_index >= klog_rec_hdr.len)
+	if (log_data_index >= KLOG_REC_LEN(klog_rec_hdr.len))
 		return false;
 	uint32_t begin = log_data_index, end = klog_rec_hdr.req_len, addr = begin;
 	if (log_data_index >= klog_rec_hdr.req_len){
-		end = klog_rec_hdr.len;
+		end = KLOG_REC_LEN(klog_rec_hdr.len);
 		addr -= klog_rec_hdr.req_len;
 	}
 	static char ln[128];

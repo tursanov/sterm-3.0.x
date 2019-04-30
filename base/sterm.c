@@ -2317,6 +2317,7 @@ static void on_end_pos(void)
 	pop_term_info();
 	if (pos_err_xdesc == NULL){
 		if (apc){
+			hide_cursor();
 			static struct custom_btn btns[] = {
 				{
 					.text	= "“α―¥θ­ ο ®―« β ",
@@ -2337,6 +2338,7 @@ static void on_end_pos(void)
 			};
 			int rc = message_box("€‚’€’—…‘€ …—€’ —…€",
 				"‚λ΅¥ΰ¨β¥ ¤ «μ­¥©θ¥¥ ¤¥©αβΆ¨¥", (int)btns, 0, al_center);
+			show_cursor();
 			switch (rc){
 				case DLG_BTN_YES:
 					show_cheque_fa();

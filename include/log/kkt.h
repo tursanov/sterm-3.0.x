@@ -47,7 +47,9 @@ struct klog_rec_header {
 	uint32_t stream;	/* идентификатор потока, а также счётчик пустых запросов ОФД */
 	uint32_t len;		/* длина записи без учета заголовка, а также признак АПЧ */
 #define KLOG_REC_APC		0x80000000
-#define KLOG_REC_LEN(l) (l & ~KLOG_REC_APC)
+#define KLOG_REC_FLAG_MASK	(KLOG_REC_APC)
+#define KLOG_REC_LEN_MASK	~KLOG_REC_FLAG_MASK
+#define KLOG_REC_LEN(l)		(l & KLOG_REC_LEN_MASK)
 	uint16_t req_len;	/* длина переданных данных */
 	uint16_t resp_len;	/* длина принятых данных */
 	struct date_time dt;	/* дата и время (по Москве) создания записи */
@@ -78,7 +80,7 @@ extern bool  klog_can_print(struct log_handle *hlog);
 extern bool  klog_can_find(struct log_handle *hlog);
 extern uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	const uint8_t *req, uint16_t req_len,
-	uint8_t status, const uint8_t *resp, uint16_t resp_len);
+	uint8_t status, const uint8_t *resp, uint16_t resp_len, uint32_t flags);
 extern bool  klog_read_rec(struct log_handle *hlog, uint32_t index);
 
 extern bool  klog_print_header(void);

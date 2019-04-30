@@ -147,14 +147,15 @@ static const char *klog_get_head_line2(char *buf)
 				klog_rec_hdr.ms);
 		}
 		sprintf(buf, "Запись %u [%s%s] от %s "
-			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX",
+			"жетон %c %.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%.2hhX%s",
 			klog_rec_hdr.number + 1,
 			klog_get_stream_name(KLOG_STREAM(klog_rec_hdr.stream)), rep, dt,
 			ds_key_char(klog_rec_hdr.ds_type),
 			klog_rec_hdr.dsn[7], klog_rec_hdr.dsn[0],
 			klog_rec_hdr.dsn[6], klog_rec_hdr.dsn[5],
 			klog_rec_hdr.dsn[4], klog_rec_hdr.dsn[3],
-			klog_rec_hdr.dsn[2], klog_rec_hdr.dsn[1]);
+			klog_rec_hdr.dsn[2], klog_rec_hdr.dsn[1],
+			(klog_rec_hdr.len & KLOG_REC_APC) ? " [АПЧ]" : "");
 	}
 	return buf;
 }
