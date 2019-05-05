@@ -903,15 +903,31 @@ bool show_hints(void)
 			const char *descr = hints[j].descr;			
 			char descr_tmp[256];
 			
-			if ((i == (NR_HINTS2 - 1) && _ad != NULL && AD_doc_count() > 0)) {
-				sprintf(descr_tmp, "ääí (%d)", AD_doc_count());
-				descr = descr_tmp;
+			if (i == (NR_HINTS2 - 1)) {
+			    if (_ad != NULL && AD_doc_count() > 0) {
+					sprintf(descr_tmp, "ääí (%d)", AD_doc_count());
+					descr = descr_tmp;
+				}
 			}
 				
 			SetTextColor(pMemGC, clBlack);
 			DrawText(pMemGC, ofs+x+33, hint_h+hint_h/2+4, hint_w-33, hint_h/2, 
 				descr, DT_LEFT | DT_VCENTER);
 			DrawBitmap(pMemGC, glyphs[j], ofs+x, hint_h+4, 32, 32, true, FROM_BMP);	
+
+			if (i == (NR_HINTS2 - 1)) {
+				const char *text = cfg.fiscal_mode ? "î" : "ç/î";
+
+				int tw = GetTextWidth(pMemGC, text);
+
+				SetTextColor(pMemGC, clWhite);
+				DrawText(pMemGC, ofs+x+94 - tw + 1, hint_h + 3, hint_w-33, hint_h/2, 
+					text, DT_LEFT | DT_VCENTER);
+
+				SetTextColor(pMemGC, kkt ? clGreen : clRed);
+				DrawText(pMemGC, ofs+x+94 - tw, hint_h + 3, hint_w-33, hint_h/2, 
+					text, DT_LEFT | DT_VCENTER);
+			}
 		}
 		
 		for (i = 0; i < NR_HINTS; i++){

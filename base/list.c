@@ -28,15 +28,40 @@ int list_add(list_t *list, void *obj) {
 	return list_add_item(list, item);
 }
 
+int list_remove_item(list_t *list, list_item_t *i) {
+	for (list_item_t *item = list->head; item != NULL;) {
+		list_item_t *tmp = item;
+		item = item->next;
+		if (tmp == i) {
+			list_item_t *prev = tmp->prev;
+
+			if (prev != NULL)
+				prev->next = item;
+			if (item == NULL)
+				list->tail = prev;
+			else
+				item->prev = prev;
+			if (tmp == list->head)
+				list->head = item;
+			list->count--;
+
+			if (list->delete_func != NULL)
+				list->delete_func(tmp->obj);
+			free(tmp);
+
+			return 1;
+		} /*else
+		  prev = tmp;*/
+	}
+	return 0;
+}
+
 int list_remove(list_t *list, void *obj) {
     for (list_item_t *item = list->head; item != NULL;) {
         list_item_t *tmp = item;
         item = item->next;
         if (tmp->obj == obj) {
-            if (list->delete_func != NULL)
-                list->delete_func(tmp->obj);
 			list_item_t *prev = tmp->prev;
-            free(tmp);
 
             if (prev != NULL)
                 prev->next = item;
@@ -47,7 +72,12 @@ int list_remove(list_t *list, void *obj) {
             if (tmp == list->head)
                 list->head = item;
             list->count--;
-            return 1;
+
+			if (list->delete_func != NULL)
+				list->delete_func(tmp->obj);
+			free(tmp);
+
+			return 1;
         } /*else
             prev = tmp;*/
     }
@@ -169,17 +199,21 @@ int list_remove_if(list_t *list, void *arg, list_item_func_t func) {
 }
 
 int list_clear(list_t* list) {
-    for (list_item_t *item = list->head; item != NULL;) {
-        list_item_t *tmp = item;
-        item = item->next;
-        
-        if (list->delete_func != NULL)
-            list->delete_func(tmp->obj);
-        free(tmp);
-    }
-    list->head = list->tail = NULL;
-    list->count = 0;
-    
+	while (list->head) {
+		list_item_t *head = list->head;
+		list_item_t *next = head->next;
+
+		list->head = next;
+		if (next)
+			next->prev = NULL;
+		if (!next || !next->next)
+			list->tail = next;
+		list->count--;
+
+		if (list->delete_func != NULL)
+			list->delete_func(head->obj);
+		free(head);
+	}
     return 0;
 }
 

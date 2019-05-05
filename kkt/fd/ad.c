@@ -4,12 +4,14 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include "sysdefs.h"
+#include "serialize.h"
 #ifdef WIN32
 #include "ad.h"
+void cashier_set_name(const char *name) {
+}
 #else
 #include "kkt/fd/ad.h"
 #include "gui/fa.h"
-#include "serialize.h"
 #endif
 
 #ifdef WIN32
@@ -26,6 +28,106 @@ static int strcmp2(const char *s1, const char *s2) {
         return 1;
     else 
         return strcmp(s1, s2);
+}
+
+#define COPYSTR(s) ((s) != NULL ? strdup(s) : NULL)
+
+void doc_no_init(doc_no_t *d, const char *s) {
+	d->s = COPYSTR(s);
+}
+
+void doc_no_free(doc_no_t *d) {
+	if (d->s) {
+		free(d->s);
+		d->s = NULL;
+	}
+}
+
+int doc_no_save(FILE *f, doc_no_t *d) {
+	return save_string(f, d->s);
+}
+
+int doc_no_load(FILE *f, doc_no_t *d) {
+	int ret = load_string(f, &d->s);
+	return ret;
+}
+
+void doc_no_copy(doc_no_t *dst, doc_no_t *src) {
+	if (dst == src)
+		return;
+	if (dst->s)
+		free(dst->s);
+	dst->s = COPYSTR(src->s);
+}
+
+int doc_no_compare(doc_no_t *d1, doc_no_t *d2) {
+	return strcmp2(d1->s, d2->s);
+}
+
+int64_t doc_no_to_i64(doc_no_t *d) {
+	char *endp;
+	return d->s ? strtoll(d->s, &endp, 10) : 0;
+}
+
+bool doc_no_is_empty(doc_no_t *d) {
+	return d->s == NULL;
+}
+
+
+void op_doc_no_init(op_doc_no_t *d) {
+	d->s = NULL;
+}
+
+void op_doc_no_free(op_doc_no_t *d) {
+	if (d->s) {
+		free(d->s);
+		d->s = NULL;
+	}
+}
+
+int op_doc_no_save(FILE *f, op_doc_no_t *d) {
+	return save_string(f, d->s);
+}
+
+int op_doc_no_load(FILE *f, op_doc_no_t *d) {
+	int ret = load_string(f, &d->s);
+	return ret;
+}
+
+void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src) {
+	if (dst->s)
+		free(dst->s);
+	dst->s = COPYSTR(src->s);
+}
+
+void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2) {
+	if (dst->s)
+		free(dst->s);
+	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
+	size_t len2 = op ? strlen(op) : 0;
+	size_t len3 = (d2 && d2->s != NULL) ? strlen(d2->s) : 0;
+	size_t len = len1 + len2 + len3 + (len2 || len3 ? 2 : 0);
+	size_t ofs = 0;
+	dst->s = (char *)malloc(len + 1);
+	char *s = dst->s;
+
+	if (len1 > 0) {
+		memcpy(s, d1->s, len1);
+		ofs += len1;
+	}
+	if (len2 > 0 || len3 > 0)
+		s[ofs++] = '(';
+	if (len2 > 0) {
+		memcpy(s + ofs, op, len2);
+		ofs += len2;
+	}
+	if (len3 > 0) {
+		memcpy(s + ofs, d2->s, len3);
+		ofs += len3;
+	}
+	if (len2 > 0 || len3 > 0)
+		s[ofs++] = ')';
+	s[ofs] = 0;
 }
 
 L *L_create(void) {
@@ -81,7 +183,16 @@ void K_destroy(K *k) {
         free(k->t);
     if (k->e)
         free(k->e);
-    free(k);
+
+	doc_no_free(&k->d);
+	doc_no_free(&k->r);
+	doc_no_free(&k->i1);
+	doc_no_free(&k->i2);
+	doc_no_free(&k->i21);
+	doc_no_free(&k->u);
+	op_doc_no_free(&k->b);
+
+	free(k);
 }
 
 bool K_addL(K *k, L* l) {
@@ -91,9 +202,8 @@ bool K_addL(K *k, L* l) {
 	return false;
 }
 
-#define COPYSTR(s) ((s) != NULL ? strdup(s) : NULL)
-
-K *K_divide(K *k, uint8_t p) {
+K *K_divide(K *k, uint8_t p, int64_t *sum) {
+	int64_t s = 0;
 	K *k1 = NULL;
 	int count = 0;
 	for (list_item_t *item = k->llist.head, *prev = NULL; item != NULL;) {
@@ -109,23 +219,30 @@ K *K_divide(K *k, uint8_t p) {
 				k->llist.head = item;
 			count++;
 
+			s += l->t;
+
 			if (k1 == NULL) {
 				k1 = (K*)malloc(sizeof(K));
-				memset(&k1->llist, 0, sizeof(k1->llist));
+				memset(k1, 0, sizeof(K));
+				//memset(&k1->llist, 0, sizeof(k1->llist));
 				k->llist.delete_func = (list_item_delete_func_t)L_destroy;
 
 				k1->o = k->o;          // Операция
-				k1->d = k->d;          // Номер оформляемого документа или КРС при возврате
-				k1->r = k->r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
-				k1->i1 = k->i1;          // индекс
-				k1->i2 = k->i2;          // индекс
-				k1->i21 = k->i21;          // индекс
+				k1->a = k->a;
 				k1->p = k->p;          // ИНН перевозчика
 
 				k1->h = COPYSTR(k->h); // телефон перевозчика
 				k1->m = k->m;          // способ оплаты
 				k1->t = COPYSTR(k->t);            // номер телефона пассажира
 				k1->e = COPYSTR(k->e);            // адрес электронной посты пассажира
+
+				doc_no_copy(&k1->d, &k->d);
+				doc_no_copy(&k1->r, &k->r);
+				doc_no_copy(&k1->i1, &k->i1);
+				doc_no_copy(&k1->i2, &k->i2);
+				doc_no_copy(&k1->i21, &k->i21);
+				doc_no_copy(&k1->u, &k->u);
+				op_doc_no_copy(&k1->b, &k->b);
 			}
 
 			list_add_item(&k1->llist, tmp);
@@ -133,6 +250,9 @@ K *K_divide(K *k, uint8_t p) {
 			prev = tmp;
 	}
 	k->llist.count -= count;
+
+	if (sum)
+		*sum = s;
 
     return k1;
 }
@@ -151,14 +271,26 @@ bool K_equalByL(K *k1, K* k2) {
     return list_compare(&k1->llist, &k2->llist, NULL, (list_item_compare_func_t)L_compare) == 0;
 }
 
+int64_t K_get_sum(K *k) {
+	int64_t sum = 0;
+	for (list_item_t *item = k->llist.head; item != NULL; item = item->next) {
+		L *l = LIST_ITEM(item, L);
+		sum += l->t;
+	}
+	return sum;
+}
+
 int K_save(FILE *f, K *k) {
     if (save_list(f, &k->llist, (list_item_func_t)L_save) < 0 ||
         SAVE_INT(f, k->o) < 0 ||
-        SAVE_INT(f, k->d) < 0 ||
-        SAVE_INT(f, k->r) < 0 ||
-        SAVE_INT(f, k->i1) < 0 ||
-		SAVE_INT(f, k->i2) < 0 ||
-		SAVE_INT(f, k->i21) < 0 ||
+		SAVE_INT(f, k->a) < 0 ||
+        doc_no_save(f, &k->d) < 0 ||
+		doc_no_save(f, &k->r) < 0 ||
+		doc_no_save(f, &k->i1) < 0 ||
+		doc_no_save(f, &k->i2) < 0 ||
+		doc_no_save(f, &k->i21) < 0 ||
+		doc_no_save(f, &k->u) < 0 ||
+		op_doc_no_save(f, &k->b) < 0 ||
 		SAVE_INT(f, k->p) < 0 ||
         save_string(f, k->h) < 0 ||
         SAVE_INT(f, k->m) < 0 ||
@@ -182,11 +314,14 @@ K *K_load(FILE *f) {
     K *k = K_create();
     if (load_list(f, &k->llist, (load_item_func_t)L_load) < 0 ||
             LOAD_INT(f, k->o) < 0 ||
-            LOAD_INT(f, k->d) < 0 ||
-            LOAD_INT(f, k->r) < 0 ||
-            LOAD_INT(f, k->i1) < 0 ||
-			LOAD_INT(f, k->i2) < 0 ||
-			LOAD_INT(f, k->i21) < 0 ||
+			LOAD_INT(f, k->a) < 0 ||
+            doc_no_load(f, &k->d) < 0 ||
+			doc_no_load(f, &k->r) < 0 ||
+			doc_no_load(f, &k->i1) < 0 ||
+			doc_no_load(f, &k->i2) < 0 ||
+			doc_no_load(f, &k->i21) < 0 ||
+			doc_no_load(f, &k->u) < 0 ||
+			op_doc_no_load(f, &k->b) < 0 ||
 			LOAD_INT(f, k->p) < 0 ||
             load_string(f, &k->h) < 0 ||
             LOAD_INT(f, k->m) < 0 ||
@@ -489,6 +624,7 @@ int AD_load(uint8_t t1055, bool clear) {
         
     printf("AD_load: %d, ad.C.count: %d, ad.docs.count: %d\n", ret, _ad->clist.count,
     	_ad->docs.count);
+    printf("ad.t1086: %s\n", _ad->t1086);
     
     fclose(f);
     return ret;
@@ -528,7 +664,7 @@ int AD_delete_doc(int64_t doc) {
         C *c = LIST_IT_OBJ(i1, C);
 		for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
 			K *k = LIST_IT_OBJ(i2, K);
-			if (k->d == doc) {
+			if (doc_no_to_i64(&k->d) == doc) {
 				list_it_remove(&i2);
 				count++;
             }
@@ -553,11 +689,11 @@ C* AD_getCheque(K *k, uint8_t t1054, uint8_t t1055) {
     return NULL;
 }
 
-int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
+int AD_makeCheque(K *k, doc_no_t *d, uint8_t t1054, uint8_t t1055, int64_t s) {
     if (k->llist.count == 0)
         return 0;
     
-    k->d = d;
+	doc_no_copy(&k->d, d);
     C* c = AD_getCheque(k, t1054, t1055);
     
     if (c == NULL) {
@@ -573,7 +709,8 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
     } else
     	printf("cheque found\n");
 
-    list_add(&c->klist, k);
+	k->a = (s == 0) ? 0 : 1;
+	list_add(&c->klist, k);
     K_after_add(k);
 
     printf("AD CH: %d\n", _ad->clist.count);
@@ -582,12 +719,14 @@ int AD_makeCheque(K *k, int64_t d, uint8_t t1054, uint8_t t1055) {
 }
 
 int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
+	// для всех
     for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
         C *c = LIST_IT_OBJ(i1, C);
         if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
             for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
                 K *k1 = LIST_IT_OBJ(i2, K);
-                if (k1->i1 == k->r && k1->m == k->m && k1->o == o) {
+                if (doc_no_compare(&k1->i1, &k->r) == 0 &&
+					k1->m == k->m && k1->o == o) {
                     if (K_equalByL(k, k1)) {
                         list_it_remove(&i2);
                         if (c->klist.count == 0) {
@@ -597,65 +736,123 @@ int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 						K_destroy(k);
 						return 0;
 					}
-                }
+				}
             }
         }
     }
-    AD_makeCheque(k, k->r, 2, t1055);
+	op_doc_no_set(&k->b, &k->r, "гашение", NULL);
+	AD_makeCheque(k, &k->r, 2, t1055, 0);
     return 0;
 }
 
-int AD_makeAnnulReturn(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
-	for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
-		C *c = LIST_IT_OBJ(i1, C);
-		if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
-			for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
-				K *k1 = LIST_IT_OBJ(i2, K);
-				if ((k1->i2 == k->r || k1->i21 == k->r) && k1->m == k->m && k1->o == o) {
-					if (K_equalByL(k, k1)) {
-						list_it_remove(&i2);
-						if (c->klist.count == 0)
-							list_it_remove(&i1);
-						K_destroy(k);
-						return 0;
+int AD_makeAnnulReturn(K *k, K *k2, uint8_t t1055, int64_t sB) {
+	C *f = NULL;
+	K *f_k = NULL;
+
+	C *s = NULL;
+	K *s_k = NULL;
+
+	for (list_item_t *li11 = _ad->clist.head; li11; li11 = li11->next) {
+		f = LIST_ITEM(li11, C);
+		if (f->p == k->p && strcmp2(f->h, k->h) == 0 && f->t1054 == 2 && f->t1055 == t1055) {
+			for (list_item_t *li12 = f->klist.head; li12; li12 = li12->next) {
+				f_k = LIST_ITEM(li12, K);
+				if ((doc_no_is_empty(&f_k->i2) || doc_no_compare(&f_k->i2, &k->r) == 0) &&
+					doc_no_compare(&f_k->i21, &k->r) == 0 && f_k->m == k->m && f_k->o == 2) {
+					if (K_equalByL(k, f_k)) {
+						goto L1;
 					}
 				}
 			}
 		}
 	}
-	AD_makeCheque(k, k->r, t1054 == 2 ? 1 : 2, t1055);
+
+L1:
+	if (f_k && k2->llist.head) {
+		for (list_item_t *li21 = _ad->clist.head; li21; li21 = li21->next) {
+			s = LIST_ITEM(li21, C);
+			if (s->p == k->p && strcmp2(s->h, k->h) == 0 && s->t1054 == 1 && s->t1055 == t1055) {
+				for (list_item_t *li22 = s->klist.head; li22; li22 = li22->next) {
+					s_k = LIST_ITEM(li22, K);
+					if ((doc_no_is_empty(&s_k->i2) || doc_no_compare(&s_k->i2, &k2->r) == 0) &&
+						doc_no_compare(&s_k->i21, &k2->r) == 0 && s_k->m == k->m && s_k->o == 2) {
+						if (K_equalByL(k, s_k))
+							goto L2;
+					}
+				}
+			}
+		}
+		f = NULL;
+		f_k = NULL;
+	}
+
+L2:
+	if (f) {
+		list_remove(&f->klist, f_k);
+		if (!f->klist.count)
+			list_remove(&_ad->clist, f);
+		if (s) {
+			list_remove(&s->klist, s_k);
+			if (!s->klist.count)
+				list_remove(&_ad->clist, s);
+		}
+	} else {
+		op_doc_no_set(&k->b, &k->r, "гашение возврата", NULL);
+		AD_makeCheque(k, &k->r, 1, t1055, sB);
+
+		if (k2->llist.count > 0) {
+			op_doc_no_set(&k2->b, &k->r, "гашение возврата", NULL);
+			AD_makeCheque(k, &k->r, 2, t1055, sB);
+		}
+	}
 	return 0;
 }
 
 int AD_processO(K *k) {
     K *k1, *k2;
+	int64_t tB1 = 0;
 
     printf("process new K. K->o = %d\n", k->o);
 
     switch (k->o) {
         case 1:
-            k->i1 = k->d;
-            AD_makeCheque(k, k->d, 1, _ad->t1055);
+			doc_no_copy(&k->i1, &k->d);
+			if (doc_no_is_not_empty(&k->r)) {
+				doc_no_copy(&k->u, &k->r);
+				op_doc_no_set(&k->b, &k->d, "переоформление", &k->r);
+			} else
+				op_doc_no_set(&k->b, &k->d, NULL, NULL);
+			AD_makeCheque(k, &k->d, 1, _ad->t1055, 0);
             break;
-        case 2:
-            k1 = K_divide(k, 1);
-            k->i2 = k->d;
-			k->i21 = k->r;
-            AD_makeCheque(k, k->r, 2, _ad->t1055);
+		case 2:
+			tB1 = 0;
+			k1 = K_divide(k, 1, &tB1);
+
+			doc_no_copy(&k->i2, &k->d);
+			doc_no_copy(&k->i21, &k->r);
+			op_doc_no_set(&k->b, &k->r, "возврат", NULL);
+			//k->i2 = k->d;
+			//k->i21 = k->r;
+			AD_makeCheque(k, &k->r, 2, _ad->t1055, tB1);
 			if (k1) {
-				k1->i2 = k1->d;
-				k1->i21 = k1->r;
-				AD_makeCheque(k1, k1->d, 1, _ad->t1055);
+				if (doc_no_is_not_empty(&k->d)) {
+					doc_no_copy(&k1->i2, &k1->d);
+					op_doc_no_set(&k->b, &k->d, "возврат", &k->r);
+				} else
+					op_doc_no_set(&k->b, NULL, "возврат", &k->r);
+				doc_no_copy(&k1->i21, &k1->r);
+				//k1->i2 = k1->d;
+				//k1->i21 = k1->r;
+				AD_makeCheque(k1, &k1->d, 1, _ad->t1055, tB1);
 			}
-            break;
+			break;
         case 3:
             AD_makeAnnul(k, 1, 1, _ad->t1055);
             break;
         case 4:
-            k2 = K_divide(k, 2);
-            AD_makeAnnulReturn(k, 2, 2, _ad->t1055);
-			if (k2)
-				AD_makeAnnulReturn(k2, 2, 1, _ad->t1055);
+			tB1 = 0;
+            k2 = K_divide(k, 2, &tB1);
+            AD_makeAnnulReturn(k, k2, _ad->t1055, tB1);
             break;
     }
     return 0;
@@ -720,6 +917,32 @@ static int process_int_value(const char *tag, const char *name, const char *val,
     *mask |= mask_value;
     
     return 0;
+}
+
+static int process_doc_no_value(const char *tag, const char *name, const char *val,
+	uint32_t *mask,
+	uint32_t mask_value,
+	bool can_stars,
+	doc_no_t *out) {
+	const char *s = val;
+	int i;
+
+	for (i = 0; *s && i < 14; i++) {
+		if (!isdigit(*s) && (!can_stars || *s != '*' || i == 0 || i >= 4)) {
+			printf("%s/@%s: Неправильный символ в номере документа\n", tag, name);
+			return ERR_INVALID_VALUE;
+		}
+	}
+
+	if (i < 13) {
+		printf("%s/@%s: Неправильная длина номера документа\n", tag, name);
+		return ERR_INVALID_VALUE;
+	}
+
+	doc_no_init(out, val);
+	*mask |= mask_value;
+
+	return 0;
 }
 
 static int process_currency_value(const char *tag, const char *name,
@@ -928,17 +1151,11 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                         return ret;
 					_k->o = (uint8_t)v64;
                 } else if (strcmp(name, "D") == 0) {
-                    if ((ret = check_str_len("K", name, val, 13, 14)) != 0 ||
-                        (ret = process_int_value("K", name, val, 0, INT64_MAX,
-                                                 &_kMask, 0x2, &v64)) != 0)
+                    if ((ret = process_doc_no_value("K", name, val, &_kMask, 0x2, false, &_k->d)) != 0)
                         return ret;
-                    _k->d = v64;
                 } else if (strcmp(name, "R") == 0) {
-                    if ((ret = check_str_len("K", name, val, 13, 14)) != 0 ||
-                        (ret = process_int_value("K", name, val, 0, INT64_MAX,
-                                                 &_kMask, 0x4, &v64)) != 0)
-                        return ret;
-                    _k->r = v64;
+					if ((ret = process_doc_no_value("K", name, val, &_kMask, 0x4, true, &_k->r)) != 0)
+						return ret;
                 } else if (strcmp(name, "P") == 0) {
                     if ((ret = check_str_len("K", name, val, 10, 12)) != 0 ||
                         (ret = process_int_value("K", name, val, 0, INT64_MAX,
@@ -987,7 +1204,6 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
     return 0;
 }
 
-
 void AD_calc_sum() {
 	memset(_ad->sum, 0, sizeof(_ad->sum));
 	_ad->docs.count = 0;
@@ -997,23 +1213,29 @@ void AD_calc_sum() {
 		memset(&c->sum, 0, sizeof(c->sum));
 		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
-			int64_array_add(&_ad->docs, k->d, true);
+			int64_t d = doc_no_to_i64(&k->d);
+			int64_array_add(&_ad->docs, d, true);
 			for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
 				L *l = LIST_ITEM(li3, L);
 				S *s = &_ad->sum[l->p - 1];
-				switch (k->m) {
-				case 1:
-					c->sum.n += l->t;
-					s->n += l->t;
-					break;
-				case 2:
-					c->sum.e += l->t;
-					s->e += l->t;
-					break;
-				case 3:
-					c->sum.p += l->t;
-					s->p += l->t;
-					break;
+				if (k->a) {
+					c->sum.b += l->t;
+					s->b += l->t;
+				} else {
+					switch (k->m) {
+					case 1:
+						c->sum.n += l->t;
+						s->n += l->t;
+						break;
+					case 2:
+						c->sum.e += l->t;
+						s->e += l->t;
+						break;
+					case 3:
+						c->sum.p += l->t;
+						s->p += l->t;
+						break;
+					}
 				}
 				c->sum.a += l->t;
 				s->a += l->t;

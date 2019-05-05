@@ -59,7 +59,7 @@ uint8_t *load_pattern(uint8_t doc_type, const uint8_t *pattern_footer,
 
 	if ((ret = fseek(f, 0, SEEK_END)) != 0) {
 		perror("fseek end");
-		sprintf(last_error, "Ошибка позиционyyирования файла шаблона (%d)", errno);
+		sprintf(last_error, "Ошибка позиционирования файла шаблона (%d)", errno);
 		goto LOut;
 	}
 	file_size = ftell(f);

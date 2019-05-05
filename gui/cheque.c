@@ -111,7 +111,8 @@ static int doc_view_collapsed_draw(C *c, int start_y) {
 
 	for (list_item_t *li1 = c->klist.head; li1 != NULL && n < 4; li1 = li1->next, n++) {
 		K *k = LIST_ITEM(li1, K);
-		p += sprintf(p, "%.14lld%s", k->d, (n < 3 ? (li1->next ? ", " : "") : (li1->next ? "..." : "")));
+		p += sprintf(p, "%s%s", (k->d.s ? k->d.s : ""),
+			(n < 3 ? (li1->next ? ", " : "") : (li1->next ? "..." : "")));
 	}
 
 	sprintf(text, "Просмотр документов чека (%d) [%s]", c->klist.count, docs);
@@ -144,7 +145,8 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 			sum += l->t;
 		}
 		
-		sprintf(text, "Документ N%.14lld (СУММА: %.1lld.%.2lld)", k->d, sum / 100, sum % 100);
+		sprintf(text, "Документ N%s (СУММА: %.1lld.%.2lld)", k->d.s ? k->d.s : "",
+			sum / 100, sum % 100);
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
 		

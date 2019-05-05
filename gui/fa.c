@@ -1167,7 +1167,7 @@ void fa_cheque() {
 						ffd_tlv_stlv_begin(1059, 1024);
 						ffd_tlv_add_uint8(1214, l->r);
 						char s1030[256];
-						sprintf(s1030, "%s\n\rдокумент \xfc%lld", l->s, k->d);
+						sprintf(s1030, "%s\n\rдокумент \xfc%s", l->s, k->b.s ? k->b.s : "");
 						ffd_tlv_add_string(1030, s1030);
 						ffd_tlv_add_vln(1079, l->t);
 						ffd_tlv_add_fvln(1023, 1, 0);

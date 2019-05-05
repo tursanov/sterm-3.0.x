@@ -29,15 +29,59 @@ extern int L_save(FILE *f, L *l);
 // загрузка составляющей из файла
 extern L *L_load(FILE *f);
 
+// номер документа
+typedef struct {
+	char *s;
+} doc_no_t;
+
+// инициализация номера документа из строки
+void doc_no_init(doc_no_t *d, const char *s);
+// освобождение памяти для номера документа
+void doc_no_free(doc_no_t *d);
+// сохранение номера документа в файле
+int doc_no_save(FILE *f, doc_no_t *d);
+// загрузка номера документа из файла
+int doc_no_load(FILE *f, doc_no_t *d);
+// копирование номера документа из одной ячейки в другую
+void doc_no_copy(doc_no_t *dst, doc_no_t *src);
+// сравнение номеров документа
+int doc_no_compare(doc_no_t *d1, doc_no_t *d2);
+// преобразование номера документа в 64-разрядное значение
+int64_t doc_no_to_i64(doc_no_t *d);
+// проверка номера документа на наличие значения
+bool doc_no_is_empty(doc_no_t *d);
+#define doc_no_is_not_empty(d)	(!doc_no_is_empty(d))
+
+// операция с документами, описывающая связи
+typedef struct {
+	char *s;
+} op_doc_no_t;
+
+// инициализация
+void op_doc_no_init(op_doc_no_t *d);
+// освобождение
+void op_doc_no_free(op_doc_no_t *d);
+// сохранение из файла
+int op_doc_no_save(FILE *f, op_doc_no_t *d);
+// загрузка из файла
+int op_doc_no_load(FILE *f, op_doc_no_t *d);
+// копирование
+void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src);
+// установка значения
+void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2);
+
 // документ
 typedef struct K {
 	struct list_t llist;    // список составляющих
     uint8_t o;          // Операция
-    int64_t d;          // Номер оформляемого документа или КРС при возврате
-    int64_t r;          // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
-    int64_t i1;          // индекс
-	int64_t i2;          // индекс
-	int64_t i21;          // индекс
+	uint8_t a;			// 1 означает, что есть встречное предоставление
+	doc_no_t d;         // Номер оформляемого документа или КРС при возврате
+	doc_no_t r;         // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
+	doc_no_t i1;        // индекс
+	doc_no_t i2;        // индекс
+	doc_no_t i21;       // индекс
+	doc_no_t u;			// номер переоформляемого документа
+	op_doc_no_t b;	// список документов
 	int64_t p;          // ИНН перевозчика
     char *h;            // телефон перевозчика
     uint8_t m;          // способ оплаты
@@ -52,9 +96,11 @@ extern void K_destroy(K *k);
 // добавление составляющей в документ
 extern bool K_addL(K *k, L* l);
 // разделение документа на 2 по признаку расчета
-extern K *K_divide(K *k, uint8_t p);
+extern K *K_divide(K *k, uint8_t p, int64_t* sum);
 // проверка на равенство по всем L
 extern bool K_equalByL(K *k1, K *k2);
+// получить сумму всех узлов L
+extern int64_t K_get_sum(K *k);
 
 // запись документа в файл
 extern int K_save(FILE *f, K *k);
@@ -67,8 +113,8 @@ typedef struct S {
     int64_t n; // сумма наличных
     int64_t e; // сумма электронных
     int64_t p; // сумма в зачет ранее внесенных средств
+    int64_t b; // сумма расчета по всем документам чека встречным предоставлением
 } S;
-
 
 // чек
 typedef struct C {
