@@ -82,7 +82,7 @@ void cheque_release(void) {
 #define IR_COLOR	clGray
 
 static int email_or_phone_draw(C *c, int start_y) {
-	int y = start_y + fnt->max_height*4 + GAP + 4;
+	int y = start_y + fnt->max_height*5 + GAP + 4;
 	char email_or_phone[128];
 	const char *title = "Тел. или e-mail покупателя:    ";
 	sprintf(email_or_phone, "%s", c->pe ? c->pe : "не указан");
@@ -175,9 +175,10 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 
 static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_view) {
 	const char *cheque_type[] = { "Приход", "Возврат прихода", "Расход", "Возврат расхода" };
-	const char *payout_kind[] = { "Наличными:", "Безналичными:", "В зачет ранее внесенных средств:", "ИТОГО:" };
-	int64_t s[4] = { c->sum.n, c->sum.e, c->sum.p, c->sum.a };
-	char ss[4][32];
+	const char *payout_kind[] = { "Наличными:", "Безналичными:", 
+		"В зачет ранее внесенных средств:", "Встречным предоставлением:", "ИТОГО:" };
+	int64_t s[5] = { c->sum.n, c->sum.e, c->sum.p, c->sum.b, c->sum.a };
+	char ss[5][32];
 	char cheque_title[32];
 	char cheque_n[32];
 	int sw;
@@ -216,7 +217,7 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 		TextOut(screen, GAP*2, y, payout_kind[i]);
 		TextOut(screen, GAP*3 + w + sw - tw, y, ss[i]);
 		y += fnt->max_height;
-		if (i == 2)
+		if (i == ASIZE(payout_kind) - 2)
 			y += 4;
 	}
 

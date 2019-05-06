@@ -709,7 +709,7 @@ int AD_makeCheque(K *k, doc_no_t *d, uint8_t t1054, uint8_t t1055, int64_t s) {
     } else
     	printf("cheque found\n");
 
-	k->a = (s == 0) ? 0 : 1;
+	k->a = s;
 	list_add(&c->klist, k);
     K_after_add(k);
 
@@ -1204,6 +1204,33 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
     return 0;
 }
 
+static void AD_k_calc_sum(K *k, S *s) {
+	memset(s, 0, sizeof(*s));
+	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+		L *l = LIST_ITEM(li3, L);
+		switch (k->m) {
+		case 1:
+			s->n += l->t;
+			break;
+		case 2:
+			s->e += l->t;
+			break;
+		case 3:
+			s->p += l->t;
+			break;
+		}
+		s->a += l->t;
+	}
+}
+
+static void AD_sum_add(S *dst, S *src) {
+	dst->n += src->n;
+	dst->e += src->e;
+	dst->p += src->p;
+	dst->b += src->b;
+	dst->a += src->a;
+}
+
 void AD_calc_sum() {
 	memset(_ad->sum, 0, sizeof(_ad->sum));
 	_ad->docs.count = 0;
@@ -1215,31 +1242,32 @@ void AD_calc_sum() {
 			K *k = LIST_ITEM(li2, K);
 			int64_t d = doc_no_to_i64(&k->d);
 			int64_array_add(&_ad->docs, d, true);
-			for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
-				L *l = LIST_ITEM(li3, L);
-				S *s = &_ad->sum[l->p - 1];
-				if (k->a) {
-					c->sum.b += l->t;
-					s->b += l->t;
-				} else {
-					switch (k->m) {
-					case 1:
-						c->sum.n += l->t;
-						s->n += l->t;
-						break;
-					case 2:
-						c->sum.e += l->t;
-						s->e += l->t;
-						break;
-					case 3:
-						c->sum.p += l->t;
-						s->p += l->t;
-						break;
-					}
+
+			if (k->llist.count == 0)
+				continue;
+
+			struct S ks = { 0, 0, 0, 0, 0 };
+			S *s = &_ad->sum[c->t1054 - 1];
+
+			AD_k_calc_sum(k, &ks);
+
+			if (k->a > 0) {
+				ks.b = k->a;
+				switch (k->m) {
+				case 1:
+					ks.n -= k->a;
+					break;
+				case 2:
+					ks.e -= k->a;
+					break;
+				case 3:
+					ks.p -= k->a;
+					break;
 				}
-				c->sum.a += l->t;
-				s->a += l->t;
 			}
+
+			AD_sum_add(&c->sum, &ks);
+			AD_sum_add(s, &ks);
 		}
 	}
 }

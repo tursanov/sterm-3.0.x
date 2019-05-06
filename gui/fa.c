@@ -288,7 +288,7 @@ bool init_fa(int arg)
 		fa_menu = NULL;
 		process_fa_cmd(arg);
 	}
-	
+
 	return true;
 }
 
@@ -1144,7 +1144,7 @@ void fa_cheque() {
 				ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
 				ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
 				ffd_tlv_add_vln(1216, 0);
-				ffd_tlv_add_vln(1217, 0);
+				ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
 				if (c->p != user_inn) {
 					ffd_tlv_add_uint8(1057, 1 << 6);
