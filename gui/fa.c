@@ -1051,13 +1051,13 @@ void fa_cheque() {
 			sumE -= c->sum.e;
 		}
 	}
-	int64_t sn = llabs(sumN);
+//	int64_t sn = llabs(sumN);
 
 	cheque_init();
 
 	while (true) {
 		if (cheque_execute()) {
-			if (sumN > 0) {
+/*			if (sumN > 0) {
 				form_t *form = NULL;
 				char title[256];
 				
@@ -1114,7 +1114,7 @@ void fa_cheque() {
 				
 				if (sumI < sumN)
 					continue;
-			}
+			}*/
 		
 		
 			fdo_suspend();
