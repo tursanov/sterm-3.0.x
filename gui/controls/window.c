@@ -268,6 +268,9 @@ int window_show_dialog(window_t *w, int focus_id) {
 	kbd_flush_queue();
 
 	if (w->controls.count > 0 && (focus_id >= 0 || !w->focused)) {
+		if (w->focused)
+			LIST_ITEM(w->focused, control_t)->focused = false;
+
 		list_item_t *li = window_get_control_item(w, focus_id);
 		if (!li)
 			li = w->controls.head;

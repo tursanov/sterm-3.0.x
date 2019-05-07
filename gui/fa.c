@@ -1036,7 +1036,7 @@ static size_t get_phone(char *src, char *dst) {
 
 void fa_cheque() {
 	bool changed = false;
-	int64_t sumN = 0;
+/*	int64_t sumN = 0;
 	int64_t sumE = 0;
 	int64_t sumI = 0;
 	int64_t sumC = 0;
@@ -1050,13 +1050,16 @@ void fa_cheque() {
 			sumN -= c->sum.n;
 			sumE -= c->sum.e;
 		}
-	}
+	}*/
 //	int64_t sn = llabs(sumN);
 
 	cheque_init();
 
 	while (true) {
 		if (cheque_execute()) {
+//			fill_rect(screen, int x, int y, int width, int height, int border_width,
+//		Color border_color, int bg_color);
+		
 /*			if (sumN > 0) {
 				form_t *form = NULL;
 				char title[256];
@@ -1117,7 +1120,7 @@ void fa_cheque() {
 			}*/
 		
 		
-			fdo_suspend();
+//			fdo_suspend();
 			
 /*			cashier_data_t data = { "", "", "", "" };
 			fa_load_cashier_data(&data);*/
@@ -1191,9 +1194,9 @@ void fa_cheque() {
 
 				uint8_t* pattern_footer = NULL;
 				size_t pattern_footer_size = 0;
-				uint8_t pattern_footer_buffer[1024] = { 0 };
+				//uint8_t pattern_footer_buffer[1024] = { 0 };
 
-				if (_ad->clist.count == 1) {
+/*				if (_ad->clist.count == 1) {
 					size_t n = 0;
 					pattern_footer = pattern_footer_buffer;
 					char *p = (char *)pattern_footer_buffer;
@@ -1228,8 +1231,9 @@ void fa_cheque() {
 					}
 
 					pattern_footer_size = n;
-				}
+				}*/
 
+				cheque_begin_op("Идет печать чека...");
 				if (fa_create_doc(CHEQUE, pattern_footer, pattern_footer_size, update_cheque, NULL)) {
 					list_remove(&_ad->clist, c);
 					AD_save();
@@ -1244,17 +1248,19 @@ void fa_cheque() {
 					break;
 				}*/
 			}
-			fdo_resume();
+			//fdo_resume();
 
 			if (!_ad->clist.head)
 				break;
 		} else
 			break;
 	}
-	
+
 	AD_calc_sum();
 
 	fa_set_group(FAPP_GROUP_MENU);
+
+	kbd_flush_queue();
 }
 
 void fa_del_doc() {

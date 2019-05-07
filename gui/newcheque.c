@@ -38,6 +38,7 @@ typedef struct {
 	int pay_type;
 	int pay_kind;
 	char* phone_or_email;
+	char* add_info;
 	uint64_t sum;
 	list_t articles;
 } newcheque_t;
@@ -54,9 +55,12 @@ static newcheque_t newcheque = {
 	.pay_type = 1,
 	.pay_kind = 0,
 	.phone_or_email = NULL,
+	.add_info = NULL,
 	.sum = 0,
 	.articles = { NULL, NULL, 0, (list_item_delete_func_t)cheque_article_free },
 };
+
+extern bool check_phone_or_email(const char *pe);
 
 
 /*static double cheque_article_sum(cheque_article_t *ca) {
@@ -133,6 +137,7 @@ static bool newcheque_save() {
 		ret = SAVE_INT(f, newcheque.pay_type) == 0 &&
 			SAVE_INT(f, newcheque.pay_kind) == 0 &&
 			save_string(f, newcheque.phone_or_email) == 0 &&
+			save_string(f, newcheque.add_info) == 0 &&
 			save_list(f, &newcheque.articles, (list_item_func_t)cheque_article_save) == 0;
 
 		fclose(f);
@@ -148,6 +153,7 @@ bool newcheque_load() {
 		ret = LOAD_INT(f, newcheque.pay_type) == 0 &&
 			LOAD_INT(f, newcheque.pay_kind) == 0 &&
 			load_string(f, &newcheque.phone_or_email) == 0 &&
+			load_string(f, &newcheque.add_info) == 0 &&
 			load_list(f, &newcheque.articles, (load_item_func_t)cheque_article_load) == 0;
 
 		fclose(f);
@@ -187,7 +193,7 @@ static int article_get_text(void *obj, int index, char *text, size_t text_size) 
 			break;
 		default:
 			return -1;
-	}		
+	}
 	return 0;
 }
 
@@ -248,7 +254,7 @@ static void article_new(window_t *parent) {
 		data_t data;
 		window_get_data(win, 1023, 0, &data);
 		if (data.size == 0) {
-			window_show_error(win, 1059, "Не указано кол-во предмета расчета");
+			window_show_error(win, 1023, "Не указано кол-во предмета расчета");
 			continue;
 		}
 
@@ -257,8 +263,18 @@ static void article_new(window_t *parent) {
 			window_show_error(win, 1059, "Кол-во предмета расчета указано неверно");
 			continue;
 		}
+		
+		cheque_article_t *ca;
+		if (newcheque.articles.head) {
+			ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
+			if (ca->article->pay_agent != a->pay_agent) {
+				window_show_error(win, 1059, 
+					"Нельзя добавлять в один чек товары (услуги) разных поставщиков");
+				continue;
+			}
+		}
 
-		cheque_article_t *ca = cheque_article_new();
+		ca = cheque_article_new();
 		ca->article = a;
 		ca->count = fvln;
 		ca->sum = cheque_article_vln_sum(ca);
@@ -274,7 +290,7 @@ static void article_new(window_t *parent) {
 
 		break;
 	}
-	
+
 	window_destroy(win);
 	window_draw(parent);
 	if (added)
@@ -345,14 +361,124 @@ int remove_articles(article_group_params_t *p, cheque_article_t *a) {
 	return -1;
 }
 
+static bool newcheque_distribute_sum(window_t *w, uint64_t sum[5]) {
+	window_t *win = window_create(NULL, "Распределите сумму по видам оплаты", NULL);
+	GCPtr screen = window_get_gc(win);
+
+	int x = CONTROLS_START;
+	int y = CONTROLS_TOP;
+	int width = DISCX - x - GAP;
+	int th = GetTextHeight(screen);
+	int height = th + 8;
+	char text[256];
+	uint64_t total_sum = newcheque.sum;
+
+	/*for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
+		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
+		total_sum += ca->sum;
+	}*/
+	sprintf(text, "%.1llu.%.2llu РУБ.", total_sum / 100, total_sum % 100);
+
+	window_add_label(win, TEXT_START, y, align_left, "Общая сумма чека:");
+	window_add_label(win, TEXT_START + 300, y, align_left, text);
+	y += height + YGAP*2;
+
+	window_add_label(win, TEXT_START, y, align_left, "Наличными:");
+	window_add_control(win,
+		edit_create(1031, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+	y += height + YGAP;
+
+	window_add_label(win, TEXT_START, y, align_left, "Безналичными:");
+	window_add_control(win,
+		edit_create(1081, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+	y += height + YGAP;
+
+	window_add_label(win, TEXT_START, y, align_left, "Предоплатой (аванс):");
+	window_add_control(win,
+		edit_create(1215, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+	y += height + YGAP;
+
+	window_add_label(win, TEXT_START, y, align_left, "Постоплатой (кредит):");
+	window_add_control(win,
+		edit_create(1216, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+	y += height + YGAP;
+
+	window_add_label(win, TEXT_START, y, align_left, "Встречным предоставлением:");
+	window_add_control(win,
+		edit_create(1217, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+	y += height + YGAP;
+
+	x = (DISCX - (BUTTON_WIDTH + GAP)*2 - GAP) / 2;
+	window_add_control(win,
+			button_create(1, screen, x,
+				DISCY - BUTTON_HEIGHT - GAP,
+				BUTTON_WIDTH, BUTTON_HEIGHT, 1, "Печать", button_action));
+	window_add_control(win, 
+			button_create(0, screen, x + BUTTON_WIDTH + GAP,
+				DISCY - BUTTON_HEIGHT - GAP,
+				BUTTON_WIDTH, BUTTON_HEIGHT, 0, "Отмена", button_action));
+
+	bool ret = false;
+	int result;
+	while ((result = window_show_dialog(win, -1)) == 1) {
+		uint16_t tags[] = { 1031, 1081, 1215, 1216, 1217 };
+		uint64_t all_sum = 0;
+
+		for (int i = 0; i < ASIZE(tags); i++) {
+			data_t data;
+			char *endp;
+			window_get_data(win, tags[i], 1, &data);
+
+			if (data.size > 0) {
+				double v = strtod((const char *)data.data, &endp);
+				if (*endp != 0) {
+					window_show_error(win, tags[i], "Ошибка при вводе суммы");
+					continue;
+				} else {
+					sum[i] = (uint64_t)((v + 0.009) * 100.0);
+					//printf("%.4d: %llu\n", tags[i], sum[i]);
+					all_sum += sum[i];
+				}
+			}
+		}
+		
+		//printf("all_sum: %llu, total_sum: %llu\n", all_sum, total_sum);
+		
+		if (all_sum == total_sum) {
+			ret = true;
+			break;
+		}
+		window_show_error(win, tags[0], "Ошибка: сумма всех полей должна быть равна общей сумме чека");
+	}
+	window_draw(w);
+	kbd_flush_queue();
+	return ret;
+}
+
+static void newcheque_show_op(window_t *w, const char *title) {
+	GCPtr screen = window_get_gc(w);
+	SetGCBounds(screen, 0, 0, DISCX, DISCY);
+
+	SetTextColor(screen, clBlack);
+	fill_rect(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, 2, clRopnetDarkBrown, clRopnetBrown);
+	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
+}
+
 bool newcheque_print(window_t *w) {
 	data_t cashier;
 	data_t post;
 	data_t inn;
+	uint64_t dsum[5] = { 0, 0, 0, 0, 0};
 
 	window_get_data(w, 1021, 1, &cashier);
 	window_get_data(w, 9999, 1, &post);
 	window_get_data(w, 1203, 1, &inn);
+	
+	if (!check_phone_or_email(newcheque.phone_or_email)) {
+		window_show_error(w, 1008, "Номер тел. или e-mail имеют недопустимый формат.\n"
+			"Пример ввода: +71111111111 или name@mail.ru");
+		return false;
+	}
 
 	if (cashier.size == 0) {
 		window_show_error(w, 1021, "Обязательное поле не заполнено");
@@ -363,6 +489,9 @@ bool newcheque_print(window_t *w) {
 		window_show_error(w, 1021, "Ошибка записи в файл данных о кассире");
 		return false;
 	}
+
+	if (newcheque.pay_kind == 4 && !newcheque_distribute_sum(w, dsum))
+		return false;
 
 	while (newcheque.articles.count > 0) {
 		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
@@ -402,6 +531,9 @@ bool newcheque_print(window_t *w) {
 			ffd_tlv_add_string(1086, _ad->t1086);
 			ffd_tlv_stlv_end();
 		}
+		
+		if (newcheque.add_info && newcheque.add_info[0])
+			ffd_tlv_add_string(1192, newcheque.add_info);
 
 		for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
 			cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
@@ -450,14 +582,30 @@ bool newcheque_print(window_t *w) {
 			}
 		}
 
-		printf("total sum: %lld\n", sum);
-		ffd_tlv_add_vln(1031, newcheque.pay_kind == 0 ? sum : 0);
-		ffd_tlv_add_vln(1081, newcheque.pay_kind == 1 ? sum : 0);
-		ffd_tlv_add_vln(1215, 0);
-		ffd_tlv_add_vln(1216, 0);
-		ffd_tlv_add_vln(1217, 0);
+		switch (newcheque.pay_kind) {
+		case 0:
+			dsum[0] = sum;
+			break;
+		case 1:
+			dsum[1] = sum;
+			break;
+		case 2:
+			dsum[2] = sum;
+			break;
+		case 3:
+			dsum[4] = sum;
+			break;
+		}
+
+		ffd_tlv_add_vln(1031, dsum[0]);
+		ffd_tlv_add_vln(1081, dsum[1]);
+		ffd_tlv_add_vln(1215, dsum[2]);
+		ffd_tlv_add_vln(1216, dsum[3]);
+		ffd_tlv_add_vln(1217, dsum[4]);
 
 		cashier_save();
+
+		newcheque_show_op(w, "Идет печать чека...");
 
 		if (!fa_create_doc(CHEQUE, NULL, 0, NULL, NULL))
 			return false;
@@ -469,12 +617,15 @@ bool newcheque_print(window_t *w) {
 
 		newcheque_save();
 		window_draw(w);
+		kbd_flush_queue();
 	}
 
 	return true;
 }
 
 int newcheque_execute() {
+	int focus_id = 9997;
+
 	window_t *win = window_create(NULL, "Чек(и) (Esc - выход)", newcheque_process);
 	GCPtr screen = window_get_gc(win);
 
@@ -483,6 +634,7 @@ int newcheque_execute() {
 	int w = DISCX - x - GAP;
 	int th = GetTextHeight(screen);
 	int h = th + 8;
+#define DY 2
 
 	const char *pay_type[] = {
 		"Приход",
@@ -492,7 +644,10 @@ int newcheque_execute() {
 	};
 	const char *pay_kind[] = {
 		"Наличные",
-		"Безналичные"
+		"Безналичные",
+		"Предварительная оплата (аванс)",
+		"Встречным предоставлением",
+		"Распределение по видам оплаты"
 	};
 
 	window_add_label(win, TEXT_START, y, align_left, "Признак расчета:");
@@ -507,26 +662,31 @@ int newcheque_execute() {
 				newcheque.pay_kind));
 	y += h + YGAP;
 
-	window_add_label(win, TEXT_START, y, align_left, "Кассир:");
+	window_add_label(win, TEXT_START, y + DY, align_left, "Кассир:");
 	window_add_control(win, 
 			edit_create(1021, screen, x, y, w, h, cashier_get_name(), EDIT_INPUT_TYPE_TEXT, 64));
 	y += h + YGAP;
 
-	
-	window_add_label(win, TEXT_START, y, align_left, "Должность:");
+	window_add_label(win, TEXT_START, y + DY, align_left, "Должность:");
 	window_add_control(win,
 			edit_create(9999, screen, x, y, w, h, cashier_get_post(), EDIT_INPUT_TYPE_TEXT, 64));
 	y += h + YGAP;
 
-	window_add_label(win, TEXT_START, y, align_left, "ИНН кассира:");
+	window_add_label(win, TEXT_START, y + DY, align_left, "ИНН кассира:");
 	window_add_control(win,
 			edit_create(1203, screen, x, y, w, h, cashier_get_inn(), EDIT_INPUT_TYPE_TEXT, 12));
 	y += h + YGAP;
 
-	window_add_label(win, TEXT_START, y, align_left, "Тел. или e-mail покупателя:");
+	window_add_label(win, TEXT_START, y + DY, align_left, "Тел. или e-mail покупателя:");
 	window_add_control(win,
 			edit_create(1008, screen, x, y, w, h, newcheque.phone_or_email,
 			   	EDIT_INPUT_TYPE_TEXT, 64));
+	y += h + YGAP;
+
+	window_add_label(win, TEXT_START, y + DY, align_left, "Доп. реквизит чека:");
+	window_add_control(win,
+			edit_create(1192, screen, x, y, w, h, newcheque.add_info,
+			   	EDIT_INPUT_TYPE_TEXT, 16));
 	y += h + YGAP + th + 12;
 
 	window_add_label(win, TEXT_START, y - th - 4, align_left,
@@ -565,14 +725,20 @@ int newcheque_execute() {
 
 	int result;
 	while (true) {
-		result = window_show_dialog(win, 9997);
+		result = window_show_dialog(win, focus_id);
+		focus_id = -1;
 
 		data_t data;
-		window_get_data(win, 1008, 0, &data);
+		window_get_data(win, 1008, 1, &data);
 
 		if (newcheque.phone_or_email)
 			free(newcheque.phone_or_email);
 		newcheque.phone_or_email = strdup(data.data);
+
+		window_get_data(win, 1192, 0, &data);
+		if (newcheque.add_info)
+			free(newcheque.add_info);
+		newcheque.add_info = strdup(data.data);
 
 		newcheque.pay_type = window_get_int_data(win, 1054, 0, 0) + 1;
 		newcheque.pay_kind = window_get_int_data(win, 9998, 0, 0);

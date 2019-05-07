@@ -6,6 +6,7 @@
 #include "kkt/fd/tlv.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
+#include "kkt/fdo.h"
 #include <limits.h>
 
 static char last_error[1024] = { 0 };
@@ -539,10 +540,13 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 	size_t pattern_size;
 	struct kkt_doc_info di;
 
+	fdo_suspend();
+
 	err_info_len = sizeof(err_info);
 	if ((ret = kkt_begin_doc(doc_type, err_info, &err_info_len)) != 0) {
 		fd_set_error(ret, err_info, err_info_len);
 		printf("kkt_begin_doc->ret = %.2x\n", ret);
+		fdo_resume();
 		return ret;
 	}
 
@@ -575,6 +579,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 						}
 					}
 
+					fdo_resume();
 					return ret;
 				}
 
@@ -584,7 +589,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 				tlv_buf_size = 0;
 				tlv_buf = (uint8_t *)tlv;
 			}
-			
+
 /*			printf("tlv->tag: %d\n", tlv->tag);
 			printf("tlv->length: %d\n", tlv->length);
 			printf("  asString: %.*s\n", tlv->length, FFD_TLV_DATA_AS_STRING(tlv));
@@ -593,7 +598,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 				printf("  as16: %d\n", FFD_TLV_DATA_AS_UINT16(tlv));
 			if (tlv->length > 3)
 				printf("  as32: %d\n", FFD_TLV_DATA_AS_UINT32(tlv));*/
-			
+
 			tlv_buf_size += FFD_TLV_SIZE(tlv);
 			tlv = FFD_TLV_NEXT(tlv);
 		}
@@ -605,6 +610,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
    	if ((pattern = load_pattern(doc_type, pattern_footer,
 				   	pattern_footer_size, &pattern_size)) == NULL) {
 		printf("load_pattern fail\n");
+		fdo_resume();
 		return -1;
 	}
 
@@ -627,6 +633,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 
 LOut:
 	free(pattern);
+	fdo_resume();
 
 	return ret;
 }

@@ -1,5 +1,6 @@
 #include "kbd.h"
 #include <sys/param.h>
+#include <ctype.h>
 #include "paths.h"
 #include "gui/gdi.h"
 #include "gui/cheque.h"
@@ -468,6 +469,36 @@ static void prev_focus() {
 	cheque_draw();
 }
 
+static bool check_phone(const char *s) {
+	if (*s++ != '+')
+		return false;
+	for (; *s; s++)
+		if (!isdigit(*s))
+			return false;
+	return true;
+}
+
+static bool check_email(const char *s) {
+	int left = 0;
+	int at = 0;
+	int right = 0;
+
+	for (; *s; s++) {
+		if (*s == '@') {
+			if (at++ > 0)
+				return false;
+		} else if (!at)
+			left++;
+		else
+			right++;
+	}
+
+	return left > 0 && right > 0;
+}
+
+bool check_phone_or_email(const char *pe) {
+	return check_phone(pe) || check_email(pe);
+}
 
 static void select_phone_or_email() {
 	C *c = LIST_ITEM(active_item, C);
@@ -494,9 +525,18 @@ static void select_phone_or_email() {
 	free(items);
 
 	kbd_lang_ex = lng_lat;
-	if (form_execute(form) == 1) {
+	while (form_execute(form) == 1) {
 		form_data_t data;
 		form_get_data(form, 1008, 1, &data);
+
+		if (data.size > 0 && !check_phone_or_email((const char *)data.data)) {
+			message_box("Ошибка", "Номер тел. или e-mail имеют недопустимый формат.\n"
+				"Пример ввода: +71111111111 или name@mail.ru", dlg_yes, 0, al_center);
+			form_draw(form);
+			form_focus(form, 1008);
+
+			continue;
+		}
 
 		if (c->pe)
 		   free(c->pe);
@@ -505,6 +545,7 @@ static void select_phone_or_email() {
 		else
 			c->pe = NULL;
 		AD_save();
+		break;
 	}
 
 	cheque_draw();
@@ -671,4 +712,16 @@ bool cheque_execute(void) {
 void cheque_sync_first(void) {
 	int i = 0;
 	for (first = _ad->clist.head; first && i < first_n; i++, first = first->next);
+}
+
+void cheque_begin_op(const char *title) {
+	SetGCBounds(screen, 0, 0, DISCX, DISCY);
+
+	SetTextColor(screen, clBlack);
+	fill_rect(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, 2, clRopnetDarkBrown, clRopnetBrown);
+	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
+}
+
+void cheque_end_op() {
+	cheque_draw();
 }
