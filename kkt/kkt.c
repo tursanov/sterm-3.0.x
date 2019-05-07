@@ -256,7 +256,7 @@ static uint32_t get_timeout(uint8_t prefix, uint8_t cmd)
 					break;
 				case KKT_SRV_PRINT_LAST:
 				case KKT_SRV_PRINT_DOC:
-					ret = KKT_FR_PRINT_TIMEOUT;
+					ret = 3 * KKT_FR_PRINT_TIMEOUT;
 					break;
 				case KKT_SRV_END_DOC:
 					if (kkt_timeout_factor > 50)
