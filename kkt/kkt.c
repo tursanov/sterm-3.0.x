@@ -237,6 +237,8 @@ static bool prepare_cmd(uint8_t prefix, uint8_t cmd)
 	return ret;
 }
 
+static uint32_t kkt_timeout_factor = 0;
+
 static uint32_t get_timeout(uint8_t prefix, uint8_t cmd)
 {
 	uint32_t ret = KKT_DEF_TIMEOUT;
@@ -253,9 +255,14 @@ static uint32_t get_timeout(uint8_t prefix, uint8_t cmd)
 					ret = KKT_FDO_DATA_TIMEOUT;
 					break;
 				case KKT_SRV_PRINT_LAST:
-				case KKT_SRV_END_DOC:
 				case KKT_SRV_PRINT_DOC:
 					ret = KKT_FR_PRINT_TIMEOUT;
+					break;
+				case KKT_SRV_END_DOC:
+					if (kkt_timeout_factor > 50)
+						ret = kkt_timeout_factor * kkt_base_timeout;
+					else
+						ret = KKT_FR_PRINT_TIMEOUT;
 					break;
 			}
 			break;
@@ -565,13 +572,15 @@ uint8_t kkt_send_doc_data(const uint8_t *data, size_t len, uint8_t *err_info,
 
 /* Завершить формирование документа */
 uint8_t kkt_end_doc(uint16_t doc_type, const uint8_t *tmpl, size_t tmpl_len,
-	struct kkt_doc_info *di, uint8_t *err_info, size_t *err_info_len)
+	uint32_t timeout_factor, struct kkt_doc_info *di,
+	uint8_t *err_info, size_t *err_info_len)
 {
 	assert(tmpl != NULL);
 	assert(tmpl_len > 0);
 	assert(di != NULL);
 	bool vset = false;
 	if (kkt_lock()){
+		kkt_timeout_factor = timeout_factor;
 		struct doc_info_arg arg;
 		if (prepare_cmd(KKT_SRV, KKT_SRV_END_DOC) && write_word(doc_type) &&
 				write_word(tmpl_len) && write_data(tmpl, tmpl_len) &&
