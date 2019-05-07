@@ -549,6 +549,8 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 		fdo_resume();
 		return ret;
 	}
+	
+	uint32_t timeout_factor = 50;
 
 	size_t tlv_size = ffd_tlv_size();
 	printf("tlv_size = %d\n", tlv_size);
@@ -599,11 +601,16 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 			if (tlv->length > 3)
 				printf("  as32: %d\n", FFD_TLV_DATA_AS_UINT32(tlv));*/
 
+			if (tlv->tag == 1059)
+				timeout_factor += 3;
+
 			tlv_buf_size += FFD_TLV_SIZE(tlv);
 			tlv = FFD_TLV_NEXT(tlv);
 		}
 
 	}
+	
+	printf("timeout_factor: %u\n", timeout_factor);
 	
 	printf("------------------------------------\n");
 
@@ -615,7 +622,8 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 	}
 
 	err_info_len = sizeof(err_info);
-	if ((ret = kkt_end_doc(doc_type, pattern, pattern_size, &di, err_info, &err_info_len)) != 0) {
+	if ((ret = kkt_end_doc(doc_type, pattern, pattern_size, timeout_factor,
+			&di, err_info, &err_info_len)) != 0) {
 		fd_set_error(ret, err_info, err_info_len);
 		printf("kkt_end_doc->ret = %.2x, err_info_len = %d\n", ret, err_info_len);
 
