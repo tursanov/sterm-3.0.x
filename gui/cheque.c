@@ -497,7 +497,7 @@ static bool check_email(const char *s) {
 }
 
 bool check_phone_or_email(const char *pe) {
-	return check_phone(pe) || check_email(pe);
+	return pe[0] == '+' ? check_phone(pe) : check_email(pe);
 }
 
 static void select_phone_or_email() {

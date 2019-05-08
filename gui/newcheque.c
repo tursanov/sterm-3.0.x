@@ -367,7 +367,7 @@ static bool newcheque_distribute_sum(window_t *w, uint64_t sum[5]) {
 
 	int x = CONTROLS_START;
 	int y = CONTROLS_TOP;
-	int width = DISCX - x - GAP;
+	int width = DISCX - x - GAP - 100;
 	int th = GetTextHeight(screen);
 	int height = th + 8;
 	char text[256];
@@ -380,32 +380,32 @@ static bool newcheque_distribute_sum(window_t *w, uint64_t sum[5]) {
 	sprintf(text, "%.1llu.%.2llu РУБ.", total_sum / 100, total_sum % 100);
 
 	window_add_label(win, TEXT_START, y, align_left, "Общая сумма чека:");
-	window_add_label(win, TEXT_START + 300, y, align_left, text);
+	window_add_label(win, TEXT_START + 350, y, align_left, text);
 	y += height + YGAP*2;
 
 	window_add_label(win, TEXT_START, y, align_left, "Наличными:");
 	window_add_control(win,
-		edit_create(1031, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1031, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
 	window_add_label(win, TEXT_START, y, align_left, "Безналичными:");
 	window_add_control(win,
-		edit_create(1081, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1081, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
-	window_add_label(win, TEXT_START, y, align_left, "Предоплатой (аванс):");
+	window_add_label(win, TEXT_START, y, align_left, "В зачет ранее внесенных средств:");
 	window_add_control(win,
-		edit_create(1215, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1215, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
 	window_add_label(win, TEXT_START, y, align_left, "Постоплатой (кредит):");
 	window_add_control(win,
-		edit_create(1216, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1216, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
 	window_add_label(win, TEXT_START, y, align_left, "Встречным предоставлением:");
 	window_add_control(win,
-		edit_create(1217, screen, TEXT_START + 300, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1217, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
 	x = (DISCX - (BUTTON_WIDTH + GAP)*2 - GAP) / 2;
@@ -474,7 +474,7 @@ bool newcheque_print(window_t *w) {
 	window_get_data(w, 9999, 1, &post);
 	window_get_data(w, 1203, 1, &inn);
 	
-	if (!check_phone_or_email(newcheque.phone_or_email)) {
+	if (newcheque.phone_or_email && newcheque.phone_or_email[0] && !check_phone_or_email(newcheque.phone_or_email)) {
 		window_show_error(w, 1008, "Номер тел. или e-mail имеют недопустимый формат.\n"
 			"Пример ввода: +71111111111 или name@mail.ru");
 		return false;
@@ -645,7 +645,7 @@ int newcheque_execute() {
 	const char *pay_kind[] = {
 		"Наличные",
 		"Безналичные",
-		"Предварительная оплата (аванс)",
+		"В зачет ранее внесенных средств",
 		"Встречным предоставлением",
 		"Распределение по видам оплаты"
 	};

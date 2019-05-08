@@ -105,8 +105,8 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 		free(dst->s);
 	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
 	size_t len2 = op ? strlen(op) : 0;
-	size_t len3 = (d2 && d2->s != NULL) ? strlen(d2->s) : 0;
-	size_t len = len1 + len2 + len3 + (len2 || len3 ? 2 : 0);
+	size_t len3 = (d2 && d2->s != NULL) ? strlen(d2->s) + 2 : 0;
+	size_t len = len1 + len2 + len3 + (len2 || len3 ? 3 : 0);
 	size_t ofs = 0;
 	dst->s = (char *)malloc(len + 1);
 	char *s = dst->s;
@@ -115,13 +115,17 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 		memcpy(s, d1->s, len1);
 		ofs += len1;
 	}
-	if (len2 > 0 || len3 > 0)
+	if (len2 > 0 || len3 > 0) {
+		s[ofs++] = ' ';
 		s[ofs++] = '(';
+	}
 	if (len2 > 0) {
 		memcpy(s + ofs, op, len2);
 		ofs += len2;
 	}
 	if (len3 > 0) {
+		s[ofs++] = ' ';
+		s[ofs++] = '№';
 		memcpy(s + ofs, d2->s, len3);
 		ofs += len3;
 	}
@@ -768,7 +772,7 @@ int AD_makeAnnulReturn(K *k, K *k2, uint8_t t1055, int64_t sB) {
 	}
 
 L1:
-	if (f_k && k2->llist.head) {
+	if (f_k && k2 && k2->llist.head) {
 		for (list_item_t *li21 = _ad->clist.head; li21; li21 = li21->next) {
 			s = LIST_ITEM(li21, C);
 			if (s->p == k->p && strcmp2(s->h, k->h) == 0 && s->t1054 == 1 && s->t1055 == t1055) {
@@ -800,7 +804,7 @@ L2:
 		op_doc_no_set(&k->b, &k->r, "гашение возврата", NULL);
 		AD_makeCheque(k, &k->r, 1, t1055, sB);
 
-		if (k2->llist.count > 0) {
+		if (k2 && k2->llist.count > 0) {
 			op_doc_no_set(&k2->b, &k->r, "гашение возврата", NULL);
 			AD_makeCheque(k, &k->r, 2, t1055, sB);
 		}
