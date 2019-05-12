@@ -16,8 +16,7 @@
 #define USB_KEY_NUMBER		0
 
 /* Печать на консоль без задержки вывода */
-static int xprintf(char *format, ...) __attribute__((__format__(printf, 1, 2)));
-static int xprintf(char *format, ...)
+__attribute__((format (printf, 1, 2))) static int xprintf(char *format, ...)
 {
 	int ret;
 	va_list p;

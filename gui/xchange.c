@@ -98,9 +98,7 @@ static bool end(void)
 	}else
 		return false;
 }
-static void xprintf(char *s, char *format, ...)
-	__attribute__((__format__(printf, 2, 3)));
-static void xprintf(char *s, char *format, ...)
+__attribute__((format (printf, 2, 3))) static void xprintf(char *s, char *format, ...)
 {
 	va_list p;
 	va_start(p, format);

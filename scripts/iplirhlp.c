@@ -68,8 +68,7 @@ static bool log_time(void)
 }
 
 /* Запись сообщения в журнал */
-static bool _log(char *fmt, ...) __attribute__((__format__(printf, 1, 2)));
-static bool _log(char *fmt, ...)
+__attribute__((format (printf, 1, 2))) static bool _log(char *fmt, ...)
 {
 	va_list p;
 	if (log_fd != NULL){

@@ -22,9 +22,7 @@
 #include "serial.h"
 
 /* Вывод на экран сообщения об ошибке */
-static void err_msg(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-
-static void err_msg(const char *fmt, ...)
+__attribute__((format (printf, 1, 2))) static void err_msg(const char *fmt, ...)
 {
 	va_list p;
 	va_start(p, fmt);

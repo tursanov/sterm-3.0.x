@@ -1,6 +1,7 @@
 /*
  * Проверка линии TCP/IP посылкой icmp-пакетов (ping).
- * (c) gsr, Alex P. Popov 2002, 2004, 2005.
+ * 11.05.2019 добавлена проверка ОФД путём установки соединения TCP.
+ * (c) gsr, Alex P. Popov 2002, 2004, 2005, 2019.
  */
 
 #include <sys/socket.h>
@@ -8,13 +9,16 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "devinfo.h"
 #include "genfunc.h"
 #include "kbd.h"
 #include "paths.h"
@@ -28,26 +32,69 @@ enum {
 /*	HOST_X3_ALT,*/
 	HOST_BANK1,
 	HOST_BANK2,
+	HOST_FDO,
 	NR_HOSTS,
 };
 
 static struct ping_rec {
 	struct in_addr ip;
-	uint16_t id;
+	union {
+		uint16_t id;
+		uint16_t port;
+	};
 	uint16_t seq;
-	int nr_replies;
+	union {
+		int nr_replies;
+		int state;
+	};
 	uint32_t t0;
 } hosts[NR_HOSTS];
 
-static int ping_sock = -1;
+static int icmp_sock = -1;
+static int fdo_sock  = -1;
+
+enum {
+	fdo_st_start,
+	fdo_st_conn,
+	fdo_st_ok,
+	fdo_st_na,
+};
+
+static const char *fdo_st_str(int fdo_st)
+{
+	static char buf[8];
+	const char *ret = buf;
+	switch (fdo_st){
+		case fdo_st_start:
+			ret = "";
+			break;
+		case fdo_st_conn:
+			ret = "соединение";
+			break;
+		case fdo_st_ok:
+			ret = "доступен  ";
+			break;
+		case fdo_st_na:
+			ret = "недоступен";
+			break;
+		default:
+			snprintf(buf, sizeof(buf), "%d", fdo_st);
+	}
+	return ret;
+}
 
 static void make_host_name(int n, uint32_t ip)
 {
 	if ((n >= 0) && (n < NR_HOSTS)){
 		hosts[n].ip.s_addr = ip;
-		hosts[n].id = (ip == INADDR_NONE) ? 0 : rand() & 0xffff;
+		if (n == HOST_FDO){
+			hosts[n].port = (ip == INADDR_NONE) ? 0 : cfg.fdo_port;
+			hosts[n].state = (ip == INADDR_NONE) ? fdo_st_na : fdo_st_start;
+		}else{
+			hosts[n].id = (ip == INADDR_NONE) ? 0 : rand() & 0xffff;
+			hosts[n].nr_replies = 0;
+		}
 		hosts[n].seq = 0;
-		hosts[n].nr_replies = 0;
 		hosts[n].t0 = 0;
 	}
 }
@@ -64,20 +111,24 @@ static void make_host_names(void)
 		make_host_name(HOST_BANK1, INADDR_NONE);
 		make_host_name(HOST_BANK2, INADDR_NONE);
 	}
+	if (cfg.has_kkt && (cfg.fdo_iface == KKT_FDO_IFACE_USB))
+		make_host_name(HOST_FDO, cfg.fdo_ip);
+	else
+		make_host_name(HOST_FDO, INADDR_NONE);
 }
 
-static int create_icmp_socket(void)
+static bool create_icmp_sock(void)
 {
 	struct protoent *proto = NULL;	//getprotobyname(ICMP_PROTO_NAME);
-	int s = socket(PF_INET,SOCK_RAW,
+	icmp_sock = socket(PF_INET,SOCK_RAW,
 			(proto != NULL) ? proto->p_proto : IPPROTO_ICMP);
-	if (s != -1){
-		if (fcntl(s, F_SETFL, O_NONBLOCK) == -1){
-			close(s);
-			s = -1;
+	if (icmp_sock != -1){
+		if (fcntl(icmp_sock, F_SETFL, O_NONBLOCK) == -1){
+			close(icmp_sock);
+			icmp_sock = -1;
 		}
 	}
-	return s;
+	return icmp_sock != -1;
 }
 
 static int in_cksum(uint16_t *buf, int sz)
@@ -104,65 +155,132 @@ static int in_cksum(uint16_t *buf, int sz)
 
 static bool send_ping(struct ping_rec *rec, uint32_t t)
 {
-	struct icmp *pkt;
-	char packet[PING_DATA_LEN + 8];
-	struct sockaddr_in sa;
-
+	bool ret = false;
 	if (rec == NULL)
-		return false;
-
-	sa.sin_family = AF_INET;
-	sa.sin_addr.s_addr = rec->ip.s_addr;
-	pkt = (struct icmp *) packet;
-
+		return ret;
+	char packet[PING_DATA_LEN + 8];
+	struct icmp *pkt = (struct icmp *)packet;
 	pkt->icmp_type = ICMP_ECHO;
 	pkt->icmp_code = 0;
 	pkt->icmp_cksum = 0;
 	pkt->icmp_seq = rec->seq++;
 	pkt->icmp_id = rec->id;
-
 	strcpy((char *)pkt->icmp_data, ICMP_DATA);
 	pkt->icmp_cksum = in_cksum((uint16_t *)pkt, sizeof(packet));
-
-	if (sendto(ping_sock, packet, sizeof(packet), 0,
+	struct sockaddr_in sa = {
+		.sin_family	= AF_INET,
+		.sin_port	= 0,
+		.sin_addr	= {
+			.s_addr	= rec->ip.s_addr
+		}
+	};
+	if (sendto(icmp_sock, packet, sizeof(packet), 0,
 			(struct sockaddr *)&sa, sizeof(sa)) == sizeof(packet)){
 		rec->t0 = t;
-		return true;
-	}else
-		return false;
+		ret = true;
+	}
+	return ret;
 }
 
 static int parse_reply(char *buf, int sz, struct sockaddr_in *from)
 {
-	struct icmp *icmp_pkt;
-	struct iphdr *ip_hdr;
-	int i, hlen;
-
+	int ret = -1;
 	if (sz < (PING_DATA_LEN + ICMP_MINLEN))
-		return -1;
-	ip_hdr = (struct iphdr *)buf;
-	hlen = ip_hdr->ihl << 2;
+		return ret;
+	struct iphdr *ip_hdr = (struct iphdr *)buf;
+	int hlen = ip_hdr->ihl << 2;
 	sz -= hlen;
-	icmp_pkt = (struct icmp *)(buf + hlen);
-	for (i = 0; i < NR_HOSTS; i++){
+	struct icmp *icmp_pkt = (struct icmp *)(buf + hlen);
+	for (int i = 0; i < NR_HOSTS; i++){
 		if (hosts[i].ip.s_addr != from->sin_addr.s_addr)
 			continue;
-		if ((icmp_pkt->icmp_type == ICMP_ECHOREPLY) &&
+		else if ((icmp_pkt->icmp_type == ICMP_ECHOREPLY) &&
 				(icmp_pkt->icmp_id == hosts[i].id) &&
 				(icmp_pkt->icmp_seq < hosts[i].seq)){
 			hosts[i].nr_replies++;
-			return i;
+			ret = i;
+			break;
 		}
 	}
-	return -1;
+	return ret;
+}
+
+static bool fdo_sock_open(void)
+{
+	fdo_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (fdo_sock != -1){
+		if (fcntl(fdo_sock, F_SETFL, O_NONBLOCK) == -1){
+			close(fdo_sock);
+			fdo_sock = -1;
+		}
+	}
+	return fdo_sock != -1;
+}
+
+static void fdo_sock_close(void)
+{
+	if (fdo_sock != -1){
+		shutdown(fdo_sock, SHUT_RDWR);
+		close(fdo_sock);
+		fdo_sock = -1;
+	}
+}
+
+static bool fdo_begin_connect(struct ping_rec *rec, uint32_t t)
+{
+	bool ret = false;
+	struct sockaddr_in addr = {
+		.sin_family	= AF_INET,
+		.sin_port	= htons(rec->port),
+		.sin_addr	= rec->ip
+	};
+	if ((connect(fdo_sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) &&
+			(errno != EINPROGRESS)){
+		fdo_sock_close();
+		rec->state = fdo_st_na;
+	}else{
+		rec->t0 = t;
+		rec->state = fdo_st_conn;
+		ret = true;
+	}
+	return ret;
+}
+
+#define FDO_CONNECT_TIMEOUT		300	/* мс */
+static bool fdo_connect(struct ping_rec *rec, uint32_t t)
+{
+	bool ret = true;
+	struct pollfd fds = {
+		.fd		= fdo_sock,
+		.events		= POLLOUT,
+		.revents	= 0
+	};
+	int rc = poll(&fds, 1, 1);
+	if ((rc == -1) || (fds.revents & (POLLERR | POLLHUP | POLLNVAL)))
+		ret = false;
+	else if (fds.revents & POLLOUT)
+		rec->state = fdo_st_ok;
+	else if ((t - rec->t0) > FDO_CONNECT_TIMEOUT)
+		ret = false;
+	if (!ret){
+		fdo_sock_close();
+		rec->state = fdo_st_na;
+	}
+	return ret;
 }
 
 #define MAX_PING_LINES	22
 #define MAX_STR_LEN	78
 
 static PixmapFontPtr ping_font = NULL;
-static int cur_ping_line;
 static char ping_lines[MAX_PING_LINES][MAX_STR_LEN + 1];
+static int cur_ping_line = 0;
+
+static inline void reset_ping_line(int n)
+{
+	if (n < ASIZE(ping_lines))
+		ping_lines[n][0] = 0;
+}
 
 static bool draw_ping_hints(void)
 {
@@ -193,18 +311,22 @@ static bool draw_ping_lines(void)
 	int cx = DISCX-2, cy = DISCY-42;
 	GCPtr pGC = CreateGC(20, 35, cx, cy);
 	GCPtr pMemGC = CreateMemGC(MAX_STR_LEN*ping_font->max_width, ping_font->max_height);
-	int n, m;
+	int m = 0;
 
-	for (n=0, m=0; n<MAX_PING_LINES; n++) {
-		if (ping_lines[n][0] != 0x0)
-			m=n+1;
+	for (int n = 0; n < MAX_PING_LINES; n++){
+		if (ping_lines[n][0] != 0)
+			m = n + 1;
 	}
+	printf("%s: m = %d\n", __func__, m);
 
-	for (n=0; n<m; n++) {
-		ClearGC(pMemGC, cfg.bg_color);
-		PixmapTextOut(pMemGC, ping_font, 0, 0, ping_lines[n]);
-		CopyGC(pGC, 0, ping_font->max_height*n, pMemGC,
-			0, 0, GetCX(pMemGC), GetCY(pMemGC));
+	for (int n = 0, y = 0; n < m; n++){
+		if (ping_lines[n][0] != 0){
+			printf("%s: y = %d\n", __func__, y);
+			ClearGC(pMemGC, cfg.bg_color);
+			PixmapTextOut(pMemGC, ping_font, 0, 0, ping_lines[n]);
+			CopyGC(pGC, 0, y, pMemGC, 0, 0, GetCX(pMemGC), GetCY(pMemGC));
+			y += ping_font->max_height;
+		}
 	}
 	
 	DeleteGC(pMemGC);
@@ -215,58 +337,57 @@ static bool draw_ping_lines(void)
 
 static void make_gap_line(void)
 {
-	int i;
-	for (i = 0; i < MAX_PING_LINES - 1; i++)
-		strcpy(ping_lines[i], ping_lines[i+1]);
-	memset(ping_lines[MAX_PING_LINES - 1], 0, MAX_STR_LEN+1);
+	for (int i = 0; i < MAX_PING_LINES - 1; i++)
+		strcpy(ping_lines[i], ping_lines[i + 1]);
+	memset(ping_lines[MAX_PING_LINES - 1], 0, MAX_STR_LEN + 1);
 }
 
 static void check_pos(void)
 {
 	if (cur_ping_line >= MAX_PING_LINES) {
-		cur_ping_line = MAX_PING_LINES-1;
+		cur_ping_line = MAX_PING_LINES - 1;
 		make_gap_line();
 	}
 }
 
-#define TAB_SPACES	8
-#define PING_LINE_LEN	1024
-
+__attribute__((format (printf, 1, 2)))
 static bool add_ping_line(char *format, ...)
 {
-	int i, n = strlen(ping_lines[cur_ping_line]), m;
+#define TAB_SPACES	8
+#define PING_LINE_LEN	256
+	if (format == NULL)
+		return false;
+	int n = strlen(ping_lines[cur_ping_line]);
 	char s[PING_LINE_LEN + 1], *text;
-	va_list p;
 	void new_line(void)
 	{
 		n = 0;
 		cur_ping_line++;
 		check_pos();
 	}
-	if (!format)
-		return false;
+	va_list p;
 	va_start(p, format);
 	vsnprintf(s, PING_LINE_LEN, format, p);
 	s[PING_LINE_LEN] = 0;
 	va_end(p);
-	for (text = s; *text; text++) {
-		switch (*text) {
-		case '\t':
-			m = (n / TAB_SPACES + 1) * TAB_SPACES - n;
-			for (i = 0; i < m; i++) {
-				ping_lines[cur_ping_line][n++] = ' ';
+	for (text = s; *text; text++){
+		switch (*text){
+			int m = 0;
+			case '\t':
+				m = (n / TAB_SPACES + 1) * TAB_SPACES - n;
+				for (int i = 0; i < m; i++) {
+					ping_lines[cur_ping_line][n++] = ' ';
+					if (n == MAX_STR_LEN)
+						new_line();
+				}
+				break;
+			case '\n':
+				new_line();
+				break;
+			default:
+				ping_lines[cur_ping_line][n++] = *text;
 				if (n == MAX_STR_LEN)
 					new_line();
-			}
-			break;
-		case '\n':
-			new_line();
-			break;
-		default:
-			ping_lines[cur_ping_line][n++] = *text;
-			if (n == MAX_STR_LEN) {
-				new_line();
-			}
 		}
 	}
 	draw_ping_lines();
@@ -283,8 +404,7 @@ bool draw_ping(void)
 bool init_ping()
 {
 	make_host_names();
-	ping_sock = create_icmp_socket();
-	if (ping_sock == -1)
+	if (!create_icmp_sock())
 		return false;
 	ping_active = true;
 
@@ -314,67 +434,108 @@ bool init_ping()
 void release_ping(void)
 {
 	DeletePixmapFont(ping_font);
-	close(ping_sock);
+	close(icmp_sock);
 	ping_active = false;
 }
 
 static char *get_ping_line(int n)
 {
-	static char buf[128];
-	int l;
+	static char line[128];
+	char desc[30];
+	struct in_addr ip;
 	switch (n){
 		case HOST_GW:
-			strcpy(buf, "Проверка шлюза:\t\t\t\t");
+			snprintf(desc, sizeof(desc), "Шлюз");
+			ip.s_addr = cfg.gateway;
 			break;
 		case HOST_X3:
-			strcpy(buf, "Проверка хост-ЭВМ \"Экспресс-3\":\t\t");
+			snprintf(desc, sizeof(desc), "Хост-ЭВМ \"Экспресс-3\"");
+			ip.s_addr = cfg.x3_p_ip;
 			break;
 /*		case HOST_X3_ALT:
-			strcpy(buf, "Проверка хост-ЭВМ-2 \"Экспресс-3\":\t");
+			snprintf(desc, sizeof(desc), "Хост-ЭВМ-2 \"Экспресс-3\"");
+			ip.s_addr = cfg.x3_s_ip;
 			break;*/
 		case HOST_BANK1:
-			strcpy(buf, "Проверка процессингового центра #1:\t");
+			snprintf(desc, sizeof(desc), "Процессинговый центр #1");
+			ip.s_addr = cfg.bank_proc_ip;
 			break;
 		case HOST_BANK2:
-			strcpy(buf, "Проверка процессингового центра #2:\t");
+			snprintf(desc, sizeof(desc), "Процессинговый центр #2");
+			ip.s_addr = htonl(ntohl(cfg.bank_proc_ip) + 1);
+			break;
+		case HOST_FDO:
+			snprintf(desc, sizeof(desc), "ОФД");
+			ip.s_addr = cfg.fdo_ip;
 			break;
 		default:
-			buf[0] = 0;
+			line[0] = 0;
 	}
-	l = strlen(buf);
-	sprintf(buf + l, "%d/%hu", hosts[n].nr_replies, hosts[n].seq);
-	return buf;
+#define DESC_WIDTH	30
+#define IP_WIDTH	25
+	if (n == HOST_FDO){
+		char addr[30];
+		snprintf(addr, sizeof(addr), "%s:%hu", inet_ntoa(ip), cfg.fdo_port);
+		snprintf(line, sizeof(line), "%-*s%-*s%s", DESC_WIDTH, desc, IP_WIDTH, addr,
+			fdo_st_str(hosts[n].state));
+	}else
+		snprintf(line, sizeof(line), "%-*s%-*s%d из %hu", DESC_WIDTH, desc,
+			IP_WIDTH, inet_ntoa(ip), hosts[n].nr_replies, hosts[n].seq);
+	return line;
+}
+
+static bool fdo_process(uint32_t t)
+{
+	struct ping_rec *rec = hosts + HOST_FDO;
+	if (rec->ip.s_addr == INADDR_NONE)
+		return false;
+	bool rc = false;
+	int prev_fdo_st = rec->state;
+	switch (rec->state){
+		case fdo_st_start:
+			rc = fdo_sock_open() && fdo_begin_connect(rec, t);
+			break;
+		case fdo_st_conn:
+			rc = fdo_connect(rec, t);
+			break;
+	}
+	if (!rc && (fdo_sock != -1))
+		fdo_sock_close();
+	return prev_fdo_st != rec->state;
 }
 
 bool process_ping(struct kbd_event *e)
 {
+	if (e->pressed && (e->key == KEY_ESCAPE))
+		return false;
 	uint32_t t = u_times();
 	char packet[PING_DATA_LEN + MAX_IP_LEN + MAX_ICMP_LEN];
 	struct sockaddr_in from;
-	int i, l, n, from_len = sizeof(from);
-	if (e->pressed && (e->key == KEY_ESCAPE))
-		return false;
-	l = recvfrom(ping_sock, packet, sizeof(packet), 0,
-		(struct sockaddr *)&from, (socklen_t *)&from_len);
+	int from_len = sizeof(from);
+	int l = recvfrom(icmp_sock, packet, sizeof(packet), 0, (struct sockaddr *)&from,
+		(socklen_t *)&from_len);
 	if (l > 0){
-		n = parse_reply(packet, l, &from);
+		int n = parse_reply(packet, l, &from);
 		if (n != -1){
 			cur_ping_line = n;
-			ping_lines[n][0] = 0;
+			reset_ping_line(n);
 			add_ping_line(get_ping_line(n));
 		}
 	}
-	for (i = 0; i < NR_HOSTS; i++){
+	for (int i = 0; i < NR_HOSTS; i++){
 		if ((hosts[i].ip.s_addr == INADDR_NONE) ||
 				(hosts[i].nr_replies == NR_PINGS))
 			continue;
-		if ((hosts[i].seq < NR_PINGS) &&
-				(t - hosts[i].t0) > ICMP_PING_INTERVAL){
-			if (send_ping(hosts + i, t)){
-				cur_ping_line = i;
-				ping_lines[i][0] = 0;
-				add_ping_line(get_ping_line(i));
-			}
+		bool rc = false;
+		if (i == HOST_FDO)
+			rc = fdo_process(t);
+		else if ((hosts[i].seq < NR_PINGS) &&
+				(t - hosts[i].t0) > ICMP_PING_INTERVAL)
+			rc = send_ping(hosts + i, t);
+		if (rc){
+			cur_ping_line = i;
+			reset_ping_line(i);
+			add_ping_line(get_ping_line(i));
 		}
 	}
 	return true;
