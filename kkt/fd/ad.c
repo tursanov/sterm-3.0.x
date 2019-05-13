@@ -136,7 +136,7 @@ void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src) {
 void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2) {
 	if (dst->s)
 		free(dst->s);
-	const char *n = "ü";
+	const char *n = "\xfc";
 	size_t n_len = strlen(n);
 	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
 	size_t len2 = op ? strlen(op) : 0;
@@ -742,10 +742,25 @@ int AD_delete_doc(int64_t doc) {
 	}
 
 	AD_calc_sum();
-	
+
     if (count)
     	AD_save();
    	return count;
+}
+
+void AD_remove_C(C *c) {
+	list_item_t *li = c->klist.head;
+	while (li) {
+		K *k = LIST_ITEM(li, K);
+		li = li->next;
+		if (doc_no_is_empty(&k->u))
+			list_remove(&c->klist, k);
+	}
+	if (c->klist.count == 0)
+		list_remove(&_ad->clist, c);
+	else
+		C_calc_sum(c);
+	AD_save();
 }
 
 C* AD_getCheque(K *k, uint8_t t1054, uint8_t t1055) {
@@ -1338,6 +1353,38 @@ static void AD_sum_add(S *dst, S *src) {
 	dst->p += src->p;
 	dst->b += src->b;
 	dst->a += src->a;
+}
+
+void C_calc_sum(C *c) {
+	memset(&c->sum, 0, sizeof(c->sum));
+	for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+		K *k = LIST_ITEM(li2, K);
+		int64_t d = doc_no_to_i64(&k->d);
+		int64_array_add(&_ad->docs, d, true);
+
+		if (k->llist.count == 0)
+			continue;
+
+		struct S ks = { 0, 0, 0, 0, 0 };
+		K_calc_sum(k, &ks);
+
+		if (k->a > 0) {
+			ks.b = k->a;
+			switch (k->m) {
+			case 1:
+				ks.n -= k->a;
+				break;
+			case 2:
+				ks.e -= k->a;
+				break;
+			case 3:
+				ks.p -= k->a;
+				break;
+			}
+		}
+
+		AD_sum_add(&c->sum, &ks);
+	}
 }
 
 void AD_calc_sum() {

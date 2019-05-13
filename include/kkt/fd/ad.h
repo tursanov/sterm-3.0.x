@@ -134,6 +134,7 @@ extern bool C_addK(C *c, K *k);
 
 extern int C_save(FILE *f, C *c);
 extern C* C_load(FILE *f);
+void C_calc_sum(C *c);
 
 // данные кассира
 typedef struct P1 {
@@ -206,6 +207,7 @@ extern void AD_setP1(P1 *p1);
 // удаление из корзины документа
 extern int AD_delete_doc(int64_t doc);
 extern void AD_calc_sum();
+extern void AD_remove_C(C* c);
 
 #ifdef TEST_PRINT
 extern void AD_print(FILE *f);

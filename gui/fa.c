@@ -1036,135 +1036,54 @@ static size_t get_phone(char *src, char *dst) {
 
 void fa_cheque() {
 	bool changed = false;
-/*	int64_t sumN = 0;
-	int64_t sumE = 0;
-	int64_t sumI = 0;
-	int64_t sumC = 0;
-
-	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
-		C *c = LIST_ITEM(li1, C);
-		if (c->t1054 == 1 || c->t1054 == 4) {
-			sumN += c->sum.n;
-			sumE += c->sum.e;
-		} else {
-			sumN -= c->sum.n;
-			sumE -= c->sum.e;
-		}
-	}*/
-//	int64_t sn = llabs(sumN);
+	bool have_unformed_docs = false;
 
 	cheque_init();
 
-	while (true) {
-		if (cheque_execute()) {
-//			fill_rect(screen, int x, int y, int width, int height, int border_width,
-//		Color border_color, int bg_color);
-		
-/*			if (sumN > 0) {
-				form_t *form = NULL;
-				char title[256];
-				
-				sprintf(title, "Расчет сдачи (%s: %.1lld.%.2lld РУБ)",
-					sumN > 0 ? "Необходимо получить от пассажира" : 
-					"Необходимо выдать пассажиру",
-					sn / 100, sn % 100);
-		
-				BEGIN_FORM(form, title)
-					FORM_ITEM_EDIT_TEXT(1031, "Введите сумму, принятую от пассажира:", "", FORM_INPUT_TYPE_MONEY, 16)
-					FORM_ITEM_BUTTON(1, "ОК")
-					FORM_ITEM_BUTTON(0, "Отмена")
-				END_FORM()
-				
-				while (1) {
-					int64_t n;
-					if (form_execute(form) == 1) {
-						form_data_t data;
-						form_get_data(form, 1031, 1, &data);
-						n = form_data_to_vln(&data);
-						sumC = n - sumN;
-					} else
-						break;
-						
-					printf("sumI: %lld, sumN: %lld\n", sumI, sumN);
+	while (cheque_execute()) {
+		list_item_t *li = _ad->clist.head;
+		while (li) {
+			C *c = LIST_ITEM(li, C);
+			li = li->next;
+
+			bool have_u = false;
+			size_t doc_count = 0;
 			
-					if (n < sumN) {
-						message_box("Ошибка", "Сумма принятых от пассажира денег \n"
-							"не должна быть меньше суммы для оплаты наличными", dlg_yes, 0, al_center);
-						kbd_flush_queue();
-						form_draw(form);
-					} else {
-						char buffer[1024];
-						sprintf(buffer, "СУММА, ПОЛУЧЕННАЯ ОТ ПАССАЖИРА: %.1lld.%.2lld\n"
-							"%s: %.1lld.%.2lld\n"
-							"СДАЧА: %.1lld.%.2lld\n"
-							"Печатать чек(и)?",
-							n / 100, n % 100,
-							sumN > 0 ? "НЕОБХОДИМО ПОЛУЧИТЬ ДЛЯ ОПЛАТ\x9b" : "СУММА ДЛЯ В\x9bДАЧИ",
-							sn / 100, sn % 100,
-							sumC / 100, sumC % 100);
-						if (message_box("Уведомление", buffer, dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
-							kbd_flush_queue();
-							sumI = n;
-							break;
-						} else {
-							form_draw(form);
-							continue;
-						}
-					}
-				}
-				form_destroy(form);
-				cheque_draw();
-				
-				if (sumI < sumN)
-					continue;
-			}*/
-		
-		
-//			fdo_suspend();
-			
-/*			cashier_data_t data = { "", "", "", "" };
-			fa_load_cashier_data(&data);*/
+			ffd_tlv_reset();
 
-			while (_ad->clist.head) {
-				C *c = LIST_ITEM(_ad->clist.head, C);
-				ffd_tlv_reset();
-				
-				ffd_tlv_add_string(1021, cashier_cashier);
-				if (cashier_inn[0])
-					ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
+			ffd_tlv_add_string(1021, cashier_cashier);
+			if (cashier_inn[0])
+				ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
+			ffd_tlv_add_uint8(1054, c->t1054);
+			ffd_tlv_add_uint8(1055, c->t1055);
+			if (c->pe)
+				ffd_tlv_add_string(1008, c->pe);
+			ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
+			ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
+			ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
+			ffd_tlv_add_vln(1216, 0);
+			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
-/*				if (data.cashier_post[0])
-					ffd_tlv_add_string(1021, data.cashier_post);
-				printf("CASHIER_INN: %d\n", data.cashier_inn[0]);
-				if (data.cashier_inn[0])
-					ffd_tlv_add_fixed_string(1203, data.cashier_inn, 12);*/
-					
-				ffd_tlv_add_uint8(1054, c->t1054);
-				ffd_tlv_add_uint8(1055, c->t1055);
-				if (c->pe)
-					ffd_tlv_add_string(1008, c->pe);
-				ffd_tlv_add_vln(1031, (uint64_t)c->sum.n);
-				ffd_tlv_add_vln(1081, (uint64_t)c->sum.e);
-				ffd_tlv_add_vln(1215, (uint64_t)c->sum.p);
-				ffd_tlv_add_vln(1216, 0);
-				ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
+			if (c->p != user_inn) {
+				ffd_tlv_add_uint8(1057, 1 << 6);
+				char phone[19+1];
+				/*size_t size =*/ get_phone(c->h, phone);
+				ffd_tlv_add_string(1171, phone);
+			}
 
-				if (c->p != user_inn) {
-					ffd_tlv_add_uint8(1057, 1 << 6);
-					char phone[19+1];
-					/*size_t size =*/ get_phone(c->h, phone);
+			if (_ad->t1086 != NULL) {
+				ffd_tlv_stlv_begin(1084, 320);
+				ffd_tlv_add_string(1085, "ТЕРМИНАЛ");
+				ffd_tlv_add_string(1086, _ad->t1086);
+				ffd_tlv_stlv_end();
+			}
 
-					ffd_tlv_add_string(1171, phone);
-				}
-
-				if (_ad->t1086 != NULL) {
-					ffd_tlv_stlv_begin(1084, 320);
-					ffd_tlv_add_string(1085, "ТЕРМИНАЛ");
-					ffd_tlv_add_string(1086, _ad->t1086);
-					ffd_tlv_stlv_end();
-				}
-				for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
-					K *k = LIST_ITEM(i1, K);
+			for (list_item_t *i1 = c->klist.head; i1; i1 = i1->next) {
+				K *k = LIST_ITEM(i1, K);
+				if (doc_no_is_not_empty(&k->u)) {
+					have_u = true;
+					have_unformed_docs = true;
+				} else {
 					for (list_item_t *i2 = k->llist.head; i2; i2 = i2->next) {
 						L *l = LIST_ITEM(i2, L);
 						ffd_tlv_stlv_begin(1059, 1024);
@@ -1190,73 +1109,30 @@ void fa_cheque() {
 						}
 						ffd_tlv_stlv_end();
 					}
+					doc_count++;
 				}
+			}
 
+			if (doc_count > 0) {
 				uint8_t* pattern_footer = NULL;
 				size_t pattern_footer_size = 0;
-				//uint8_t pattern_footer_buffer[1024] = { 0 };
-
-/*				if (_ad->clist.count == 1) {
-					size_t n = 0;
-					pattern_footer = pattern_footer_buffer;
-					char *p = (char *)pattern_footer_buffer;
-					if (sumN != 0) {
-						n += sprintf(p + n, "ОПЛАТА НАЛИЧН\x9bМИ\r\n");
-						if (sumN > 0)
-							n += sprintf(p + n, "ВСЕГО К ПРИЕМУ: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumN / 100, sumN % 100);
-						else {
-							sumN = -sumN;
-							n += sprintf(p + n, "ВСЕГО К В\x9bПЛАТЕ: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumN / 100, sumN % 100);
-						}
-						if (sumI > 0) {
-							n += sprintf(p + n, "ПОЛУЧЕНО: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumI / 100, sumI % 100);
-							n += sprintf(p + n, "СДАЧА: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumC / 100, sumC % 100);
-						}
-					}
-
-					if (sumE != 0) {
-						n += sprintf(p + n, "ОПЛАТА БЕЗНАЛИЧН\x9bМИ\r\n");
-						if (sumE > 0)
-							n += sprintf(p + n, "ВСЕГО К ПРИЕМУ: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumE / 100, sumE % 100);
-						else {
-							sumE = -sumE;
-							n += sprintf(p + n, "ВСЕГО К В\x9bПЛАТЕ: \x5%.1lld.%.2lld РУБ.\r\n",
-								sumE / 100, sumE % 100);
-						}
-					}
-
-					pattern_footer_size = n;
-				}*/
 
 				cheque_begin_op("Идет печать чека...");
 				if (fa_create_doc(CHEQUE, pattern_footer, pattern_footer_size, update_cheque, NULL)) {
-					list_remove(&_ad->clist, c);
-					AD_save();
+					AD_remove_C(c);
 					cheque_sync_first();
 					cheque_draw();
 					changed = true;
 				} else
 					break;
-				/*else {
-					kbd_flush_queue();
-					cheque_draw();
-					break;
-				}*/
 			}
-			//fdo_resume();
-
-			if (!_ad->clist.head)
-				break;
-		} else
-			break;
+		}
 	}
 
 	AD_calc_sum();
+
+	if (have_unformed_docs)
+		message_box("Уведомление", "Внимание! Имеются документы для которых не завершено переоформление", dlg_yes, 0, al_center);
 
 	fa_set_group(FAPP_GROUP_MENU);
 
