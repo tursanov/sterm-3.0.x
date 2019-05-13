@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include "sysdefs.h"
 #include "serialize.h"
-#ifdef WIN32
+#if defined WIN32 || defined __APPLE__
 #include "ad.h"
 void cashier_set_name(const char *name) {
 }
@@ -64,6 +64,39 @@ int doc_no_compare(doc_no_t *d1, doc_no_t *d2) {
 	return strcmp2(d1->s, d2->s);
 }
 
+int doc_no_special_compare(doc_no_t *n, doc_no_t *d) {
+	if (n == NULL && d == NULL)
+		return 0;
+	else if (n == NULL && d != NULL)
+		return -1;
+	else if (n != NULL && d == NULL)
+		return 1;
+	else {
+		size_t i = 0;
+		for (const char *s1 = n->s, *s2 = d->s; 1; s1++, s2++, i++) {
+			char ch1 = *s1;
+			char ch2 = *s2;
+			if (!ch1 && ch2)
+				return 1;
+			else if (ch1 && !ch2)
+				return -1;
+			else if (!ch1 && !ch2)
+				return 0;
+
+			//((i >= 1 && i <= 3 && ch1 == '*') || ch1 == ch2
+			if ((i < 1 || i > 3 || ch1 != '*') && ch1 != ch2)
+				return -1;
+		}
+	}
+}
+
+void doc_no_clear(doc_no_t *d) {
+	if (d && d->s) {
+		free(d->s);
+		d->s = NULL;
+	}
+}
+
 int64_t doc_no_to_i64(doc_no_t *d) {
 	char *endp;
 	return d->s ? strtoll(d->s, &endp, 10) : 0;
@@ -103,10 +136,12 @@ void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src) {
 void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2) {
 	if (dst->s)
 		free(dst->s);
+	const char *n = "№";
+	size_t n_len = strlen(n);
 	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
 	size_t len2 = op ? strlen(op) : 0;
-	size_t len3 = (d2 && d2->s != NULL) ? strlen(d2->s) + 2 : 0;
-	size_t len = len1 + len2 + len3 + (len2 || len3 ? 3 : 0);
+	size_t len3 = (d2 && d2->s != NULL) ? strlen(d2->s) : 0;
+	size_t len = len1 + len2 + len3 + (len2 || len3 ? 4 + n_len : 0);
 	size_t ofs = 0;
 	dst->s = (char *)malloc(len + 1);
 	char *s = dst->s;
@@ -125,13 +160,16 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 	}
 	if (len3 > 0) {
 		s[ofs++] = ' ';
-		s[ofs++] = '№';
+		memcpy(s + ofs, n, n_len);
+		ofs += n_len;
 		memcpy(s + ofs, d2->s, len3);
 		ofs += len3;
 	}
 	if (len2 > 0 || len3 > 0)
 		s[ofs++] = ')';
 	s[ofs] = 0;
+
+	printf("B = \"%s\"\n", s);
 }
 
 L *L_create(void) {
@@ -259,6 +297,34 @@ K *K_divide(K *k, uint8_t p, int64_t *sum) {
 		*sum = s;
 
     return k1;
+}
+
+static void K_calc_sum(K *k, S *s) {
+	memset(s, 0, sizeof(*s));
+	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+		L *l = LIST_ITEM(li3, L);
+		switch (k->m) {
+		case 1:
+			s->n += l->t;
+			break;
+		case 2:
+			s->e += l->t;
+			break;
+		case 3:
+			s->p += l->t;
+			break;
+		}
+		s->a += l->t;
+	}
+}
+
+static int64_t K_calc_total_sum(K *k) {
+	int64_t sum = 0;
+	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+		L *l = LIST_ITEM(li3, L);
+		sum += l->t;
+	}
+	return sum;
 }
 
 static int L_compare(void *arg, L *l1, L *l2) {
@@ -626,7 +692,7 @@ int AD_load(uint8_t t1055, bool clear) {
 
 	AD_calc_sum();
         
-    printf("AD_load: %d, ad.C.count: %d, ad.docs.count: %d\n", ret, _ad->clist.count,
+    printf("AD_load: %d, ad.C.count: %u, ad.docs.count: %u\n", ret, _ad->clist.count,
     	_ad->docs.count);
     printf("ad.t1086: %s\n", _ad->t1086);
     
@@ -647,8 +713,6 @@ void AD_setP1(P1 *p1) {
             l += strlen(_ad->p1->p);
         if (_ad->p1->t)
             l += strlen(_ad->p1->t);
-
-        printf("l = %d\n", l);
 
 		if (_ad->t1086)
 			free(_ad->t1086);
@@ -717,7 +781,7 @@ int AD_makeCheque(K *k, doc_no_t *d, uint8_t t1054, uint8_t t1055, int64_t s) {
 	list_add(&c->klist, k);
     K_after_add(k);
 
-    printf("AD CH: %d\n", _ad->clist.count);
+    printf("AD CH: %u\n", _ad->clist.count);
 
     return 0;
 }
@@ -806,7 +870,56 @@ L2:
 
 		if (k2 && k2->llist.count > 0) {
 			op_doc_no_set(&k2->b, &k->r, "гашение возврата", NULL);
-			AD_makeCheque(k, &k->r, 2, t1055, sB);
+			AD_makeCheque(k2, &k->r, 2, t1055, sB);
+		}
+	}
+	return 0;
+}
+
+int AD_makeReissue(K *k, uint8_t t1055, int64_t tB1, int64_t tB2, int64_t *sB1, int64_t *sB2) {
+	C *g = NULL;
+	K *g_x = NULL;
+
+	for (list_item_t *li11 = _ad->clist.head; li11; li11 = li11->next) {
+		g = LIST_ITEM(li11, C);
+		if (g->p == k->p && strcmp2(g->h, k->h) == 0 && g->t1054 == 1 && g->t1055 == t1055) {
+			for (list_item_t *li12 = g->klist.head; li12; li12 = li12->next) {
+				g_x = LIST_ITEM(li12, K);
+				if (g_x->o == 1 && doc_no_special_compare(&k->n, &g_x->d) == 0) {
+					if (g_x->m == k->m) {
+						int64_t tB = K_calc_total_sum(g_x);
+						int64_t sB = 0;
+						if (tB + tB1 <= tB2) {
+							sB = tB;
+							*sB1 = tB1;
+							*sB2 = tB2 - (tB + tB1);
+						} else {
+							*sB2 = tB2;
+							if (tB <= tB1 && tB1 <= tB2) {
+								sB = tB;
+								*sB1 = tB2 - tB;
+							} else if (tB <= tB2 && tB2 <= tB1) {
+								sB = tB;
+								*sB1 = tB2 - tB;
+							} else if (tB2 <= tB && tB <= tB1) {
+								sB = tB2;
+								*sB1 = 0;
+							} else if (tB1 <= tB && tB <= tB2) {
+								sB = tB2 - tB1;
+								*sB1 = tB1;
+							} else if (tB1 <= tB2 && tB2 <= tB) {
+								sB = tB2 - tB1;
+								*sB1 = tB1;							
+							} else if (tB2 <= tB1 && tB1 <= tB) {
+								sB = 0;
+								*sB1 = tB2;
+							}
+						}
+						g_x->a = sB;
+					}
+					doc_no_clear(&g_x->u);
+				}
+			}
 		}
 	}
 	return 0;
@@ -815,6 +928,8 @@ L2:
 int AD_processO(K *k) {
     K *k1, *k2;
 	int64_t tB1 = 0;
+	int64_t tB2 = 0;
+	int64_t sB1, sB2;
 
     printf("process new K. K->o = %d\n", k->o);
 
@@ -829,25 +944,24 @@ int AD_processO(K *k) {
 			AD_makeCheque(k, &k->d, 1, _ad->t1055, 0);
             break;
 		case 2:
-			tB1 = 0;
 			k1 = K_divide(k, 1, &tB1);
-
+			sB1 = sB2 = tB1;
+			if (doc_no_is_not_empty(&k->n)) {
+				tB2 = K_calc_total_sum(k);
+				AD_makeReissue(k, _ad->t1055, tB1, tB2, &sB1, &sB2);
+			}
 			doc_no_copy(&k->i2, &k->d);
 			doc_no_copy(&k->i21, &k->r);
 			op_doc_no_set(&k->b, &k->r, "возврат", NULL);
-			//k->i2 = k->d;
-			//k->i21 = k->r;
-			AD_makeCheque(k, &k->r, 2, _ad->t1055, tB1);
+			AD_makeCheque(k, &k->r, 2, _ad->t1055, sB2);
 			if (k1) {
-				if (doc_no_is_not_empty(&k->d)) {
+				if (doc_no_is_not_empty(&k1->d)) {
 					doc_no_copy(&k1->i2, &k1->d);
-					op_doc_no_set(&k->b, &k->d, "возврат", &k->r);
+					op_doc_no_set(&k1->b, &k1->d, "возврат", &k1->r);
 				} else
-					op_doc_no_set(&k->b, NULL, "возврат", &k->r);
+					op_doc_no_set(&k1->b, NULL, "возврат", &k1->r);
 				doc_no_copy(&k1->i21, &k1->r);
-				//k1->i2 = k1->d;
-				//k1->i21 = k1->r;
-				AD_makeCheque(k1, &k1->d, 1, _ad->t1055, tB1);
+				AD_makeCheque(k1, &k1->d, 1, _ad->t1055, sB1);
 			}
 			break;
         case 3:
@@ -865,11 +979,19 @@ int AD_processO(K *k) {
 int AD_process(K* k) {
     AD_processO(k);
     AD_save();
+#ifdef TEST_PRINT
+static int stage = 0;
+	AD_calc_sum();
+	char buf[1024];
+	sprintf(buf, "stage%d.txt", ++stage);
+	FILE *f = fopen(buf, "w");
+	AD_print(f);
+	fclose(f);
+#endif
     return 0;
 }
 
-
-#define REQUIRED_K_MASK 0x39
+#define REQUIRED_K_MASK 0x71
 #define REQUIRED_L_MASK 0x1F
 #define ERR_INVALID_VALUE   45
 
@@ -987,9 +1109,8 @@ static int process_phone_value(const char *tag, const char *name,
         return ERR_INVALID_VALUE;
     }
 
-
     if (f == '8') {
-        s = malloc(len + 2);
+        s = (char *)malloc(len + 2);
         s[0] = '+';
         s[1] = '7';
         memcpy(s + 2, val + 1, len - 1);
@@ -1074,7 +1195,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 if (!check) {
                     AD_process(_k);
                 } else {
-                    const char tags[] = "ODRPHMTE";
+                    const char tags[] = "ODRNPHMTE";
                     for (int i = 0, mask = 1; i < ASIZE(tags); i++, mask <<= 1) {
                         bool required = (REQUIRED_K_MASK & mask) != 0;
                         bool present = (_kMask & mask) != 0;
@@ -1157,31 +1278,34 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 } else if (strcmp(name, "D") == 0) {
                     if ((ret = process_doc_no_value("K", name, val, &_kMask, 0x2, false, &_k->d)) != 0)
                         return ret;
-                } else if (strcmp(name, "R") == 0) {
+				} else if (strcmp(name, "R") == 0) {
 					if ((ret = process_doc_no_value("K", name, val, &_kMask, 0x4, true, &_k->r)) != 0)
 						return ret;
-                } else if (strcmp(name, "P") == 0) {
+				} else if (strcmp(name, "N") == 0) {
+					if ((ret = process_doc_no_value("K", name, val, &_kMask, 0x8, true, &_k->n)) != 0)
+						return ret;
+				} else if (strcmp(name, "P") == 0) {
                     if ((ret = check_str_len("K", name, val, 10, 12)) != 0 ||
                         (ret = process_int_value("K", name, val, 0, INT64_MAX,
-                                                 &_kMask, 0x8, &v64)) != 0)
+                                                 &_kMask, 0x10, &v64)) != 0)
                         return ret;
                     _k->p = v64;
                 } else if (strcmp(name, "H") == 0 &&
                            (ret = process_phone_value("K", name, val,
-                                                      &_kMask, 0x10, &_k->h)) != 0) {
+                                                      &_kMask, 0x20, &_k->h)) != 0) {
                     return ret;
                 } else if (strcmp(name, "M") == 0) {
                     if ((ret = process_int_value("K", name, val, 0, 3,
-                                                 &_kMask, 0x20, &v64)) != 0)
+                                                 &_kMask, 0x40, &v64)) != 0)
                         return ret;
 					_k->m = (uint8_t)v64;
                 } else if (strcmp(name, "T") == 0 &&
                           (ret = process_phone_value("K", name, val,
-                                                     &_kMask, 0x40, &_k->t)) != 0) {
+                                                     &_kMask, 0x80, &_k->t)) != 0) {
                     return ret;
                 }  else if (strcmp(name, "E") == 0 &&
                             (ret = process_email_value("K", name, val,
-                                                       &_kMask, 0x80, &_k->e)) != 0) {
+                                                       &_kMask, 0x100, &_k->e)) != 0) {
                     return ret;
                 }
             } else if (_p1 != NULL) {
@@ -1206,25 +1330,6 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
             break;
     }
     return 0;
-}
-
-static void AD_k_calc_sum(K *k, S *s) {
-	memset(s, 0, sizeof(*s));
-	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
-		L *l = LIST_ITEM(li3, L);
-		switch (k->m) {
-		case 1:
-			s->n += l->t;
-			break;
-		case 2:
-			s->e += l->t;
-			break;
-		case 3:
-			s->p += l->t;
-			break;
-		}
-		s->a += l->t;
-	}
 }
 
 static void AD_sum_add(S *dst, S *src) {
@@ -1253,7 +1358,7 @@ void AD_calc_sum() {
 			struct S ks = { 0, 0, 0, 0, 0 };
 			S *s = &_ad->sum[c->t1054 - 1];
 
-			AD_k_calc_sum(k, &ks);
+			K_calc_sum(k, &ks);
 
 			if (k->a > 0) {
 				ks.b = k->a;
@@ -1275,3 +1380,48 @@ void AD_calc_sum() {
 		}
 	}
 }
+
+#ifdef TEST_PRINT
+
+#define CN(s) ((s) ? (s) : "")
+
+void AD_print(FILE *f) {
+	fprintf(f, "AD\n");
+	S *s = _ad->sum;
+	const char *s_title[] = { "Приход", "Возврат прихода", "Расход", "Возврат расхода" };
+	for(size_t i = 0; i < 4; i++, s++) {
+		fprintf(f, "  SUM[%s]\n", s_title[i]);
+		fprintf(f, "    N = %lld\n", s->n);
+		fprintf(f, "    E = %lld\n", s->e);
+		fprintf(f, "    P = %lld\n", s->p);
+		fprintf(f, "    B = %lld\n", s->b);
+		fprintf(f, "    A = %lld\n", s->a);
+	}
+
+	for (list_item_t *li1 = _ad->clist.head; li1; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		fprintf(f, "C (P=%llu, H=%s, T1054=%d, T1055=%d, PE=%s)\n", c->p, c->h, c->t1054, c->t1055, CN(c->pe));
+		fprintf(f, "  SUM\n");
+		fprintf(f, "    N = %lld\n", c->sum.n);
+		fprintf(f, "    E = %lld\n", c->sum.e);
+		fprintf(f, "    P = %lld\n", c->sum.p);
+		fprintf(f, "    B = %lld\n", c->sum.b);
+		fprintf(f, "    A = %lld\n", c->sum.a);
+		for (list_item_t *li2 = c->klist.head; li2; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			fprintf(f, "  K (P=%lld, H=%s, M=%d, ", k->p, k->h, k->m);
+			fprintf(f, "D=%s, R=%s, \n     N=%s, ", CN(k->d.s), CN(k->r.s), CN(k->n.s));
+			fprintf(f, "I1=%s, I2=%s, I21=%s, ", CN(k->i1.s), CN(k->i2.s), CN(k->i21.s)); 
+			fprintf(f, "U=%s, A=%lld,\n     ", CN(k->u.s), k->a);
+			fprintf(f, "B=%s, ", CN(k->b.s));
+			fprintf(f, "T=%s, E=%s)\n", CN(k->t), CN(k->e));
+			for (list_item_t *li3 = k->llist.head; li3; li3 = li3->next) {
+				L *l = LIST_ITEM(li3, L);
+				fprintf(f, "       L (S=%s, P=%d, R=%d, ", l->s, l->p, l->r);
+				fprintf(f, "T=%lld, N=%d, C=%lld)\n", l->t, l->n, l->c);
+			}
+		}
+	}
+}
+
+#endif

@@ -223,7 +223,7 @@ int list_compare(list_t *list1, list_t *list2,
     if (list1->count != list2->count)
         return ret;
     size_t used_size = (list1->count + 7) / 8;
-    uint8_t *used = malloc(used_size);
+    uint8_t *used = (uint8_t *)malloc(used_size);
     if (used == NULL)
         return -1;
     

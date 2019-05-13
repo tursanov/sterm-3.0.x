@@ -74,9 +74,10 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 typedef struct K {
 	struct list_t llist;    // список составляющих
     uint8_t o;          // Операция
-	int64_t a;			// сумма встречногопредоставления
+	int64_t a;			// сумма встречного предоставления
 	doc_no_t d;         // Номер оформляемого документа или КРС при возврате
 	doc_no_t r;         // Номер документа, для которого оформляется дубликат, или возвращаемого документа или гасимого документа или гасимой КРС возврата
+	doc_no_t n;         // Номер документа, на который переоформлен возвращаемый документ
 	doc_no_t i1;        // индекс
 	doc_no_t i2;        // индекс
 	doc_no_t i21;       // индекс
@@ -204,8 +205,11 @@ extern void AD_setP1(P1 *p1);
 
 // удаление из корзины документа
 extern int AD_delete_doc(int64_t doc);
-
 extern void AD_calc_sum();
+
+#ifdef TEST_PRINT
+extern void AD_print(FILE *f);
+#endif
 
 // callback для обработки XML
 extern int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val);
