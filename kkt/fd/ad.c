@@ -1443,7 +1443,7 @@ void AD_calc_sum() {
 			int64_t d = doc_no_to_i64(&k->d);
 			int64_array_add(&_ad->docs, d, true);
 
-			if (k->llist.count == 0)
+			if (k->llist.count == 0 || doc_no_is_not_empty(&k->u))
 				continue;
 
 			struct S ks = { 0, 0, 0, 0, 0 };

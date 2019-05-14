@@ -1037,10 +1037,11 @@ static size_t get_phone(char *src, char *dst) {
 void fa_cheque() {
 	bool changed = false;
 	bool have_unformed_docs = false;
+	bool result;
 
 	cheque_init();
 
-	while (cheque_execute()) {
+	while ((result = cheque_execute())) {
 		bool has_errors = false;
 		list_item_t *li = _ad->clist.head;
 		have_unformed_docs = false;
@@ -1139,7 +1140,7 @@ void fa_cheque() {
 
 	AD_calc_sum();
 
-	if (have_unformed_docs)
+	if (result && have_unformed_docs)
 		message_box("Уведомление", "Внимание! Имеются документы, для которых не завершено переоформление", dlg_yes, 0, al_center);
 
 	fa_set_group(FAPP_GROUP_MENU);
