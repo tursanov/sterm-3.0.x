@@ -1140,7 +1140,7 @@ void fa_cheque() {
 	AD_calc_sum();
 
 	if (have_unformed_docs)
-		message_box("Уведомление", "Внимание! Имеются документы для которых не завершено переоформление", dlg_yes, 0, al_center);
+		message_box("Уведомление", "Внимание! Имеются документы, для которых не завершено переоформление", dlg_yes, 0, al_center);
 
 	fa_set_group(FAPP_GROUP_MENU);
 
