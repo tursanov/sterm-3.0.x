@@ -264,32 +264,32 @@ int list_foreach(list_t *list, void *arg, list_item_func_t func) {
     return 0;
 }
 
-void list_it_remove(list_it_t *it) {
-    list_item_t *tmp = it->i;
-    it->i = it->i->next;
-    if (it->list->delete_func != NULL)
-        it->list->delete_func(tmp->obj);
-    free(tmp);
-    if (it->p != NULL)
-        it->p->next = it->i;
-    if (it->i == NULL)
-        it->list->tail = it->p;
-    if (tmp == it->list->head)
-        it->list->head = it->i;
-    it->list->count--;
-	it->flags = 1;
-}
-
-void list_it_next(list_it_t *it) {
-	if (it->flags)
-		it->flags = 0;
-	else {
-		it->p = it->i;
-		if (it->i != NULL)
-			it->i = it->i->next;
-	}
-}
-
+//void list_it_remove(list_it_t *it) {
+//    list_item_t *tmp = it->i;
+//    it->i = it->i->next;
+//    if (it->list->delete_func != NULL)
+//        it->list->delete_func(tmp->obj);
+//    free(tmp);
+//    if (it->p != NULL)
+//        it->p->next = it->i;
+//    if (it->i == NULL)
+//        it->list->tail = it->p;
+//    if (tmp == it->list->head)
+//        it->list->head = it->i;
+//    it->list->count--;
+//	it->flags = 1;
+//}
+//
+//void list_it_next(list_it_t *it) {
+//	if (it->flags)
+//		it->flags = 0;
+//	else {
+//		it->p = it->i;
+//		if (it->i != NULL)
+//			it->i = it->i->next;
+//	}
+//}
+//
 
 list_item_t *list_item_at(list_t *list, int index) {
 	list_item_t *li = list->head;

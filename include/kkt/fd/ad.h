@@ -82,7 +82,7 @@ typedef struct K {
 	doc_no_t i2;        // индекс
 	doc_no_t i21;       // индекс
 	doc_no_t u;			// номер переоформляемого документа
-	op_doc_no_t b;	// список документов
+	op_doc_no_t b;		// список документов
 	int64_t p;          // ИНН перевозчика
     char *h;            // телефон перевозчика
     uint8_t m;          // способ оплаты
@@ -206,8 +206,20 @@ extern void AD_setP1(P1 *p1);
 
 // удаление из корзины документа
 extern int AD_delete_doc(int64_t doc);
+// расчет суммы по корзине
 extern void AD_calc_sum();
+// удаление чека из корзины
 extern void AD_remove_C(C* c);
+
+typedef struct AD_state {
+	// актуальное количество чеков для печати
+	int actual_cheque_count;
+	// признак наличия банковских операций
+	bool has_cashless_payments;
+} AD_state;
+
+// получение состояния корзины (false - корзина пуста)
+extern bool AD_get_state(AD_state *s);
 
 #ifdef TEST_PRINT
 extern void AD_print(FILE *f);

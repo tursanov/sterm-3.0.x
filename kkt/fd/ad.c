@@ -134,8 +134,13 @@ void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src) {
 }
 
 void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2) {
-	if (dst->s)
+	if (dst->s) {
 		free(dst->s);
+		dst->s = NULL;
+	}
+	if (d1 != NULL)
+		dst->s = COPYSTR(d1->s);
+#if 0		
 	const char *n = "\xfc";
 	size_t n_len = strlen(n);
 	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
@@ -170,6 +175,7 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 	s[ofs] = 0;
 
 	printf("B = \"%s\"\n", s);
+#endif
 }
 
 L *L_create(void) {
@@ -728,18 +734,33 @@ void AD_setP1(P1 *p1) {
 
 int AD_delete_doc(int64_t doc) {
 	int count = 0;
-    for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
-        C *c = LIST_IT_OBJ(i1, C);
-		for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
-			K *k = LIST_IT_OBJ(i2, K);
+	for (list_item_t *li1 = _ad->clist.head; li1;) {
+		C *c = LIST_ITEM(li1, C);
+		li1 = li1->next;
+		for (list_item_t *li2 = c->klist.head; li2;) {
+			K *k = LIST_ITEM(li2, K);
+			li2 = li2->next;
 			if (doc_no_to_i64(&k->d) == doc) {
-				list_it_remove(&i2);
+				list_remove(&c->klist, k);
 				count++;
-            }
-        }
+			}
+		}
 		if (c->klist.count == 0)
-			list_it_remove(&i1);
+			list_remove(&_ad->clist, c);
 	}
+
+ //   for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
+ //       C *c = LIST_IT_OBJ(i1, C);
+	//	for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
+	//		K *k = LIST_IT_OBJ(i2, K);
+	//		if (doc_no_to_i64(&k->d) == doc) {
+	//			list_it_remove(&i2);
+	//			count++;
+ //           }
+ //       }
+	//	if (c->klist.count == 0)
+	//		list_it_remove(&i1);
+	//}
 
 	AD_calc_sum();
 
@@ -803,26 +824,49 @@ int AD_makeCheque(K *k, doc_no_t *d, uint8_t t1054, uint8_t t1055, int64_t s) {
 
 int AD_makeAnnul(K *k, uint8_t o, uint8_t t1054, uint8_t t1055) {
 	// для всех
-    for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
-        C *c = LIST_IT_OBJ(i1, C);
-        if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
-            for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
-                K *k1 = LIST_IT_OBJ(i2, K);
-                if (doc_no_compare(&k1->i1, &k->r) == 0 &&
-					k1->m == k->m && k1->o == o) {
-                    if (K_equalByL(k, k1)) {
-                        list_it_remove(&i2);
-                        if (c->klist.count == 0) {
-                            list_it_remove(&i1);
-                        }
-                        printf("Удаляем K из корзины\n");
+
+	for (list_item_t *li1 = _ad->clist.head; li1;) {
+		C *c = LIST_ITEM(li1, C);
+		li1 = li1->next;
+		if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
+			for (list_item_t *li2 = c->klist.head; li2;) {
+				K *k1 = LIST_ITEM(li2, K);
+				li2 = li2->next;
+
+				if (doc_no_compare(&k1->i1, &k->r) == 0 && k1->m == k->m && k1->o == o) {
+					if (K_equalByL(k, k1)) {
+						list_remove(&c->klist, k1);
+						if (c->klist.count == 0)
+							list_remove(&_ad->clist, c);
+						printf("Удаляем K из корзины\n");
 						K_destroy(k);
 						return 0;
 					}
 				}
-            }
-        }
-    }
+			}
+		}
+	}
+
+    //for (list_it_t i1 = LIST_IT(&_ad->clist); !LIST_IT_END(i1); list_it_next(&i1)) {
+    //    C *c = LIST_IT_OBJ(i1, C);
+    //    if (c->p == k->p && strcmp2(c->h, k->h) == 0 && c->t1054 == t1054 && c->t1055 == t1055) {
+    //        for (list_it_t i2 = LIST_IT(&c->klist); !LIST_IT_END(i2); list_it_next(&i2)) {
+    //            K *k1 = LIST_IT_OBJ(i2, K);
+    //            if (doc_no_compare(&k1->i1, &k->r) == 0 &&
+				//	k1->m == k->m && k1->o == o) {
+    //                if (K_equalByL(k, k1)) {
+    //                    list_it_remove(&i2);
+    //                    if (c->klist.count == 0) {
+    //                        list_it_remove(&i1);
+    //                    }
+    //                    printf("Удаляем K из корзины\n");
+				//		K_destroy(k);
+				//		return 0;
+				//	}
+				//}
+    //        }
+    //    }
+    //}
 	op_doc_no_set(&k->b, &k->r, "гашение", NULL);
 	AD_makeCheque(k, &k->r, 2, t1055, 0);
     return 0;
@@ -1427,6 +1471,26 @@ void AD_calc_sum() {
 		}
 	}
 }
+
+bool AD_get_state(AD_state *s) {
+	memset(s, 0, sizeof(*s));
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		size_t n = 0;
+		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			if (doc_no_is_empty(&k->u)) {
+				n++;
+				if (k->m == 2)
+					s->has_cashless_payments = true;
+			}
+		}
+		if (n > 0)
+			s->actual_cheque_count++;
+	}
+	return s->actual_cheque_count > 0;
+}
+
 
 #ifdef TEST_PRINT
 

@@ -1041,14 +1041,17 @@ void fa_cheque() {
 	cheque_init();
 
 	while (cheque_execute()) {
+		bool has_errors = false;
 		list_item_t *li = _ad->clist.head;
+		have_unformed_docs = false;
+
 		while (li) {
 			C *c = LIST_ITEM(li, C);
 			li = li->next;
 
 			bool have_u = false;
 			size_t doc_count = 0;
-			
+
 			ffd_tlv_reset();
 
 			ffd_tlv_add_string(1021, cashier_cashier);
@@ -1123,10 +1126,15 @@ void fa_cheque() {
 					cheque_sync_first();
 					cheque_draw();
 					changed = true;
-				} else
+				} else {
+					has_errors = true;
 					break;
+				}
 			}
 		}
+
+		if (!has_errors)
+			break;
 	}
 
 	AD_calc_sum();

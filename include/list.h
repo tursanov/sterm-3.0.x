@@ -38,18 +38,16 @@ list_item_t *list_item_at(list_t *list, int index);
 #define LIST_ITEM(i, type) ((i) ? ((type *)((i)->obj)) : NULL)
 #define USE_LIST_ITEM(x, i, type) type * x = LIST_ITEM(i, type)
 
-
-typedef struct list_it_t {
-    list_t *list;
-    list_item_t *i;
-    list_item_t *p;
-	int flags;
-} list_it_t;
-
-#define LIST_IT(list) { (list), (list)->head, NULL, 0 }
-#define LIST_IT_END(it) ((it).i == NULL)
-#define LIST_IT_OBJ(it, type) ((type *)((it).i->obj))
-void list_it_next(list_it_t *it);
-void list_it_remove(list_it_t *it);
+//typedef struct list_it_t {
+//    list_t *list;
+//    list_item_t *i;
+//	int flags;
+//} list_it_t;
+//
+//#define LIST_IT(list) { (list), (list)->head, NULL, 0 }
+//#define LIST_IT_END(it) ((it).i == NULL)
+//#define LIST_IT_OBJ(it, type) ((type *)((it).i->obj))
+//void list_it_next(list_it_t *it);
+//void list_it_remove(list_it_t *it);
 
 #endif /* list_h */
