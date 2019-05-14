@@ -3950,11 +3950,32 @@ static void show_syntax_error_msg(uint8_t code)
 	message_box("Ошибка в ответе", msg, (int)btns, 0, al_center);
 }
 
-extern int cm_clear(void);
-
 static bool need_apc(void)
 {
-	return cfg.kkt_apc && (_ad != NULL) && (_ad->clist.count > 0);
+	bool ret = false;
+	if (cfg.kkt_apc){
+		struct AD_state ads;
+		ret = AD_get_state(&ads);
+	}
+	return ret;
+}
+
+static bool need_pos(void)
+{
+	bool ret = false;
+	if (cfg.bank_system && cfg.kkt_apc){
+		struct AD_state ads;
+		AD_get_state(&ads);
+		if (ads.has_cashless_payments){
+			int64_t s = ads.cashless_total_sum;
+			if (s < 0)
+				s *= -1;
+			bi_pos.amount1 = s / 100;
+			bi_pos.amount2 = ((s % 100) + 5) / 10;
+			ret = true;
+		}
+	}
+	return ret;
 }
 
 /* Вызывается при приходе ответа */
@@ -3992,14 +4013,7 @@ static void on_response(void)
 			if ((c_state != cs_hasreq) && need_apc()){
 				show_req();
 				apc = true;
-				bool need_pos = false;
-				for (int i = 0; i < ASIZE(_ad->sum); i++){
-					if (_ad->sum[i].e > 0){
-						need_pos = true;
-						break;
-					}
-				}
-				if (need_pos){
+				if (need_pos()){
 					show_pos();
 					apc = pos_active;
 				}else{

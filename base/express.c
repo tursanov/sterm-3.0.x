@@ -2151,12 +2151,14 @@ bool execute_resp(void)
 						return resp_executing = false;
 					}
 					break;
-				case dst_kkt:
+				case dst_kkt:{
 					execute_kkt(p, l);
-					if ((_ad != NULL) && (_ad->clist.count > 0))
+					struct AD_state ads;
+					if (AD_get_state(&ads))
 						xlog_set_rec_flags(hxlog, log_number, n_para,
 							XLOG_REC_CPC);
 					has_kkt_resp = true;	/* pass through */
+				}
 				case dst_bank:
 					n_para++;		/* pass through */
 				default:
