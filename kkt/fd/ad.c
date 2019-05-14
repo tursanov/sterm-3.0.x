@@ -1481,8 +1481,20 @@ bool AD_get_state(AD_state *s) {
 			K *k = LIST_ITEM(li2, K);
 			if (doc_no_is_empty(&k->u)) {
 				n++;
-				if (k->m == 2)
+				if (k->m == 2) {
 					s->has_cashless_payments = true;
+					int64_t sum = 0;
+					
+					for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+						L *l = LIST_ITEM(li3, L);
+						sum += l->t;
+					}
+					sum -= k->a;
+					if (c->t1054 == 1 || c->t1054 == 4)
+						s->cashless_total_sum += sum;
+					else
+						s->cashless_total_sum -= sum;
+				}
 			}
 		}
 		if (n > 0)

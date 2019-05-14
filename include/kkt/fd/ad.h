@@ -216,6 +216,8 @@ typedef struct AD_state {
 	int actual_cheque_count;
 	// признак наличия банковских операций
 	bool has_cashless_payments;
+	// сумма к оплате по банковским операциям
+	int64_t cashless_total_sum;
 } AD_state;
 
 // получение состояния корзины (false - корзина пуста)
