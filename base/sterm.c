@@ -3972,6 +3972,7 @@ static bool need_pos(void)
 				s *= -1;
 			bi_pos.amount1 = s / 100;
 			bi_pos.amount2 = ((s % 100) + 5) / 10;
+			rollback_bank_info();
 			ret = true;
 		}
 	}
