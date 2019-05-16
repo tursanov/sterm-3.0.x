@@ -951,7 +951,7 @@ int AD_makeReissue(K *k, uint8_t t1055, int64_t tB1, int64_t tB2, int64_t *sB1, 
 						if (tB + tB1 <= tB2) {
 							sB = tB;
 							*sB1 = tB1;
-							*sB2 = tB2 - (tB + tB1);
+							*sB2 = tB + tB1;
 						} else {
 							*sB2 = tB2;
 							if (tB <= tB1 && tB1 <= tB2) {
