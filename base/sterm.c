@@ -2164,11 +2164,22 @@ static int handle_options(struct kbd_event *e)
 		if (optn_cm == cmd_store_optn){
 			scr_visible = false;
 			write_cfg();
-			if (cfg.has_kkt)
-				kkt_set_cfg();
 			if (prev_kkt_log_stream != cfg.kkt_log_stream){
 				log_close(hklog);
 				open_log(hklog);
+			}
+			if (cfg.has_kkt){
+				uint8_t rc = kkt_set_cfg();
+/*
+ * NB: здесь предполагается, что последняя команда работы с ККТ в случае успеха
+ * возвращает KKT_STATUS_OK, а не KKT_STATUS_OK2.
+ */
+				if (rc != KKT_STATUS_OK){
+					err_beep();
+					message_box("ОШИБКА ККТ", "Не удалось передать "
+						"параметры работы в KKT.",
+						dlg_yes, DLG_BTN_YES, al_center);
+				}
 			}
 			init_term(false);
 			scr_visible = true;

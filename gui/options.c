@@ -936,7 +936,7 @@ static bool optn_create_menu(void)
 	add_menu_item(optn_menu, new_menu_item("Настройки TCP/IP", cmd_tcpip_optn, true));
 	add_menu_item(optn_menu, new_menu_item("Настройки PPP", cmd_ppp_optn, true));
 	add_menu_item(optn_menu, new_menu_item("ИПТ \"Экспресс\"", cmd_bank_optn, bank_ok));
-	add_menu_item(optn_menu, new_menu_item("ККТ", cmd_kkt_optn, true));
+	add_menu_item(optn_menu, new_menu_item("ККТ", cmd_kkt_optn, kkt != NULL));
 	add_menu_item(optn_menu, new_menu_item("Настройки экрана", cmd_scr_optn, true));
 	add_menu_item(optn_menu, new_menu_item("Настройки клавиатуры", cmd_kbd_optn, true));
 	add_menu_item(optn_menu, new_menu_item("Сохранить настройки", cmd_store_optn, true));

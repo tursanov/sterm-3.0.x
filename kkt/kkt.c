@@ -1,4 +1,4 @@
-/* Основной модуль для работы с ККТ. (c) gsr 2018 */
+/* Основной модуль для работы с ККТ. (c) gsr 2018-2019 */
 
 #include <sys/timeb.h>
 #include <assert.h>
@@ -685,6 +685,10 @@ uint8_t kkt_set_brightness(uint8_t brightness)
 }
 
 /* Настроить ККТ в соответствии с конфигурацией терминала */
+/*
+ * NB: последняя команда работы с ККТ в случае успеха должна возвращать
+ * KKT_STATUS_OK, а не KKT_STATUS_OK2 (см. вызов функции в sterm.c:handle_options).
+ */
 uint8_t kkt_set_cfg(void)
 {
 	uint8_t ret = KKT_STATUS_OK;

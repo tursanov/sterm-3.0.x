@@ -1,4 +1,4 @@
-/* Разбор ответов ККТ. (c) gsr 2018 */
+/* Разбор ответов ККТ. (c) gsr 2018-2019 */
 
 #include <assert.h>
 #include <string.h>
