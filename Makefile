@@ -41,7 +41,7 @@ GUI_OBJS =		\
 	forms		\
 	gdi		\
 	help		\
-	lvform	\
+	lvform		\
 	menu		\
 	options		\
 	newcheque	\
@@ -58,16 +58,16 @@ GUI_LOG_OBJS =		\
 	local		\
 	pos
 
-GUI_CONTROLS_OBJS =		\
-	combobox \
-	control	\
-	bitset \
-	button \
-	edit \
-	lang \
-	listbox \
-	listview \
-	window \
+GUI_CONTROLS_OBJS =	\
+	combobox	\
+	control		\
+	bitset		\
+	button		\
+	edit		\
+	lang		\
+	listbox		\
+	listview	\
+	window
 
 KKT_OBJS =		\
 	fdo		\
@@ -81,7 +81,7 @@ KKT_XML_OBJS =		\
 KKT_FD_OBJS =		\
 	ad		\
 	fd		\
-	tags	\
+	tags		\
 	tlv
 
 LOG_OBJS =		\
@@ -89,6 +89,7 @@ LOG_OBJS =		\
 	generic		\
 	kkt		\
 	local		\
+	logdbg		\
 	pos
 
 POS_OBJS =		\
