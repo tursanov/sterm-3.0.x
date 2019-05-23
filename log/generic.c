@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "log/generic.h"
+#include "log/logdbg.h"
 #include "genfunc.h"
 #include "sterm.h"
 
@@ -28,20 +29,20 @@ bool log_create(struct log_handle *hlog)
 	bool ret = false;
 	hlog->init_log_hdr(hlog);
 /*	if (!remount_home(true)){
-		fprintf(stderr, "Не могу перемонтировать носитель терминала "
-			"для записи: %s.\n", strerror(errno));
+		logdbg("%s: Не могу перемонтировать носитель терминала "
+			"для записи: %s.\n", __func__, strerror(errno));
 		return false;
 	}*/
 	fd = open(hlog->log_name, O_WRONLY | O_CREAT | O_TRUNC | O_SYNC,
 		S_IRUSR | S_IWUSR);
 	if (fd == -1)
-		fprintf(stderr, "Ошибка создания файла %s: %s.\n",
+		logdbg("%s: Ошибка создания файла %s: %s.\n", __func__,
 			hlog->log_type, strerror(errno));
 	else if (write(fd, hlog->hdr, hlog->hdr_len) != hlog->hdr_len)
-		fprintf(stderr, "Ошибка записи заголовка %s: %s.\n",
+		logdbg("%s: Ошибка записи заголовка %s: %s.\n", __func__,
 			hlog->log_type, strerror(errno)); 
 	else if (!fill_file(fd, hlog->hdr->len))
-		fprintf(stderr, "Ошибка записи в файл %s: %s.\n",
+		logdbg("%s: Ошибка записи в файл %s: %s.\n", __func__,
 			hlog->log_type, strerror(errno));
 	else
 		ret = true;
@@ -57,11 +58,10 @@ bool log_atomic_read(struct log_handle *hlog, uint32_t offs, uint8_t *buf, uint3
 {
 	bool ret = false;
 	if (lseek(hlog->rfd, offs, SEEK_SET) == (off_t)-1)
-		fprintf(stderr, "Ошибка позиционирования %s по смещению %u "
-			"для чтения: %s.\n", hlog->log_type, offs,
-			strerror(errno));
+		logdbg("%s: Ошибка позиционирования %s по смещению %u "
+			"для чтения: %s.\n", __func__, hlog->log_type, offs, strerror(errno));
 	else if (read(hlog->rfd, buf, l) != l)
-		fprintf(stderr, "Ошибка чтения %u байт %s по смещению %u: %s.\n",
+		logdbg("%s: Ошибка чтения %u байт %s по смещению %u: %s.\n", __func__,
 			l, hlog->log_type, offs, strerror(errno));
 	else
 		ret = true;
@@ -89,11 +89,10 @@ bool log_atomic_write(struct log_handle *hlog, uint32_t offs, uint8_t *buf, uint
 {
 	bool ret = false;
 	if (lseek(hlog->wfd, offs, SEEK_SET) == (off_t)-1)
-		fprintf(stderr, "Ошибка позиционирования %s по смещению %u "
-			"для записи: %s.\n", hlog->log_type, offs,
-			strerror(errno));
+		logdbg("%s: Ошибка позиционирования %s по смещению %u "
+			"для записи: %s.\n", __func__, hlog->log_type, offs, strerror(errno));
 	else if (write(hlog->wfd, buf, l) != l)
-		fprintf(stderr, "Ошибка записи %u байт на %s по смещению %u: %s.\n",
+		logdbg("%s: Ошибка записи %u байт на %s по смещению %u: %s.\n", __func__,
 			l, hlog->log_type, offs, strerror(errno));
 	else
 		ret = true;
@@ -123,7 +122,7 @@ bool log_begin_write(struct log_handle *hlog)
 /*	remount_home(true);*/
 	hlog->wfd = open(hlog->log_name, O_WRONLY | O_SYNC);
 	if (hlog->wfd == -1)
-		fprintf(stderr, "Ошибка открытия %s для записи: %s.\n",
+		logdbg("%s: Ошибка открытия %s для записи: %s.\n", __func__,
 			hlog->log_type, strerror(errno));
 	else
 		ret = true;
@@ -266,8 +265,7 @@ bool log_truncate(struct log_handle *hlog, uint32_t index, uint32_t tail)
 		memset(hlog->map + index, 0, sizeof(struct map_entry_t));
 	}
 	if (ret){
-		fprintf(stderr, "На %s сохранено %u записей.\n",
-			hlog->log_type, index);
+		logdbg("%s: На %s сохранено %u записей.\n", __func__, hlog->log_type, index);
 		flush_home();
 	}
 	return ret;
@@ -285,7 +283,7 @@ bool log_open(struct log_handle *hlog, bool can_create)
 	else if (can_create){
 		if (hlog->rfd != -1)
 			close(hlog->rfd);
-		fprintf(stderr, "%s будет создана заново.\n", hlog->log_type);
+		logdbg("%s: %s будет создана заново.\n", __func__, hlog->log_type);
 		return log_create(hlog) && log_open(hlog, false);
 	}else
 		return false;

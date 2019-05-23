@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include "kkt/kkt.h"
 #include "log/kkt.h"
+#include "log/logdbg.h"
 #include "cfg.h"
 #include "express.h"
 #include "paths.h"
@@ -184,8 +185,8 @@ static bool klog_fill_map(struct log_handle *hlog)
 	hlog->map_head = 0;
 	last_is_fdo_empty = false;
 	if (hdr->n_recs > KLOG_MAP_MAX_SIZE){
-		fprintf(stderr, "Слишком много записей на %s; "
-			"должно быть не более " _s(KLOG_MAP_MAX_SIZE) ".\n",
+		logdbg("%s: Слишком много записей на %s; "
+			"должно быть не более " _s(KLOG_MAP_MAX_SIZE) ".\n", __func__,
 			hlog->log_type);
 		return false;
 	}
@@ -193,17 +194,18 @@ static bool klog_fill_map(struct log_handle *hlog)
 		uint32_t tail = offs;
 		try_fn(log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)));
 		if (klog_rec_hdr.tag != KLOG_REC_TAG){
-			fprintf(stderr, "Неверный формат заголовка записи %s #%u (%.8x).\n",
-				hlog->log_type, i, klog_rec_hdr.tag);
+			logdbg("%s: Неверный формат заголовка записи %s #%u (%.8x).\n",
+				__func__, hlog->log_type, i, klog_rec_hdr.tag);
 			return log_truncate(hlog, i, tail);
 		}else if (KLOG_REC_LEN(klog_rec_hdr.len) > LOG_BUF_LEN){
-			fprintf(stderr, "Слишком длинная запись %s #%u: %u байт (max %u).\n",
-				hlog->log_type, i, KLOG_REC_LEN(klog_rec_hdr.len), LOG_BUF_LEN);
+			logdbg("%s: Слишком длинная запись %s #%u: %u байт (max %u).\n",
+				__func__, hlog->log_type, i,
+				KLOG_REC_LEN(klog_rec_hdr.len), LOG_BUF_LEN);
 			return log_truncate(hlog, i, tail);
 		}else if (KLOG_REC_LEN(klog_rec_hdr.len) !=
 				(klog_rec_hdr.req_len + klog_rec_hdr.resp_len)){
-			fprintf(stderr, "Неверные данные о длине записи %s #%u: %u != %u + %u.\n",
-				hlog->log_type, i, KLOG_REC_LEN(klog_rec_hdr.len),
+			logdbg("%s: Неверные данные о длине записи %s #%u: %u != %u + %u.\n",
+				__func__, hlog->log_type, i, KLOG_REC_LEN(klog_rec_hdr.len),
 				klog_rec_hdr.req_len, klog_rec_hdr.resp_len);
 			return log_truncate(hlog, i, tail);
 		}
@@ -218,8 +220,8 @@ static bool klog_fill_map(struct log_handle *hlog)
 		uint32_t crc = klog_rec_hdr.crc32;
 		klog_rec_hdr.crc32 = 0;
 		if (klog_rec_crc32() != crc){
-			fprintf(stderr, "Несовпадение контрольной суммы для записи %s #%u.\n",
-				hlog->log_type, i);
+			logdbg("%s: Несовпадение контрольной суммы для записи %s #%u.\n",
+				__func__, hlog->log_type, i);
 			return log_truncate(hlog, i, tail);
 		}
 		klog_rec_hdr.crc32 = crc;
@@ -230,7 +232,7 @@ static bool klog_fill_map(struct log_handle *hlog)
 				(klog_rec_hdr.req_len == 9) && 
 				fdo_read_empty_data(log_data + 3, &fdo_empty_prev_op,
 					&fdo_empty_prev_op_status);
-/*			printf("%s: последняя запись %s -- пустой опрос ОФД "
+/*			logdbg("%s: последняя запись %s -- пустой опрос ОФД "
 				"(op = %.2hhx; status = %.4u).\n", __func__,
 				hlog->log_type, fdo_empty_prev_op, fdo_empty_prev_op_status);*/
 		}
@@ -244,22 +246,22 @@ static bool klog_read_header(struct log_handle *hlog)
 	bool ret = false;
 	if (log_atomic_read(hlog, 0, (uint8_t *)hlog->hdr, sizeof(struct klog_header))){
 		if (hlog->hdr->tag != KLOG_TAG)
-			fprintf(stderr, "Неверный формат заголовка %s.\n",
+			logdbg("%s: Неверный формат заголовка %s.\n", __func__,
 				hlog->log_type);
 		else if (hlog->hdr->len > KLOG_MAX_SIZE)
-			fprintf(stderr, "Неверный размер %s.\n", hlog->log_type);
+			logdbg("%s: Неверный размер %s.\n", __func__, hlog->log_type);
 		else{
 			off_t len = lseek(hlog->rfd, 0, SEEK_END);
 			if (len == (off_t)-1)
-				fprintf(stderr, "Ошибка определения размера файла %s.\n",
-					hlog->log_type);
+				logdbg("%s: Ошибка определения размера файла %s.\n",
+					__func__, hlog->log_type);
 			else{
 				hlog->full_len = hlog->hdr->len + sizeof(struct klog_header);
 				if (hlog->full_len == len)
 					ret = true;
 				else
-					fprintf(stderr, "Размер %s, указанный в заголовке, не совпадает с реальным размером.\n",
-						hlog->log_type);
+					logdbg("%s: Размер %s, указанный в заголовке, не совпадает с реальным размером.\n",
+						__func__, hlog->log_type);
 			}
 		}
 	}
@@ -338,8 +340,8 @@ static bool klog_add_rec(struct log_handle *hlog)
 	uint32_t offs;
 	uint32_t rec_len = KLOG_REC_LEN(klog_rec_hdr.len) + sizeof(klog_rec_hdr);
 	if (rec_len > hlog->hdr->len){
-		fprintf(stderr, "Длина записи (%u байт) превышает длину %s (%u байт).\n",
-				rec_len, hlog->log_type, hlog->hdr->len);
+		logdbg("%s: Длина записи (%u байт) превышает длину %s (%u байт).\n",
+			__func__, rec_len, hlog->log_type, hlog->hdr->len);
 		return false;
 	}
 /* Если при записи на циклическую ККЛ не хватает места, удаляем записи в начале */
@@ -354,13 +356,13 @@ static bool klog_add_rec(struct log_handle *hlog)
 		m %= hlog->map_size;
 	}
 	if (free_len < rec_len){
-		fprintf(stderr, "Не удалось освободить место под новую запись.\n");
+		logdbg("%s: Не удалось освободить место под новую запись.\n", __func__);
 		return false;
 	}
 /* n -- оставшееся число записей на контрольной ленте */
 	if ((n + 1) > hlog->map_size){
-		fprintf(stderr, "Превышено максимальное число записей на %s;\n"
-			"должно быть не более %u.\n", hlog->log_type, hlog->map_size);
+		logdbg("%s: Превышено максимальное число записей на %s;\n"
+			"должно быть не более %u.\n", __func__, hlog->log_type, hlog->map_size);
 		return false;
 	}
 /* Начинаем запись на контрольную ленту */
@@ -540,7 +542,7 @@ static uint32_t adjust_last_empty_rec(struct log_handle *hlog)
 	uint32_t ret = -1UL;
 	uint32_t rec_idx = hlog->hdr->n_recs - 1;
 	if (!klog_read_rec(hlog, rec_idx)){
-		fprintf(stderr, "%s: ошибка чтения записи #%u.\n", __func__, rec_idx);
+		logdbg("%s: Ошибка чтения записи #%u.\n", __func__, rec_idx);
 		return ret;
 	}else if (KLOG_STREAM(klog_rec_hdr.stream) == KLOG_STREAM_FDO){
 		struct timeb t0 = {
@@ -561,17 +563,17 @@ static uint32_t adjust_last_empty_rec(struct log_handle *hlog)
 						sizeof(klog_rec_hdr)))
 					ret = klog_rec_hdr.number;
 				else
-					fprintf(stderr, "%s: ошибка записи по смещению 0x%.8x.\n",
+					logdbg("%s: Ошибка записи по смещению 0x%.8x.\n",
 						__func__, offs);
 			}else
-				fprintf(stderr, "%s: невозможно начать запись на %s.\n",
+				logdbg("%s: Невозможно начать запись на %s.\n",
 					__func__, hlog->log_type);
 			log_end_write(hlog);
 		}else
-			fprintf(stderr, "%s: op_time = %u; rec_op_time = %u,\n",
+			logdbg("%s: op_time = %u; rec_op_time = %u,\n",
 				__func__, op_time, klog_rec_hdr.op_time);
 	}else
-			fprintf(stderr, "%s: stream = 0x%.8x.\n", __func__, klog_rec_hdr.stream);
+			logdbg("%s: stream = 0x%.8x.\n", __func__, klog_rec_hdr.stream);
 	return ret;
 }
 
@@ -583,13 +585,13 @@ static uint32_t klog_write_fdo_empty(struct log_handle *hlog, const uint8_t *req
 	if (fdo_read_empty_data(req + 3, &prev_op, &prev_op_status)){
 		if (last_is_fdo_empty && (prev_op == fdo_empty_prev_op) &&
 				(prev_op_status == fdo_empty_prev_op_status)){
-//			printf("%s: Обнаружен повторный пустой опрос ОФД.\n", __func__);
+//			logdbg("%s: Обнаружен повторный пустой опрос ОФД.\n", __func__);
 			uint32_t n_rec = adjust_last_empty_rec(hlog);
 			if (n_rec == -1UL)
-/*				printf("%s: Не удалось скорректировать "
+/*				logdbg("%s: Не удалось скорректировать "
 					"заголовок последней записи.\n", __func__)*/;
 			else{
-/*				printf("%s: Скорректирован заголовок "
+/*				logdbg("%s: Скорректирован заголовок "
 					"последней записи.\n", __func__);*/
 				return n_rec;
 			}
@@ -611,7 +613,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 		return ret;
 	int rc = pthread_mutex_lock(&klog_mtx);
 	if (rc != 0){
-		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+		logdbg("%s: Невозможно получить доступ к %s: %s.\n",
 			__func__, hlog->log_type, strerror(rc));
 		return ret;
 	}
@@ -619,8 +621,8 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	do {
 		uint32_t len = req_len + resp_len;
 		if (len > sizeof(log_data)){
-			fprintf(stderr, "Переполнение буфера данных при записи на %s (%u байт).\n",
-				hlog->log_type, len);
+			logdbg("%s: Переполнение буфера данных при записи на %s (%u байт).\n",
+				__func__, hlog->log_type, len);
 			break;
 		}else if (cfg.kkt_log_level == KLOG_LEVEL_OFF)
 			break;
@@ -675,7 +677,7 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 	} while (false);
 	klog_pop_data();
 	if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
-		fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+		logdbg("%s: Ошибка разблокировки %s: %s.\n", __func__,
 			hlog->log_type, strerror(rc));
 	return ret;
 }
@@ -686,7 +688,7 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 	bool ret = false;
 	int rc = pthread_mutex_lock(&klog_mtx);
 	if (rc != 0){
-		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+		logdbg("%s: Невозможно получить доступ к %s: %s.\n",
 			__func__, hlog->log_type, strerror(rc));
 		return ret;
 	}
@@ -698,7 +700,7 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 		if (!log_read(hlog, offs, (uint8_t *)&klog_rec_hdr, sizeof(klog_rec_hdr)))
 			break;
 		if (KLOG_REC_LEN(klog_rec_hdr.len) > sizeof(log_data)){
-			fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
+			logdbg("%s: Слишком длинная запись %s #%u (%u байт).\n", __func__,
 				hlog->log_type, index, KLOG_REC_LEN(klog_rec_hdr.len));
 			break;
 		}
@@ -709,8 +711,8 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 		uint32_t crc = klog_rec_hdr.crc32;
 		klog_rec_hdr.crc32 = 0;
 		if (klog_rec_crc32() != crc){
-			fprintf(stderr, "Несовпадение контрольной суммы для записи %s #%u.\n",
-					hlog->log_type, index);
+			logdbg("%s: Несовпадение контрольной суммы для записи %s #%u.\n",
+				__func__, hlog->log_type, index);
 			break;
 		}
 		klog_rec_hdr.crc32 = crc;
@@ -718,7 +720,7 @@ bool klog_read_rec(struct log_handle *hlog, uint32_t index)
 		ret = true;
 	} while (false);
 	if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
-		fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+		logdbg("%s: Ошибка разблокировки %s: %s.\n", __func__,
 			hlog->log_type, strerror(rc));
 	return ret;
 }
@@ -752,10 +754,10 @@ bool klog_print_header(void)
 		try_fn(prn_write_cur_date_time());
 		ret = prn_write_str("\x1c\x0b") && prn_write_eol();
 		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
-			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+			logdbg("%s: Ошибка разблокировки %s: %s.\n", __func__,
 				hklog->log_type, strerror(rc));
 	}else
-		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+		logdbg("%s: Невозможно получить доступ к %s: %s.\n",
 			__func__, hklog->log_type, strerror(rc));
 	return ret;
 }
@@ -772,10 +774,10 @@ bool klog_print_footer(void)
 		try_fn(prn_write_cur_date_time());
 		ret = prn_write_str("\x1c\x0b") && prn_write_eol();
 		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
-			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+			logdbg("%s: Ошибка разблокировки %s: %s.\n", __func__,
 				hklog->log_type, strerror(rc));
 	}else
-		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+		logdbg("%s: Невозможно получить доступ к %s: %s.\n",
 			__func__, hklog->log_type, strerror(rc));
 	return ret;
 }
@@ -912,10 +914,10 @@ bool klog_print_rec(void)
 		}
 		ret = prn_write_eol();
 		if ((rc = pthread_mutex_unlock(&klog_mtx)) != 0)
-			fprintf(stderr, "%s: ошибка разблокировки %s: %s.\n", __func__,
+			logdbg("%s: Ошибка разблокировки %s: %s.\n", __func__,
 				hklog->log_type, strerror(rc));
 	}else
-		fprintf(stderr, "%s: невозможно получить доступ к %s: %s.\n",
+		logdbg("%s: Невозможно получить доступ к %s: %s.\n",
 			__func__, hklog->log_type, strerror(rc));
 	return ret;
 }

@@ -34,7 +34,8 @@ BASE_OBJS =		\
 
 LOG_OBJS =		\
 	generic		\
-	express
+	express		\
+	logdbg
 
 SCRIPTS_OBJS =		\
 	dsd		\
@@ -241,7 +242,8 @@ TXL_BASE_OBJS =		\
 
 TXL_LOG_OBJS =		\
 	generic		\
-	express
+	express		\
+	logdbg
 
 TXL_SCRIPTS_OBJS =	\
 	txl
