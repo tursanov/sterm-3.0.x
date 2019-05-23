@@ -898,12 +898,12 @@ L1:
 	if (f_k && k2 && k2->llist.head) {
 		for (list_item_t *li21 = _ad->clist.head; li21; li21 = li21->next) {
 			s = LIST_ITEM(li21, C);
-			if (s->p == k->p && strcmp2(s->h, k->h) == 0 && s->t1054 == 1 && s->t1055 == t1055) {
+			if (s->p == k2->p && strcmp2(s->h, k2->h) == 0 && s->t1054 == 1 && s->t1055 == t1055) {
 				for (list_item_t *li22 = s->klist.head; li22; li22 = li22->next) {
 					s_k = LIST_ITEM(li22, K);
 					if ((doc_no_is_empty(&s_k->i2) || doc_no_compare(&s_k->i2, &k2->r) == 0) &&
-						doc_no_compare(&s_k->i21, &k2->r) == 0 && s_k->m == k->m && s_k->o == 2) {
-						if (K_equalByL(k, s_k))
+						doc_no_compare(&s_k->i21, &k2->r) == 0 && s_k->m == k2->m && s_k->o == 2) {
+						if (K_equalByL(k2, s_k))
 							goto L2;
 					}
 				}
@@ -1484,7 +1484,7 @@ bool AD_get_state(AD_state *s) {
 				if (k->m == 2) {
 					s->has_cashless_payments = true;
 					int64_t sum = 0;
-					
+
 					for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
 						L *l = LIST_ITEM(li3, L);
 						sum += l->t;
