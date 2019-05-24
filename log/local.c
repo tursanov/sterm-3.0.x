@@ -25,6 +25,14 @@
 #include "tki.h"
 #include "transport.h"
 
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+uint8_t llog_data[LOG_BUF_LEN];
+/* Длина данных */
+uint32_t llog_data_len;
+/* Индекс текущего обрабатываемого байта в llog_data */
+uint32_t llog_data_index;
+
 #define LLOG_MAP_MAX_SIZE	(LLOG_MAX_SIZE / sizeof(struct llog_rec_header))
 static struct map_entry_t llog_map[LLOG_MAP_MAX_SIZE];
 
@@ -63,7 +71,7 @@ static uint32_t llog_rec_crc32(void)
 		if (i < sizeof(llog_rec_hdr))
 			b = *((uint8_t *)&llog_rec_hdr + i);
 		else
-			b = log_data[i - sizeof(llog_rec_hdr)];
+			b = llog_data[i - sizeof(llog_rec_hdr)];
 		for (j = 0; j < 8; j++){
 			s >>= 1;
 			s |=	(((b & 1) ^
@@ -131,9 +139,9 @@ static bool llog_fill_map(struct log_handle *hlog)
 				hlog->log_type, i, llog_rec_hdr.len, LOG_BUF_LEN);
 			return log_truncate(hlog, i, tail);
 		}
-		log_data_len = llog_rec_hdr.len;
-		if (log_data_len > 0)
-			try_fn(log_read(hlog, offs, log_data, log_data_len));
+		llog_data_len = llog_rec_hdr.len;
+		if (llog_data_len > 0)
+			try_fn(log_read(hlog, offs, llog_data, llog_data_len));
 		crc = llog_rec_hdr.crc32;
 		llog_rec_hdr.crc32 = 0;
 		if (llog_rec_crc32() != crc){
@@ -270,7 +278,7 @@ bool llog_can_find(struct log_handle *hlog)
 }
 
 /*
- * Добавление новой записи в конец ПКЛ. Данные находятся в log_data,
+ * Добавление новой записи в конец ПКЛ. Данные находятся в llog_data,
  * заголовок -- в llog_rec_hdr.
  */
 static bool llog_add_rec(struct log_handle *hlog)
@@ -324,7 +332,7 @@ static bool llog_add_rec(struct log_handle *hlog)
 			((llog_rec_hdr.len == 0) ||
 			log_write(hlog, log_inc_index(hlog, offs,
 					sizeof(llog_rec_hdr)),
-				log_data, llog_rec_hdr.len));
+				llog_data, llog_rec_hdr.len));
 	}
 	log_end_write(hlog);
 	return ret;
@@ -374,16 +382,16 @@ static void llog_init_rec_hdr(struct log_handle *hlog,
 uint32_t llog_write_rec(struct log_handle *hlog, uint8_t *data, uint32_t len,
 		uint32_t type, uint32_t n_para)
 {
-	log_data_len = log_data_index = 0;
+	llog_data_len = llog_data_index = 0;
 	if (data != NULL){
-		if (len > sizeof(log_data)){
+		if (len > sizeof(llog_data)){
 			fprintf(stderr, "Переполнение буфера данных при записи "
 				"на %s (%u байт).\n", hlog->log_type, len);
 			return -1UL;
 		}
 		if (len > 0){
-			memcpy(log_data, data, len);
-			log_data_len = len;
+			memcpy(llog_data, data, len);
+			llog_data_len = len;
 		}
 	}
 	llog_init_rec_hdr(hlog, &llog_rec_hdr, n_para);
@@ -461,18 +469,18 @@ bool llog_read_rec(struct log_handle *hlog, uint32_t index)
 	uint32_t offs, crc;
 	if (index >= hlog->hdr->n_recs)
 		return false;
-	log_data_len = 0;
-	log_data_index = 0;
+	llog_data_len = 0;
+	llog_data_index = 0;
 	offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
 	if (!log_read(hlog, offs, (uint8_t *)&llog_rec_hdr, sizeof(llog_rec_hdr)))
 		return false;
-	if (llog_rec_hdr.len > sizeof(log_data)){
+	if (llog_rec_hdr.len > sizeof(llog_data)){
 		fprintf(stderr, "Слишком длинная запись %s #%u (%u байт).\n",
 				hlog->log_type, index, llog_rec_hdr.len);
 		return false;
 	}
 	offs = log_inc_index(hlog, offs, sizeof(llog_rec_hdr));
-	if ((llog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data,
+	if ((llog_rec_hdr.len > 0) && !log_read(hlog, offs, llog_data,
 			llog_rec_hdr.len))
 		return false;
 	crc = llog_rec_hdr.crc32;
@@ -483,7 +491,7 @@ bool llog_read_rec(struct log_handle *hlog, uint32_t index)
 		return false;
 	}
 	llog_rec_hdr.crc32 = crc;
-	log_data_len = llog_rec_hdr.len;
+	llog_data_len = llog_rec_hdr.len;
 	return true;
 }
 
@@ -720,13 +728,13 @@ static bool llog_print_llrt_bank(void)
 {
 	return	prn_write_str("БАНК") && prn_write_eol() &&
 /* Номер заказа в системе */
-		prn_write_chars_raw((char *)log_data, 7) &&
+		prn_write_chars_raw((char *)llog_data, 7) &&
 		prn_write_eol() &&
 /* Технологический номер кассы */
-		prn_write_chars_raw((char *)log_data + 7, 5) &&
+		prn_write_chars_raw((char *)llog_data + 7, 5) &&
 		prn_write_eol() &&
 /* Сумма заказа */
-		prn_write_chars_raw((char *)log_data + 12, 9) &&
+		prn_write_chars_raw((char *)llog_data + 12, 9) &&
 		prn_write_eol();
 }
 
@@ -753,13 +761,13 @@ const char *llog_get_llrt_error_txt(uint8_t code)
 /* Вывод на печать записи типа LLRT_ERROR */
 static bool llog_print_llrt_error(void)
 {
-	if (log_data_len == 1){
-		if (log_data[0] == LLRT_ERROR_MEDIA)
+	if (llog_data_len == 1){
+		if (llog_data[0] == LLRT_ERROR_MEDIA)
 			try_fn(prn_write_str("\x1e\x0bОШИБКА РАБОТ\x9b С БСО:\x19\x0b"));
 		else
 			prn_write_str("\x1e\x0bОШИБКА РАБОТ\x9b С ППУ:\x19\x0b");
 		return	prn_write_eol() &&
-			prn_write_str(llog_get_llrt_error_txt(log_data[0])) &&
+			prn_write_str(llog_get_llrt_error_txt(llog_data[0])) &&
 			prn_write_eol();
 	}else
 		return false;
@@ -770,15 +778,15 @@ static bool llog_print_llrt_rd_error(void)
 {
 	char s[128];
 	struct lprn_error_txt *err;
-	if (log_data_len != 1)
+	if (llog_data_len != 1)
 		return false;
 	try_fn(prn_write_str("ЗАПРОС"));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "\x1e\x0bОШИБКА ЧТЕНИЯ НОМЕРА БЛАНКА: %.2hhX\x19\x0b",
-		log_data[0]);
+		llog_data[0]);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
-	err = lprn_get_error_txt(log_data[0]);
+	err = lprn_get_error_txt(llog_data[0]);
 	if (err == NULL)
 		return false;
 	return prn_write_str(err->txt) && prn_write_eol();
@@ -789,19 +797,19 @@ static bool llog_print_llrt_pr_error_bcode(void)
 {
 	char s[128];
 	struct lprn_error_txt *err;
-	if (log_data_len != (LPRN_BLANK_NUMBER_LEN + 1))
+	if (llog_data_len != (LPRN_BLANK_NUMBER_LEN + 1))
 		return false;
 	snprintf(s, sizeof(s), "\x1e\x0bОШИБКА ПЕЧАТИ НА БСО С КОНТРОЛЕМ "
-		"ШТРИХ-КОДА: %.2hhX\x19\x0b", log_data[0]);
+		"ШТРИХ-КОДА: %.2hhX\x19\x0b", llog_data[0]);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
-	err = lprn_get_error_txt(log_data[0]);
+	err = lprn_get_error_txt(llog_data[0]);
 	if (err == NULL)
 		return false;
 	try_fn(prn_write_str(err->txt));
 	try_fn(prn_write_eol());
 	snprintf(s, sizeof(s), "НОМЕР БЛАНКА %.*s", LPRN_BLANK_NUMBER_LEN,
-		log_data + 1);
+		llog_data + 1);
 	return prn_write_str(s) && prn_write_eol();
 }
 
@@ -810,13 +818,13 @@ static bool llog_print_llrt_pr_error(void)
 {
 	char s[128];
 	struct lprn_error_txt *err;
-	if (log_data_len != 1)
+	if (llog_data_len != 1)
 		return false;
 	snprintf(s, sizeof(s), "\x1e\x0bОШИБКА ПЕЧАТИ НА БСО БЕЗ КОНТРОЛЯ "
-		"ШТРИХ-КОДА: %.2hhX\x19\x0b", log_data[0]);
+		"ШТРИХ-КОДА: %.2hhX\x19\x0b", llog_data[0]);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
-	err = lprn_get_error_txt(log_data[0]);
+	err = lprn_get_error_txt(llog_data[0]);
 	if (err == NULL)
 		return false;
 	return prn_write_str(err->txt) && prn_write_eol();
@@ -825,9 +833,9 @@ static bool llog_print_llrt_pr_error(void)
 /* Вывод на печать записи типа LLRT_FOREIGN */
 static bool llog_print_llrt_foreign(void)
 {
-	struct term_addr *addr = (struct term_addr *)log_data;
+	struct term_addr *addr = (struct term_addr *)llog_data;
 	char s[128];
-	if (log_data_len == sizeof(*addr))
+	if (llog_data_len == sizeof(*addr))
 		snprintf(s, sizeof(s), "\x1e\x0bПОЛУЧЕН ОТВЕТ ДЛЯ ДРУГОГО "
 			"ТЕРМИНАЛА (%.2hhX:%2hhX)\x19\x0b",
 			addr->gaddr, addr->iaddr);
@@ -841,11 +849,11 @@ static bool llog_print_llrt_foreign(void)
 static bool llog_print_llrt_special(void)
 {
 	char s[128];
-	log_data_index = 0;
+	llog_data_index = 0;
 	snprintf(s, sizeof(s), "ОШИБКА КОНТРОЛЬНОЙ СУММ\x9b С:");
 	return	prn_write_str(s) &&
-		prn_write_char_raw(log_data[log_data_index++]) &&
-		prn_write_char_raw(log_data[log_data_index]) &&
+		prn_write_char_raw(llog_data[llog_data_index++]) &&
+		prn_write_char_raw(llog_data[llog_data_index]) &&
 		prn_write_eol();
 }
 
@@ -861,13 +869,13 @@ static bool llog_print_llrt_sd_error(void)
 {
 	char s[128];
 	struct lprn_error_txt *err;
-	if (log_data_len != 1)
+	if (llog_data_len != 1)
 		return false;
 	snprintf(s, sizeof(s), "\x1e\x0bОШИБКА РАБОТ\x9b С КАРТОЙ ПАМЯТИ: "
-		"%.2hhX\x19\x0b", log_data[0]);
+		"%.2hhX\x19\x0b", llog_data[0]);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
-	err = lprn_get_sd_error_txt(log_data[0]);
+	err = lprn_get_sd_error_txt(llog_data[0]);
 	if (err == NULL)
 		return false;
 	return prn_write_str(err->txt) && prn_write_eol();
@@ -886,9 +894,9 @@ static bool llog_print_llrt_syntax_error(void)
 	uint8_t code;
 	const char *err_msg, *slice;
 	int i;
-	if (log_data_len == 0)
+	if (llog_data_len == 0)
 		return false;
-	code = log_data[0];
+	code = llog_data[0];
 	snprintf(s, sizeof(s), "СИНТАКСИЧЕСКАЯ ОШИБКА В ОТВЕТЕ -- П:%.2hhd", code);
 	try_fn(prn_write_str(s));
 	try_fn(prn_write_eol());
@@ -903,11 +911,11 @@ static bool llog_print_llrt_syntax_error(void)
 	try_fn(prn_write_str("***ЗАПРОС***"));
 	try_fn(prn_write_eol());
 #define LPRN_MAX_COLS		40
-	for (i = 1; i < log_data_len; i += LPRN_MAX_COLS){
-		int len = log_data_len - i;
+	for (i = 1; i < llog_data_len; i += LPRN_MAX_COLS){
+		int len = llog_data_len - i;
 		if (len > LPRN_MAX_COLS)
 			len = LPRN_MAX_COLS;
-		try_fn(prn_write_chars_raw((char *)log_data + i, len));
+		try_fn(prn_write_chars_raw((char *)llog_data + i, len));
 		try_fn(prn_write_eol());
 	}
 	return true;
@@ -933,12 +941,12 @@ static bool is_printable_char(uint8_t c)
  */
 static int get_unprintable_len(uint8_t cmd)
 {
-	int k = log_data_index, l = 0;
+	int k = llog_data_index, l = 0;
 	bool flag = true;	/* команду можно вывести на печать */
 	bool loop_flag = true;
 	if (cmd == LPRN_POS){
-		for (; loop_flag && (log_data_index < log_data_len); log_data_index++){
-			switch (log_data[log_data_index]){
+		for (; loop_flag && (llog_data_index < llog_data_len); llog_data_index++){
+			switch (llog_data[llog_data_index]){
 				case LPRN_PRNOP_VPOS_ABS:
 					flag = false;		/* fall through */
 				case LPRN_PRNOP_HPOS_ABS:
@@ -948,8 +956,8 @@ static int get_unprintable_len(uint8_t cmd)
 		}
 	}
 	if (!flag)
-		l = log_data_index - k;
-	log_data_index = k;
+		l = llog_data_index - k;
+	llog_data_index = k;
 	return l;
 }
 
@@ -967,8 +975,8 @@ static bool llog_print_bcode2(void)
 	};
 	int st = st_type, n = 0, data_len = 0;
 	uint8_t b;
-	for (; (log_data_index < log_data_len) && (st != st_stop); log_data_index++){
-		b = log_data[log_data_index];
+	for (; (llog_data_index < llog_data_len) && (st != st_stop); llog_data_index++){
+		b = llog_data[llog_data_index];
 		switch (st){
 			case st_type:
 				if (isdigit(b)){
@@ -1023,7 +1031,7 @@ static bool llog_print_bcode2(void)
 		try_fn(prn_write_char_raw(b));
 	}
 	if (st == st_stop){
-		log_data_index--;
+		llog_data_index--;
 		return true;
 	}else
 		return false;
@@ -1035,15 +1043,15 @@ static bool llog_print_bctl(uint8_t cmd)
 	switch (cmd){
 		case LPRN_WR_BCODE1:
 			return	prn_write_str("ПЧ ШТРИХ1: ") &&
-				log_print_bcode();
+				log_print_bcode(llog_data, llog_data_len, &llog_data_index);
 		case LPRN_WR_BCODE2:
 			return	prn_write_str("ПЧ ШТРИХ2: ") &&
 				llog_print_bcode2();
 		case LPRN_RD_BCODE:
 			return	prn_write_str("ЧТ ШТРИХ: ") &&
-				log_print_bcode();
+				log_print_bcode(llog_data, llog_data_len, &llog_data_index);
 		case LPRN_NO_BCODE:
-			log_data_index--;
+			llog_data_index--;
 			return	prn_write_str("БЕЗ ШТРИХ");
 		default:
 			return false;
@@ -1064,8 +1072,8 @@ static bool llog_print_line(void)
 	};
 	int st = st_regular, m = 0, l;
 	uint8_t b, cmd = 0;
-	for (; (log_data_index < log_data_len) && (st != st_stop); log_data_index++){
-		b = log_data[log_data_index];
+	for (; (llog_data_index < llog_data_len) && (st != st_stop); llog_data_index++){
+		b = llog_data[llog_data_index];
 		switch (st){
 			case st_regular:
 				if (b == LPRN_DLE)
@@ -1097,7 +1105,7 @@ static bool llog_print_line(void)
 							st = st_bctl;
 						else{
 							try_fn(prn_write_eol());
-							log_data_index -= 2;
+							llog_data_index -= 2;
 							st = st_stop;
 						}
 						break;
@@ -1107,9 +1115,9 @@ static bool llog_print_line(void)
 				break;
 			case st_bctl:
 				try_fn(llog_print_bctl(cmd));
-				if ((log_data_index >= (log_data_len - 1)) ||
-						((log_data[log_data_index + 1] != 0x0a) &&
-						 (log_data[log_data_index + 1] != 0x0d))){
+				if ((llog_data_index >= (llog_data_len - 1)) ||
+						((llog_data[llog_data_index + 1] != 0x0a) &&
+						 (llog_data[llog_data_index + 1] != 0x0d))){
 					try_fn(prn_write_eol());
 					st = st_stop;
 				}else
@@ -1121,7 +1129,7 @@ static bool llog_print_line(void)
 					try_fn(prn_write_char_raw(LPRN_DLE));
 					try_fn(prn_write_char_raw(cmd));
 				}
-				log_data_index += l - 1;
+				llog_data_index += l - 1;
 				st = st_regular;
 				break;
 			case st_wcr:
@@ -1129,7 +1137,7 @@ static bool llog_print_line(void)
 					try_fn(prn_write_char_raw(b));
 					st = st_stop;
 				}else{
-					log_data_index--;
+					llog_data_index--;
 					st = st_stop;
 				}
 				break;
@@ -1140,7 +1148,7 @@ static bool llog_print_line(void)
 				}else if (b == 0x0d)
 					try_fn(prn_write_char_raw(b));
 				else{
-					log_data_index--;
+					llog_data_index--;
 					st = st_stop;
 				}
 				break;
@@ -1152,11 +1160,11 @@ static bool llog_print_line(void)
 /* Вывод на печать обычной записи */
 static bool llog_print_llrt_normal(void)
 {
-	for (log_data_index = 0; log_data_index < log_data_len;){
+	for (llog_data_index = 0; llog_data_index < llog_data_len;){
 		if (!llog_print_line())
 			break;
 	}
-	return log_data_index == log_data_len;
+	return llog_data_index == llog_data_len;
 }
 
 /* Вывод записи контрольной ленты на печать */

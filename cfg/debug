@@ -62,7 +62,7 @@ option		__FAKE_REMOUNT__
 #option		__CHECK_LIC_SIGNATURE__
 
 # Синхронизировать дату/время в ККТ при получении ответа на инициализацию
-#option		__SYNC_KKT_RTC__
+option		__SYNC_KKT_RTC__
 
 # Каталог, в котором находятся файлы терминала. / в конце не обязателен
 STERM_HOME	/home/sterm

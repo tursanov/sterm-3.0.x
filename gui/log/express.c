@@ -35,8 +35,8 @@ static void xlog_fill_scr_normal(struct log_gui_context *ctx)
 			ctx->scr_data[ctx->scr_data_len++] = 0;
 		j = ctx->scr_data_len;
 	}
-	for (i = 0; (i < log_data_len) && (j < sizeof(ctx->scr_data)); i++){
-		b = log_data[i];
+	for (i = 0; (i < xlog_data_len) && (j < sizeof(ctx->scr_data)); i++){
+		b = xlog_data[i];
 		if (dle){
 			nl = (b == XPRN_WR_BCODE) || (b == XPRN_NO_BCODE) ||
 				(b == XPRN_RD_BCODE);
@@ -51,7 +51,7 @@ static void xlog_fill_scr_normal(struct log_gui_context *ctx)
 				continue;
 			}
 			dle = line_begin = false;
-			n = log_get_cmd_len(log_data, log_data_len, i);
+			n = log_get_cmd_len(xlog_data, xlog_data_len, i);
 		}else{
 			dle = is_escape(b);
 			if (!dle)
@@ -132,8 +132,8 @@ static void xlog_fill_scr_init(struct log_gui_context *ctx)
 static void xlog_fill_scr_foreign(struct log_gui_context *ctx)
 {
 	char msg[80];
-	struct term_addr *addr = (struct term_addr *)log_data;
-	if (log_data_len == sizeof(*addr))
+	struct term_addr *addr = (struct term_addr *)xlog_data;
+	if (xlog_data_len == sizeof(*addr))
 		snprintf(msg, sizeof(msg), "èéãìóÖç éíÇÖí Ñãü ÑêìÉéÉé "
 			"íÖêåàçÄãÄ (%.2hhX:%.2hhX)",
 			addr->gaddr, addr->iaddr);
@@ -146,7 +146,7 @@ static void xlog_fill_scr_foreign(struct log_gui_context *ctx)
 /* á†≠•·•≠®• ¢ Ì™‡†≠≠Î© °„‰•‡ ß†Ø®·® ‚®Ø† XLRT_SPECIAL */
 static void xlog_fill_scr_special(struct log_gui_context *ctx)
 {
-	log_fill_scr_str(ctx, "éòàÅäÄ äéçíêéãúçéâ ëìåå\x9b ë:%.2s", log_data);
+	log_fill_scr_str(ctx, "éòàÅäÄ äéçíêéãúçéâ ëìåå\x9b ë:%.2s", xlog_data);
 }
 
 /* á†≠•·•≠®• ¢ Ì™‡†≠≠Î© °„‰•‡ ß†Ø®·® ‚®Ø† XLRT_BANK */
@@ -162,17 +162,17 @@ static void xlog_fill_scr_bank(struct log_gui_context *ctx)
 	ctx->scr_data_len += bank_msg_len + 1;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* çÆ¨•‡ ß†™†ß† ¢ ·®·‚•¨• */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data, 7);
+	memcpy(ctx->scr_data + ctx->scr_data_len, xlog_data, 7);
 	ctx->scr_data_len += 7;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* í•Â≠Æ´Æ£®Á•·™®© ≠Æ¨•‡ ™†··Î */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data + 7, 5);
+	memcpy(ctx->scr_data + ctx->scr_data_len, xlog_data + 7, 5);
 	ctx->scr_data_len += 5;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* ë„¨¨† ß†™†ß† */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data + 12, 9);
+	memcpy(ctx->scr_data + ctx->scr_data_len, xlog_data + 12, 9);
 	ctx->scr_data_len += 9;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 }
@@ -183,7 +183,7 @@ static void xlog_fill_scr_bank(struct log_gui_context *ctx)
 #include <sys/socket.h>
 static void xlog_fill_scr_ipchange(struct log_gui_context *ctx)
 {
-	uint32_t *p = (uint32_t *)log_data;
+	uint32_t *p = (uint32_t *)xlog_data;
 	char old_ip[20], new_ip[20];
 	strncpy(old_ip, inet_ntoa(dw2ip(p[0])), sizeof(old_ip) - 1);
 	old_ip[sizeof(old_ip) - 1] = 0;
@@ -357,7 +357,7 @@ bool xlog_print_aux(struct log_gui_context *ctx)
 	if (!ctx->active)
 		return false;
 	ctx->modal = true;
-	flag = aprn_print((char *)log_data, log_data_len);
+	flag = aprn_print((char *)xlog_data, xlog_data_len);
 	ctx->modal = false;
 	return flag;
 }
@@ -387,7 +387,7 @@ bool xlog_print_range(struct log_gui_context *ctx, uint32_t from, uint32_t to)
 			break;
 /* è•Á†‚Ï ß†Ø®·•© */
 		if (xlog_rec_hdr.type == XLRT_AUX){
-			if (!aprn_print((char *)log_data, log_data_len))
+			if (!aprn_print((char *)xlog_data, xlog_data_len))
 				break;
 		}else if (!xlog_print_rec() || !xprn_print((char *)log_prn_buf,
 				log_prn_data_len))

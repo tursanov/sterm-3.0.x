@@ -14,7 +14,6 @@ BINARIES =		\
 	tpld		\
 	tstbeep		\
 	tstcom		\
-	txl		\
 	unlock		\
 	usbcheck	\
 	usbread		\
@@ -48,7 +47,6 @@ SCRIPTS_OBJS =		\
 	tpld		\
 	tstbeep		\
 	tstcom		\
-	txl		\
 	unlock		\
 	usbcheck	\
 	usbread		\
@@ -233,27 +231,6 @@ TSTCOM_OBJS =		\
 	$(addsuffix .o, $(TSTCOM_SCRIPTS_OBJS))
 
 tstcom:		$(TSTCOM_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
-		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
-
-## txl
-TXL_BASE_OBJS =		\
-	genfunc
-
-TXL_LOG_OBJS =		\
-	generic		\
-	express		\
-	logdbg
-
-TXL_SCRIPTS_OBJS =	\
-	txl
-
-TXL_OBJS =		\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(TXL_BASE_OBJS))) \
-	$(addprefix $(DIR_LOG), $(addsuffix .o, $(TXL_LOG_OBJS))) \
-	$(addsuffix .o, $(TXL_SCRIPTS_OBJS))
-
-txl:		$(TXL_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 

@@ -20,7 +20,7 @@ struct llog_header {
 	uint32_t tag;		/* признак заголовка */
 #define	LLOG_TAG	0x434f4c3e	/* >LOC */
 	uint32_t len;		/* длина ПКЛ без учета заголовка */
-	uint32_t n_recs;		/* число записей */
+	uint32_t n_recs;	/* число записей */
 	uint32_t head;		/* смещение первой записи */
 	uint32_t tail;		/* смещение последней записи */
 	uint32_t cur_number;	/* номер текущей записи */
@@ -37,7 +37,7 @@ struct llog_rec_header {
 	struct date_time dt;	/* дата и время (по Москве) создания записи */
 	struct term_addr addr;	/* адрес терминала в момент создания записи */
 	uint32_t term_version;	/* версия ПО терминала, сделавшего запись */
-	uint16_t term_check_sum;	/* контрольная сумма терминала, сделавшего запись */
+	uint16_t term_check_sum;/* контрольная сумма терминала, сделавшего запись */
 	term_number tn;		/* заводской номер терминала, сделавшего запись */
 	uint8_t xprn_number[PRN_NUMBER_LEN];	/* заводской номер ОПУ */
 	uint8_t aprn_number[PRN_NUMBER_LEN];	/* заводской номер ДПУ */
@@ -81,6 +81,14 @@ enum {
 	LLRT_ERROR_MEDIA,	/* неверный тип носителя */
 	LLRT_ERROR_GENERIC,	/* общая ошибка */
 };
+
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+extern uint8_t llog_data[LOG_BUF_LEN];
+/* Длина данных */
+extern uint32_t llog_data_len;
+/* Индекс текущего обрабатываемого байта в log_data */
+extern uint32_t llog_data_index;
 
 /* Получение описание кода ошибки LLRT_ERROR по её коду */
 extern const char *llog_get_llrt_error_txt(uint8_t code);

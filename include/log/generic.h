@@ -67,14 +67,6 @@ struct log_handle {
 	bool (*write_header)(struct log_handle *hlog);
 };
 
-/* Данные текущей записи контрольной ленты */
-/* NB: данный буфер используется как для чтения, так и для записи */
-extern uint8_t log_data[LOG_BUF_LEN];
-/* Длина данных */
-extern uint32_t log_data_len;
-/* Индекс текущего обрабатываемого байта в log_data */
-extern uint32_t log_data_index;
-
 #define try_fn(fn) ({ if (!fn) return false; })
 
 /* Инициализация подсистемы работы с контрольными лентами */
@@ -156,6 +148,7 @@ extern bool prn_write_date_time(struct date_time *dt);
 /* Сброс буфера печати в начальное состояние */
 extern bool log_reset_prn_buf(void);
 /* Вывод на печать штрих-кода */
-extern bool log_print_bcode(void);
+extern bool log_print_bcode(const uint8_t *log_data, uint32_t log_data_len,
+	uint32_t *log_data_index);
 
 #endif		/* LOG_GENERIC_H */

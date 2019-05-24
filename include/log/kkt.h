@@ -71,6 +71,14 @@ extern pthread_mutex_t klog_mtx;
 
 extern struct log_handle *hklog;
 
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+extern uint8_t klog_data[LOG_BUF_LEN];
+/* Длина данных */
+extern uint32_t klog_data_len;
+/* Индекс текущего обрабатываемого байта в log_data */
+extern uint32_t klog_data_index;
+
 extern struct klog_rec_header klog_rec_hdr;
 
 extern const char *klog_get_stream_name(int stream);

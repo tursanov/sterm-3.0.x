@@ -14,14 +14,6 @@
 #include "genfunc.h"
 #include "sterm.h"
 
-/* Данные текущей записи контрольной ленты */
-/* NB: данный буфер используется как для чтения, так и для записи */
-uint8_t log_data[LOG_BUF_LEN] = {[0 ... LOG_BUF_LEN - 1] = 0};
-/* Длина данных */
-uint32_t log_data_len = 0;
-/* Индекс текущего обрабатываемого байта в log_data */
-uint32_t log_data_index = 0;
-
 /* Создание контрольной ленты заданного типа */
 bool log_create(struct log_handle *hlog)
 {
@@ -405,7 +397,7 @@ bool log_reset_prn_buf(void)
 }
 
 /* Вывод на печать штрих-кода */
-bool log_print_bcode(void)
+bool log_print_bcode(const uint8_t *log_data, uint32_t log_data_len, uint32_t *log_data_index)
 {
 	enum {
 		st_start,
@@ -418,8 +410,8 @@ bool log_print_bcode(void)
 	int st = st_start, n = 0;
 	uint8_t b;
 	bool need_print;
-	for (; (log_data_index < log_data_len) && (st != st_stop); log_data_index++){
-		b = log_data[log_data_index];
+	for (; (*log_data_index < log_data_len) && (st != st_stop); (*log_data_index)++){
+		b = log_data[*log_data_index];
 		need_print = true;
 		switch (st){
 			case st_start:
@@ -427,7 +419,7 @@ bool log_print_bcode(void)
 					st = st_semi1;
 				else if (isdigit(b)){
 					n = 2;
-					log_data_index--;
+					(*log_data_index)--;
 					st = st_digit1;
 				}else
 					return false;
@@ -438,7 +430,7 @@ bool log_print_bcode(void)
 					st = st_semi2;
 				else if (isdigit(b)){
 					n = 15;
-					log_data_index--;
+					(*log_data_index)--;
 					st = st_digit2;
 				}else
 					return false;
@@ -453,7 +445,7 @@ bool log_print_bcode(void)
 					st = st_semi2;
 				else if (isdigit(b)){
 					n = 15;
-					log_data_index--;
+					(*log_data_index)--;
 					st = st_digit2;
 				}else
 					return false;
@@ -462,7 +454,7 @@ bool log_print_bcode(void)
 			case st_semi2:
 				if (isdigit(b)){
 					n = 13;
-					log_data_index--;
+					(*log_data_index)--;
 					st = st_digit2;
 				}else
 					return false;
@@ -480,7 +472,7 @@ bool log_print_bcode(void)
 			try_fn(prn_write_char_raw(b));
 	}
 	if (st == st_stop){
-		log_data_index--;
+		(*log_data_index)--;
 		return true;
 	}else
 		return false;

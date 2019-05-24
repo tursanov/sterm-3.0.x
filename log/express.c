@@ -23,6 +23,14 @@
 #include "tki.h"
 #include "transport.h"
 
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+uint8_t xlog_data[LOG_BUF_LEN] = {[0 ... LOG_BUF_LEN - 1] = 0};
+/* Длина данных */
+uint32_t xlog_data_len = 0;
+/* Индекс текущего обрабатываемого байта в log_data */
+uint32_t xlog_data_index = 0;
+
 #define XLOG_MAP_MAX_SIZE	(XLOG_MAX_SIZE / sizeof(struct xlog_rec_header))
 static struct map_entry_t xlog_map[XLOG_MAP_MAX_SIZE];
 
@@ -62,7 +70,7 @@ static uint32_t xlog_rec_crc32(void)
 		if (i < sizeof(xlog_rec_hdr))
 			b = *((uint8_t *)&xlog_rec_hdr + i);
 		else
-			b = log_data[i - sizeof(xlog_rec_hdr)];
+			b = xlog_data[i - sizeof(xlog_rec_hdr)];
 		for (j = 0; j < 8; j++){
 			s >>= 1;
 			s |=	(((b & 1) ^
@@ -124,9 +132,9 @@ static bool xlog_fill_map(struct log_handle *hlog)
 				__func__, hlog->log_type, i, xlog_rec_hdr.len, LOG_BUF_LEN);
 			return log_truncate(hlog, i, tail);
 		}
-		log_data_len = xlog_rec_hdr.len;
-		if (log_data_len > 0)
-			try_fn(log_read(hlog, offs, log_data, log_data_len));
+		xlog_data_len = xlog_rec_hdr.len;
+		if (xlog_data_len > 0)
+			try_fn(log_read(hlog, offs, xlog_data, xlog_data_len));
 		crc = xlog_rec_hdr.crc32;
 		xlog_rec_hdr.crc32 = 0;
 		if (xlog_rec_crc32() != crc){
@@ -278,7 +286,7 @@ bool xlog_can_find(struct log_handle *hlog)
 }
 
 /*
- * Добавление новой записи в конец КЛ. Данные находятся в log_data,
+ * Добавление новой записи в конец КЛ. Данные находятся в xlog_data,
  * заголовок -- в xlog_rec_hdr.
  */
 static bool xlog_add_rec(struct log_handle *hlog)
@@ -338,7 +346,7 @@ static bool xlog_add_rec(struct log_handle *hlog)
 			((xlog_rec_hdr.len == 0) ||
 			log_write(hlog, log_inc_index(hlog, offs,
 					sizeof(xlog_rec_hdr)),
-				log_data, xlog_rec_hdr.len));
+				xlog_data, xlog_rec_hdr.len));
 	}
 	log_end_write(hlog);
 	return ret;
@@ -386,16 +394,16 @@ static void xlog_init_rec_hdr(struct log_handle *hlog,
 uint32_t xlog_write_rec(struct log_handle *hlog, uint8_t *data, uint32_t len,
 		uint32_t type, uint32_t n_para)
 {
-	log_data_len = log_data_index = 0;
+	xlog_data_len = xlog_data_index = 0;
 	if (data != NULL){
-		if (len > sizeof(log_data)){
+		if (len > sizeof(xlog_data)){
 			logdbg("%s: Переполнение буфера данных при записи "
 				"на %s (%u байт).\n", __func__, hlog->log_type, len);
 			return -1UL;
 		}
-		if ((data != log_data) && (len > 0)){	/* см. xlog_write_foreign */
-			memcpy(log_data, data, len);
-			log_data_len = len;
+		if ((data != xlog_data) && (len > 0)){	/* см. xlog_write_foreign */
+			memcpy(xlog_data, data, len);
+			xlog_data_len = len;
 		}
 	}
 	xlog_init_rec_hdr(hlog, &xlog_rec_hdr, n_para);
@@ -410,20 +418,20 @@ uint32_t xlog_write_rec(struct log_handle *hlog, uint8_t *data, uint32_t len,
 /* Занесение на контрольную ленту записи о чужом ответе */
 bool xlog_write_foreign(struct log_handle *hlog, uint8_t gaddr, uint8_t iaddr)
 {
-	struct term_addr *addr = (struct term_addr *)log_data;
+	struct term_addr *addr = (struct term_addr *)xlog_data;
 	addr->gaddr = gaddr;
 	addr->iaddr = iaddr;
-	return xlog_write_rec(hlog, log_data,
+	return xlog_write_rec(hlog, xlog_data,
 			sizeof(*addr), XLRT_FOREIGN, 0) != -1UL;
 }
 
 /* Занесение на контрольную ленту записи об изменении основного ip хост-ЭВМ */
 bool xlog_write_ipchange(struct log_handle *hlog, uint32_t old, uint32_t new)
 {
-	uint32_t *p = (uint32_t *)log_data;
+	uint32_t *p = (uint32_t *)xlog_data;
 	p[0] = old;
 	p[1] = new;
-	return xlog_write_rec(hlog, log_data, 2 * sizeof(uint32_t),
+	return xlog_write_rec(hlog, xlog_data, 2 * sizeof(uint32_t),
 			XLRT_IPCHANGE, 0) != -1UL;
 }
 
@@ -433,18 +441,18 @@ bool xlog_read_rec(struct log_handle *hlog, uint32_t index)
 	uint32_t offs, crc;
 	if (index >= hlog->hdr->n_recs)
 		return false;
-	log_data_len = 0;
-	log_data_index = 0;
+	xlog_data_len = 0;
+	xlog_data_index = 0;
 	offs = hlog->map[(hlog->map_head + index) % hlog->map_size].offset;
 	if (!log_read(hlog, offs, (uint8_t *)&xlog_rec_hdr, sizeof(xlog_rec_hdr)))
 		return false;
-	else if (xlog_rec_hdr.len > sizeof(log_data)){
+	else if (xlog_rec_hdr.len > sizeof(xlog_data)){
 		logdbg("%s: Слишком длинная запись %s #%u (%u байт).\n",
 			__func__, hlog->log_type, index, xlog_rec_hdr.len);
 		return false;
 	}
 	offs = log_inc_index(hlog, offs, sizeof(xlog_rec_hdr));
-	if ((xlog_rec_hdr.len > 0) && !log_read(hlog, offs, log_data,
+	if ((xlog_rec_hdr.len > 0) && !log_read(hlog, offs, xlog_data,
 			xlog_rec_hdr.len))
 		return false;
 	crc = xlog_rec_hdr.crc32;
@@ -455,7 +463,7 @@ bool xlog_read_rec(struct log_handle *hlog, uint32_t index)
 		return false;
 	}
 	xlog_rec_hdr.crc32 = crc;
-	log_data_len = xlog_rec_hdr.len;
+	xlog_data_len = xlog_rec_hdr.len;
 	return true;
 }
 
@@ -555,9 +563,9 @@ static bool xlog_print_xlrt_init(void)
 /* Вывод на печать записи типа XLRT_FOREIGN */
 static bool xlog_print_xlrt_foreign(void)
 {
-	struct term_addr *addr = (struct term_addr *)log_data;
+	struct term_addr *addr = (struct term_addr *)xlog_data;
 	char s[128];
-	if (log_data_len == sizeof(*addr))
+	if (xlog_data_len == sizeof(*addr))
 		snprintf(s, sizeof(s), "*ПОЛУЧЕН ОТВЕТ ДЛЯ ДРУГОГО ТЕРМИНАЛА "
 				"(%.2hhX:%2hhX)*",
 			addr->gaddr, addr->iaddr);
@@ -570,11 +578,11 @@ static bool xlog_print_xlrt_foreign(void)
 static bool xlog_print_xlrt_special(void)
 {
 	char s[128];
-	log_data_index = 0;
+	xlog_data_index = 0;
 	snprintf(s, sizeof(s), "*ОШИБКА КОНТРОЛЬНОЙ СУММ\x9b С:");
 	return	prn_write_str(s) &&
-		prn_write_char_raw(log_data[log_data_index++]) &&
-		prn_write_char_raw(log_data[log_data_index]) &&
+		prn_write_char_raw(xlog_data[xlog_data_index++]) &&
+		prn_write_char_raw(xlog_data[xlog_data_index]) &&
 		prn_write_char_raw('*') &&
 		prn_write_eol();
 }
@@ -585,15 +593,15 @@ static bool xlog_print_xlrt_bank(void)
 	return	prn_write_str("*БАНК*") && prn_write_eol() &&
 /* Номер заказа в системе */
 		prn_write_char_raw('*') &&
-		prn_write_chars_raw((char *)log_data, 7) &&
+		prn_write_chars_raw((char *)xlog_data, 7) &&
 		prn_write_char_raw('*') && prn_write_eol() &&
 /* Технологический номер кассы */
 		prn_write_char_raw('*') &&
-		prn_write_chars_raw((char *)log_data + 7, 5) &&
+		prn_write_chars_raw((char *)xlog_data + 7, 5) &&
 		prn_write_char_raw('*') && prn_write_eol() &&
 /* Сумма заказа */
 		prn_write_char_raw('*') &&
-		prn_write_chars_raw((char *)log_data + 12, 9) &&
+		prn_write_chars_raw((char *)xlog_data + 12, 9) &&
 		prn_write_char_raw('*') && prn_write_eol();
 }
 
@@ -603,7 +611,7 @@ static bool xlog_print_xlrt_bank(void)
 #include <sys/socket.h>
 static bool xlog_print_xlrt_ipchange(void)
 {
-	uint32_t *p = (uint32_t *)log_data;
+	uint32_t *p = (uint32_t *)xlog_data;
 	char s[128], old_ip[20], new_ip[20];
 	strncpy(old_ip, inet_ntoa(dw2ip(p[0])), sizeof(old_ip) - 1);
 	old_ip[sizeof(old_ip) - 1] = 0;
@@ -641,12 +649,12 @@ static bool is_printable_char(uint8_t c)
 static int get_unprintable_len(uint8_t cmd)
 {
 	uint8_t b;
-	int k = log_data_index, l = 0;
+	int k = xlog_data_index, l = 0;
 	bool flag = true;	/* команду можно вывести на печать */
 	bool loop_flag = true;
 	if (cmd == XPRN_PRNOP){
-		for (; loop_flag && (log_data_index < log_data_len); log_data_index++){
-			b = log_data[log_data_index];
+		for (; loop_flag && (xlog_data_index < xlog_data_len); xlog_data_index++){
+			b = xlog_data[xlog_data_index];
 			switch (b){
 				case XPRN_PRNOP_VPOS_BK:
 				case XPRN_PRNOP_VPOS_ABS:
@@ -661,11 +669,11 @@ static int get_unprintable_len(uint8_t cmd)
 					break;
 			}
 		}
-	}else if ((cmd == XPRN_VPOS) && (log_data_index < log_data_len))
-		flag = log_data[log_data_index++] >= 0x38;
+	}else if ((cmd == XPRN_VPOS) && (xlog_data_index < xlog_data_len))
+		flag = xlog_data[xlog_data_index++] >= 0x38;
 	if (!flag)
-		l = log_data_index - k;
-	log_data_index = k;
+		l = xlog_data_index - k;
+	xlog_data_index = k;
 	return l;
 }
 
@@ -675,12 +683,12 @@ static bool xlog_print_bctl(uint8_t cmd)
 	switch (cmd){
 		case XPRN_WR_BCODE:
 			return	prn_write_str("ПЧ ШТРИХ: ") &&
-				log_print_bcode();
+				log_print_bcode(xlog_data, xlog_data_len, &xlog_data_index);
 		case XPRN_RD_BCODE:
 			return	prn_write_str("ЧТ ШТРИХ: ") &&
-				log_print_bcode();
+				log_print_bcode(xlog_data, xlog_data_len, &xlog_data_index);
 		case XPRN_NO_BCODE:
-			log_data_index--;
+			xlog_data_index--;
 			return	prn_write_str("БЕЗ ШТРИХ");
 		default:
 			return false;
@@ -702,13 +710,13 @@ static bool xlog_print_line(void)
 	};
 	int st = st_start, l, m = 0;
 	uint8_t b, cmd = 0;
-	for (; (log_data_index < log_data_len) && (st != st_stop); log_data_index++){
-		b = log_data[log_data_index];
+	for (; (xlog_data_index < xlog_data_len) && (st != st_stop); xlog_data_index++){
+		b = xlog_data[xlog_data_index];
 		switch (st){
 			case st_start:
 				try_fn(prn_write_char_raw('*'));
 				st = st_regular;
-				log_data_index--;
+				xlog_data_index--;
 				break;
 			case st_regular:
 				if (is_escape(b))
@@ -737,7 +745,7 @@ static bool xlog_print_line(void)
 						else{
 							try_fn(prn_write_char_raw('*'));
 							try_fn(prn_write_eol());
-							log_data_index -= 2;
+							xlog_data_index -= 2;
 							st = st_stop;
 						}
 						break;
@@ -747,9 +755,9 @@ static bool xlog_print_line(void)
 				break;
 			case st_bctl:
 				try_fn(xlog_print_bctl(cmd));
-				if ((log_data_index >= (log_data_len - 1)) ||
-						((log_data[log_data_index + 1] != 0x0a) &&
-						 (log_data[log_data_index + 1] != 0x0d))){
+				if ((xlog_data_index >= (xlog_data_len - 1)) ||
+						((xlog_data[xlog_data_index + 1] != 0x0a) &&
+						 (xlog_data[xlog_data_index + 1] != 0x0d))){
 					try_fn(prn_write_char_raw('*'));
 					try_fn(prn_write_eol());
 					st = st_stop;
@@ -761,9 +769,9 @@ static bool xlog_print_line(void)
 				if (l == 0){
 					try_fn(prn_write_char_raw(X_DLE));
 					try_fn(prn_write_char_raw(cmd));
-/*					log_data_index--;*/
+/*					xlog_data_index--;*/
 				}
-				log_data_index += l - 1;
+				xlog_data_index += l - 1;
 				st = st_regular;
 				break;
 			case st_wcr:
@@ -771,7 +779,7 @@ static bool xlog_print_line(void)
 					try_fn(prn_write_char_raw(b));
 					st = st_stop;
 				}else{
-					log_data_index--;
+					xlog_data_index--;
 					st = st_stop;
 				}
 				break;
@@ -782,7 +790,7 @@ static bool xlog_print_line(void)
 				}else if (b == 0x0d)
 					try_fn(prn_write_char_raw(b));
 				else{
-					log_data_index--;
+					xlog_data_index--;
 					st = st_stop;
 				}
 				break;
@@ -798,11 +806,11 @@ static bool xlog_print_line(void)
 /* Вывод на печать обычной записи */
 static bool xlog_print_xlrt_normal(void)
 {
-	for (log_data_index = 0; log_data_index < log_data_len;){
+	for (xlog_data_index = 0; xlog_data_index < xlog_data_len;){
 		if (!xlog_print_line())
 			break;
 	}
-	return log_data_index == log_data_len;
+	return xlog_data_index == xlog_data_len;
 }
 
 /* Вывод на печать записи ПКЛ для ОПУ */
