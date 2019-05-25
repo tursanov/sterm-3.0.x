@@ -406,12 +406,14 @@ static struct optn_item ppp_optn_items[] = {
 /* ИПТ */
 static struct optn_item bank_optn_items[] = {
 	OPTN_BOOL2("Связь с ИПТ \"Экспресс\"", "Активация ИПТ \"Экспресс\"\r\n"
-		"для оплаты билетов\r\nпосредством кредитных карт",
+		"для оплаты билетов\r\nпосредством банковских карт",
 		bank_system, on_bank_change),
-	OPTN_IP_EDIT("IP процесс. центра","IP-адрес процессингового центра",
-		bank_proc_ip, NULL),
 	OPTN_STR_ENUM("Порт ИПТ", "Последовательный порт к которому\r\n"
 		"подключается ИПТ", optn_com_port, ini_int, bank_pos_port, NULL),
+	OPTN_IP_EDIT("IP процесс. центра","IP-адрес процессингового центра",
+		bank_proc_ip, NULL),
+	OPTN_BOOL2("Внешний POS", "В качестве ИПТ используется внешний\r\n"
+		"POS-терминал", ext_pos, NULL),
 };
 
 /* ККТ */
@@ -2251,8 +2253,9 @@ static void on_bank_change(struct optn_item *item)
 	if (item == NULL)
 		return;
 	bool flag = item->vv.flag;
-	optn_set_item_enable(bank_proc_ip, flag);
 	optn_set_item_enable(bank_pos_port, flag);
+	optn_set_item_enable(bank_proc_ip, flag);
+	optn_set_item_enable(ext_pos, flag);
 }
 
 /* Вызывается при изменении параметра "Наличие ККТ" */

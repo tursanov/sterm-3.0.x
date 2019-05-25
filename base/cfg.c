@@ -415,8 +415,9 @@ static struct {
 	CFG_ENTRY_BOOL		("ppp-crtscts",		ppp_crtscts),
 /* Настройки ИПТ */
 	CFG_ENTRY_BOOL		("bank-system",		bank_system),
-	CFG_ENTRY_IP		("bank-proc-ip",	bank_proc_ip),
 	CFG_ENTRY_INT		("bank-pos-port",	bank_pos_port),
+	CFG_ENTRY_IP		("bank-proc-ip",	bank_proc_ip),
+	CFG_ENTRY_BOOL		("ext-pos",		ext_pos),
 /* Настройки ККТ */
 	CFG_ENTRY_BOOL		("kkt",			has_kkt),
 	CFG_ENTRY_BOOL		("fiscal_mode",		fiscal_mode),
