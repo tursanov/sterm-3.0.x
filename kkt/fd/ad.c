@@ -1006,13 +1006,10 @@ int AD_processO(K *k) {
 		case 2:
 			k1 = K_divide(k, 1, &tB1);
 			tB2 = K_calc_total_sum(k);
-			if (tB1 > tB2) {
-				sB1 = tB1 - tB2;
-				sB2 = tB2;
-			} else {
-				sB1 = tB1;
-				sB2 = tB2 - tB1;
-			}
+			if (tB1 > tB2)
+				sB1 = sB2 = tB2;
+			else
+				sB1 = sB2 = tB1;
 			if (doc_no_is_not_empty(&k->n)) {
 				tB2 = K_calc_total_sum(k);
 				AD_makeReissue(k, _ad->t1055, tB1, tB2, &sB1, &sB2);
