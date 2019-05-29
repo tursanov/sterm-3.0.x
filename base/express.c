@@ -41,6 +41,8 @@ extern struct hash *prom;
 extern bool can_reject;
 extern bool resp_handling;
 extern bool resp_executing;
+extern bool resp_printed;
+extern bool has_kkt_data;
 
 extern int astate_for_req;
 
@@ -2068,6 +2070,7 @@ bool execute_resp(void)
 	else
 		can_reject = TST_FLAG(OBp, GDF_RESP_REJ_ENABLED);
 	resp_executing = true;
+	resp_printed = has_kkt_data = false;
 	lprn_error_shown = false;
 	preexecute_resp();
 	if (need_lock_term)
@@ -2116,9 +2119,11 @@ bool execute_resp(void)
 				case dst_lprn:
 					if (p->auto_handle && (next_printable() == cur_para)){
 						if (p->can_print){
-							if (execute_prn(p, l, n_para++))
+							if (execute_prn(p, l, n_para++)){
+								if (p->dst == dst_xprn)
+									resp_printed = true;
 								ndest_shown = false;
-							else{
+							}else{
 								lprn_error_shown = false;
 								if (hbyte != HB_INIT)
 									set_term_led(hbyte = n2hbyte(0));
@@ -2152,6 +2157,7 @@ bool execute_resp(void)
 					}
 					break;
 				case dst_kkt:{
+					has_kkt_data = true;
 					execute_kkt(p, l);
 					struct AD_state ads;
 					if (AD_get_state(&ads))

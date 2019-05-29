@@ -412,8 +412,10 @@ static struct optn_item bank_optn_items[] = {
 		"подключается ИПТ", optn_com_port, ini_int, bank_pos_port, NULL),
 	OPTN_IP_EDIT("IP процесс. центра","IP-адрес процессингового центра",
 		bank_proc_ip, NULL),
+#if defined __EXT_POS__
 	OPTN_BOOL2("Внешний POS", "В качестве ИПТ используется внешний\r\n"
 		"POS-терминал", ext_pos, NULL),
+#endif
 };
 
 /* ККТ */
@@ -2255,7 +2257,9 @@ static void on_bank_change(struct optn_item *item)
 	bool flag = item->vv.flag;
 	optn_set_item_enable(bank_pos_port, flag);
 	optn_set_item_enable(bank_proc_ip, flag);
+#if defined __EXT_POS__
 	optn_set_item_enable(ext_pos, flag);
+#endif
 }
 
 /* Вызывается при изменении параметра "Наличие ККТ" */

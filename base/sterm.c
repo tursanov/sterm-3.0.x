@@ -148,6 +148,8 @@ struct hash *prom = NULL;		/* ДЗУ */
 bool can_reject = false;		/* флаг возможности отказа от заказа */
 bool resp_handling = false;		/* можно обрабатывать ответ по F8 */
 bool resp_executing = false;		/* устанавливается в execute_resp */
+bool resp_printed = false;		/* при обработке ответа выполнялась печать на БПУ */
+bool has_kkt_data = false;		/* в ответе есть данные для ККТ */
 
 static bool full_resp;			/* флаг прихода ответа от хост-ЭВМ */
 static bool rejecting_req;		/* был послан запрос с отказом от заказа */
@@ -3965,7 +3967,7 @@ static void show_syntax_error_msg(uint8_t code)
 static bool need_apc(void)
 {
 	bool ret = false;
-	if (cfg.kkt_apc && !cfg.ext_pos){
+	if (cfg.kkt_apc && !cfg.ext_pos && resp_printed && has_kkt_data){
 		struct AD_state ads;
 		ret = AD_get_state(&ads);
 	}
@@ -3975,16 +3977,19 @@ static bool need_apc(void)
 static bool need_pos(void)
 {
 	bool ret = false;
-	if (cfg.bank_system && !cfg.ext_pos && cfg.kkt_apc){
+	if (cfg.bank_system &&
+#if defined __EXT_POS__
+			!cfg.ext_pos &&
+#endif
+			cfg.kkt_apc){
 		struct AD_state ads;
 		AD_get_state(&ads);
 		if (ads.has_cashless_payments){
 			int64_t s = ads.cashless_total_sum;
 			if (s < 0)
 				s *= -1;
-			bi_pos.amount1 = s / 100;
-			bi_pos.amount2 = ((s % 100) + 5) / 10;
-			rollback_bank_info();
+			bi.amount1 = s / 100;
+			bi.amount2 = ((s % 100) + 5) / 10;
 			ret = true;
 		}
 	}
