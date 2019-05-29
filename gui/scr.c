@@ -921,12 +921,25 @@ bool show_hints(void)
 				int tw = GetTextWidth(pMemGC, text);
 
 				SetTextColor(pMemGC, clWhite);
-				DrawText(pMemGC, ofs+x+94 - tw + 1, hint_h + 3, hint_w-33, hint_h/2, 
+				DrawText(pMemGC, ofs+x+94 - tw + 1, hint_h + 2, hint_w-33, hint_h/2, 
 					text, DT_LEFT | DT_VCENTER);
 
 				SetTextColor(pMemGC, kkt ? clGreen : clRed);
-				DrawText(pMemGC, ofs+x+94 - tw, hint_h + 3, hint_w-33, hint_h/2, 
+				DrawText(pMemGC, ofs+x+94 - tw, hint_h + 2, hint_w-33, hint_h/2, 
 					text, DT_LEFT | DT_VCENTER);
+
+				if (cfg.kkt_apc) {
+					text = "Äèó";
+					tw = GetTextWidth(pMemGC, text);
+
+					SetTextColor(pMemGC, clWhite);
+					DrawText(pMemGC, ofs+x+94 - tw + 1, hint_h + 23, hint_w-33, hint_h/2, 
+						text, DT_LEFT | DT_TOP);
+
+					SetTextColor(pMemGC, kkt ? clGreen : clRed);
+					DrawText(pMemGC, ofs+x+94 - tw, hint_h + 23, hint_w-33, hint_h/2, 
+						text, DT_LEFT | DT_TOP);
+				}
 			}
 		}
 		
