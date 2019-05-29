@@ -286,6 +286,7 @@ K *K_divide(K *k, uint8_t p, int64_t *sum) {
 
 				doc_no_copy(&k1->d, &k->d);
 				doc_no_copy(&k1->r, &k->r);
+				doc_no_copy(&k1->n, &k->n);
 				doc_no_copy(&k1->i1, &k->i1);
 				doc_no_copy(&k1->i2, &k->i2);
 				doc_no_copy(&k1->i21, &k->i21);
