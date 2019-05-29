@@ -73,11 +73,11 @@ static bool klog_fill_scr_normal(struct log_gui_context *ctx)
 	static char title[LOG_SCREEN_COLS + 1];
 	if (klog_rec_hdr.cmd != KKT_NUL){
 		snprintf(title, sizeof(title), "ЗАПРОС (%.2hhX):", klog_rec_hdr.cmd);
-		if (!klog_show_data(ctx, log_data, klog_rec_hdr.req_len, title))
+		if (!klog_show_data(ctx, klog_data, klog_rec_hdr.req_len, title))
 			return false;
 	}
 	snprintf(title, sizeof(title), "ОТВЕТ (СТАТУС = %.2hhX):", klog_rec_hdr.status);
-	return klog_show_data(ctx, log_data + klog_rec_hdr.req_len, klog_rec_hdr.resp_len, title);
+	return klog_show_data(ctx, klog_data + klog_rec_hdr.req_len, klog_rec_hdr.resp_len, title);
 }
 
 /* Заполнение экранного буфера */

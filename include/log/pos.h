@@ -52,6 +52,14 @@ enum {
 	PLRT_ERROR,		/* сообщение об ошибке */
 };
 
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+extern uint8_t plog_data[LOG_BUF_LEN];
+/* Длина данных */
+extern uint32_t plog_data_len;
+/* Индекс текущего обрабатываемого байта в log_data */
+extern uint32_t plog_data_index;
+
 extern struct log_handle *hplog;
 
 extern struct plog_rec_header plog_rec_hdr;

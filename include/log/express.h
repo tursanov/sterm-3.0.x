@@ -69,6 +69,14 @@ enum {
 	XLRT_KKT,		/* абзац для ККТ */
 };
 
+/* Данные текущей записи контрольной ленты */
+/* NB: данный буфер используется как для чтения, так и для записи */
+extern uint8_t xlog_data[LOG_BUF_LEN];
+/* Длина данных */
+extern uint32_t xlog_data_len;
+/* Индекс текущего обрабатываемого байта в log_data */
+extern uint32_t xlog_data_index;
+
 extern int aux_msg_len;
 
 extern struct log_handle *hxlog;

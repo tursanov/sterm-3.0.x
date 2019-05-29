@@ -80,8 +80,9 @@ struct term_cfg{
 	bool		ppp_crtscts;	/* управление модемом (XON/XOFF или RTS/CTS) */
 /* Настройки ИПТ */
 	bool 		bank_system;	/* работа с ИПТ */
-	uint32_t 	bank_proc_ip;	/* ip-адрес процессингового центра */
 	int		bank_pos_port;	/* COM-порт, к которому подключен POS-эмулятор */
+	uint32_t 	bank_proc_ip;	/* ip-адрес процессингового центра */
+	bool		ext_pos;	/* внешний POS-терминал */
 /* Настройки ККТ */
 	bool		has_kkt;	/* наличие ККТ */
 	bool		fiscal_mode;	/* фискальный режим ККТ */

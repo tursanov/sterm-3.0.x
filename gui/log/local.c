@@ -39,8 +39,8 @@ static void llog_fill_scr_normal(struct log_gui_context *ctx)
 			ctx->scr_data[ctx->scr_data_len++] = 0;
 		j = ctx->scr_data_len;
 	}
-	for (i = 0; (i < log_data_len) && (j < sizeof(ctx->scr_data)); i++){
-		b = log_data[i];
+	for (i = 0; (i < llog_data_len) && (j < sizeof(ctx->scr_data)); i++){
+		b = llog_data[i];
 		if (dle){
 			nl = (b == LPRN_WR_BCODE1) || (b == LPRN_WR_BCODE2) ||
 				(b == LPRN_NO_BCODE) || (b == LPRN_RD_BCODE);
@@ -55,7 +55,7 @@ static void llog_fill_scr_normal(struct log_gui_context *ctx)
 				continue;
 			}
 			dle = line_begin = false;
-			n = log_get_cmd_len(log_data, log_data_len, i);
+			n = log_get_cmd_len(llog_data, llog_data_len, i);
 		}else{
 			dle = (b == LPRN_DLE);
 			if (!dle)
@@ -145,17 +145,17 @@ static void llog_fill_scr_bank(struct log_gui_context *ctx)
 	ctx->scr_data_len += bank_msg_len + 1;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* Номер заказа в системе */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data, 7);
+	memcpy(ctx->scr_data + ctx->scr_data_len, llog_data, 7);
 	ctx->scr_data_len += 7;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* Технологический номер кассы */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data + 7, 5);
+	memcpy(ctx->scr_data + ctx->scr_data_len, llog_data + 7, 5);
 	ctx->scr_data_len += 5;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 /* Сумма заказа */
-	memcpy(ctx->scr_data + ctx->scr_data_len, log_data + 12, 9);
+	memcpy(ctx->scr_data + ctx->scr_data_len, llog_data + 12, 9);
 	ctx->scr_data_len += 9;
 	ctx->scr_data[ctx->scr_data_len++] = 0;
 }
@@ -163,10 +163,10 @@ static void llog_fill_scr_bank(struct log_gui_context *ctx)
 /* Занесение в экранный буфер записи типа LLRT_ERROR */
 static void llog_fill_scr_error(struct log_gui_context *ctx)
 {
-	if (log_data_len == 1){
-		char *s = (log_data[0] == LLRT_ERROR_MEDIA) ? "БСО" : "ППУ";
+	if (llog_data_len == 1){
+		char *s = (llog_data[0] == LLRT_ERROR_MEDIA) ? "БСО" : "ППУ";
 		log_add_scr_str(ctx, true, "ОШИБКА РАБОТ\x9b С %s: %s",
-			s, llog_get_llrt_error_txt(log_data[0]));
+			s, llog_get_llrt_error_txt(llog_data[0]));
 	}
 }
 
@@ -183,37 +183,37 @@ static bool llog_fill_scr_err_code(struct log_gui_context *ctx,
 	if (prefix != NULL)
 		ret = log_add_scr_str(ctx, true, prefix);
 	if (ret && (err != NULL))
-		ret = log_add_scr_str(ctx, true, "%.2hhX: %s", log_data[0], err->txt);
+		ret = log_add_scr_str(ctx, true, "%.2hhX: %s", llog_data[0], err->txt);
 	return ret;
 }
 
 /* Занесение в экранный буфер записи типа LLRT_RD_ERROR */
 static void llog_fill_scr_rd_error(struct log_gui_context *ctx)
 {
-	if (log_data_len == 1){
+	if (llog_data_len == 1){
 		log_add_scr_str(ctx, true, "ЗАПРОС");
 		llog_fill_scr_err_code(ctx, "ОШИБКА ЧТЕНИЯ НОМЕРА БЛАНКА",
-			log_data[0], lprn_get_error_txt);
+			llog_data[0], lprn_get_error_txt);
 	}
 }
 
 /* Занесение в экранный буфер записи типа LLRT_PR_ERROR_BCODE */
 static void llog_fill_scr_pr_error_bcode(struct log_gui_context *ctx)
 {
-	if (log_data_len == (LPRN_BLANK_NUMBER_LEN + 1)){
+	if (llog_data_len == (LPRN_BLANK_NUMBER_LEN + 1)){
 		llog_fill_scr_err_code(ctx, "ОШИБКА ПЕЧАТИ НА БСО С КОНТРОЛЕМ "
-			"ШТРИХ-КОДА", log_data[0], lprn_get_error_txt);
+			"ШТРИХ-КОДА", llog_data[0], lprn_get_error_txt);
 		log_add_scr_str(ctx, true, "НОМЕР БЛАНКА %.*s", LPRN_BLANK_NUMBER_LEN,
-			log_data + 1);
+			llog_data + 1);
 	}
 }
 
 /* Занесение в экранный буфер записи типа LLRT_PR_ERROR */
 static void llog_fill_scr_pr_error(struct log_gui_context *ctx)
 {
-	if (log_data_len == 1){
+	if (llog_data_len == 1){
 		llog_fill_scr_err_code(ctx, "ОШИБКА ПЕЧАТИ НА БСО БЕЗ КОНТРОЛЯ "
-			"ШТРИХ-КОДА", log_data[0], lprn_get_error_txt);
+			"ШТРИХ-КОДА", llog_data[0], lprn_get_error_txt);
 	}
 }
 
@@ -221,8 +221,8 @@ static void llog_fill_scr_pr_error(struct log_gui_context *ctx)
 static void llog_fill_scr_foreign(struct log_gui_context *ctx)
 {
 	char msg[80];
-	struct term_addr *addr = (struct term_addr *)log_data;
-	if (log_data_len == sizeof(*addr))
+	struct term_addr *addr = (struct term_addr *)llog_data;
+	if (llog_data_len == sizeof(*addr))
 		snprintf(msg, sizeof(msg), "ПОЛУЧЕН ОТВЕТ ДЛЯ ДРУГОГО "
 			"ТЕРМИНАЛА (%.2hhX:%.2hhX)",
 			addr->gaddr, addr->iaddr);
@@ -235,7 +235,7 @@ static void llog_fill_scr_foreign(struct log_gui_context *ctx)
 /* Занесение в экранный буфер записи типа LLRT_SPECIAL */
 static void llog_fill_scr_special(struct log_gui_context *ctx)
 {
-	log_fill_scr_str(ctx, "ОШИБКА КОНТРОЛЬНОЙ СУММ\x9b С:%.2s", log_data);
+	log_fill_scr_str(ctx, "ОШИБКА КОНТРОЛЬНОЙ СУММ\x9b С:%.2s", llog_data);
 }
 
 /* Занесение в экранный буфер записи типа LLRT_ERASE_SD */
@@ -247,9 +247,9 @@ static void llog_fill_scr_erase_sd(struct log_gui_context *ctx)
 /* Занесение в экранный буфер записи типа LLRT_SD_ERROR */
 static void llog_fill_scr_sd_error(struct log_gui_context *ctx)
 {
-	if (log_data_len == 1){
+	if (llog_data_len == 1){
 		llog_fill_scr_err_code(ctx, "ОШИБКА РАБОТ\x9b С КАРТОЙ ПАМЯТИ",
-			log_data[0], lprn_get_sd_error_txt);
+			llog_data[0], lprn_get_sd_error_txt);
 	}
 }
 
@@ -263,7 +263,7 @@ static void llog_fill_scr_reject(struct log_gui_context *ctx)
 static void llog_fill_scr_syntax_error(struct log_gui_context *ctx)
 {
 	const char *err_msg, *slice;
-	uint8_t code = log_data[0];
+	uint8_t code = llog_data[0];
 	int i;
 	log_add_scr_str(ctx, true, "СИНТАКСИЧЕСКАЯ ОШИБКА В ОТВЕТЕ -- П:%.2hhd", code);
 	err_msg = get_syntax_error_txt(code);
@@ -274,11 +274,11 @@ static void llog_fill_scr_syntax_error(struct log_gui_context *ctx)
 		}
 	}
 	log_add_scr_str(ctx, true, "***ЗАПРОС***");
-	for (i = 1; i < log_data_len; i += LOG_SCREEN_COLS){
-		int len = log_data_len - i;
+	for (i = 1; i < llog_data_len; i += LOG_SCREEN_COLS){
+		int len = llog_data_len - i;
 		if (len > LOG_SCREEN_COLS)
 			len = LOG_SCREEN_COLS;
-		log_add_scr_str(ctx, false, "%.*s", len, log_data + i);
+		log_add_scr_str(ctx, false, "%.*s", len, llog_data + i);
 	}
 }
 
@@ -653,7 +653,7 @@ static bool llog_print_range_aux(struct log_gui_context *ctx,
 		llog_fill_scr_data(ctx);
 		log_draw(ctx);
 /* Печать записи */
-		if (!aprn_print((char *)log_data, log_data_len))
+		if (!aprn_print((char *)llog_data, llog_data_len))
 			break;
 	}
 	return n > index2;

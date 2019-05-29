@@ -13,15 +13,15 @@
 #include "kbd.h"
 #include "sterm.h"
 
-/* Запись буфера контрольной ленты в экранный буфер: log_data => ctx->scr_data */
+/* Запись буфера контрольной ленты в экранный буфер: plog_data => ctx->scr_data */
 static void plog_fill_scr_normal(struct log_gui_context *ctx)
 {
 	int i, j, k = 0, col = 0, n = 0, m = 1;
 	bool dle = false, nl = false, line_begin = true;
 	uint8_t b = 0;
 	ctx->scr_data[0] = 0;
-	for (i = 0, j = 1; (i < log_data_len) && (j < sizeof(ctx->scr_data)); i++){
-		b = log_data[i];
+	for (i = 0, j = 1; (i < plog_data_len) && (j < sizeof(ctx->scr_data)); i++){
+		b = plog_data[i];
 		if (dle){
 			nl = (b == XPRN_WR_BCODE) || (b == XPRN_NO_BCODE) ||
 				(b == XPRN_RD_BCODE);
@@ -36,7 +36,7 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 				continue;
 			}
 			dle = line_begin = false;
-			n = log_get_cmd_len(log_data, log_data_len, i);
+			n = log_get_cmd_len(plog_data, plog_data_len, i);
 		}else{
 			dle = is_escape(b);
 			if (!dle)

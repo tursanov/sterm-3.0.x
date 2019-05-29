@@ -365,8 +365,9 @@ static bool set_term_defaults(void)
 	cfg.ppp_crtscts = true;
 
 	cfg.bank_system = false;
-	cfg.bank_proc_ip = 0;
 	cfg.bank_pos_port = 0;
+	cfg.bank_proc_ip = 0;
+	cfg.ext_pos = false;
 
 	cfg.has_kkt = false;
 	cfg.fiscal_mode = false;
@@ -3964,7 +3965,7 @@ static void show_syntax_error_msg(uint8_t code)
 static bool need_apc(void)
 {
 	bool ret = false;
-	if (cfg.kkt_apc){
+	if (cfg.kkt_apc && !cfg.ext_pos){
 		struct AD_state ads;
 		ret = AD_get_state(&ads);
 	}
@@ -3974,7 +3975,7 @@ static bool need_apc(void)
 static bool need_pos(void)
 {
 	bool ret = false;
-	if (cfg.bank_system && cfg.kkt_apc){
+	if (cfg.bank_system && !cfg.ext_pos && cfg.kkt_apc){
 		struct AD_state ads;
 		AD_get_state(&ads);
 		if (ads.has_cashless_payments){
