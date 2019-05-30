@@ -162,6 +162,35 @@ static bool into_on_response;
 /* Устанавливается при выводе на экран сообщений об ошибках ППУ */
 bool lprn_error_shown = false;
 
+/* Устанавливается после получения SIGTERM */
+static bool sigterm_caught = false;
+
+/* Восстановление обработчика SIGTERM по умолчанию */
+static void restore_sigterm_handler(void)
+{
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = SIG_DFL;
+	sigaction(SIGTERM, &sa, NULL);
+}
+
+/* Обработчик сигнала SIGTERM */
+static void sigterm_handler(int n)
+{
+	restore_sigterm_handler();
+	sigterm_caught = true;
+}
+
+/* Установка обработчика сигнала SIGTERM */
+static void set_sigterm_handler(void)
+{
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sigterm_handler;
+	sa.sa_flags = SA_RESETHAND;
+	sigaction(SIGTERM, &sa, NULL);
+}
+
 /* Устанавливается во время автоматической печати чека на ККТ */
 bool apc = false;
 
@@ -1585,6 +1614,7 @@ static bool create_term(void)
 	struct key_aux_data aux_data;
 #endif
 	set_timezone();
+	set_sigterm_handler();
 	if (!read_tki(STERM_TKI_NAME, false))
 		return false;
 	load_term_props();
@@ -1692,6 +1722,7 @@ static bool create_term(void)
 
 static void release_term(void)
 {
+	restore_sigterm_handler();
 	fdo_release();
 	if (devices != NULL){
 		free_dev_lst(devices);
@@ -2325,7 +2356,7 @@ static void show_cheque_fa(void);
 /* Завершение работы банковского приложения */
 static void on_end_pos(void)
 {
-	reset_bank_info();
+	bool reset_bi = true;
 	pos_active = false;
 	online = true;
 	pop_term_info();
@@ -2359,6 +2390,8 @@ static void on_end_pos(void)
 					apc = fa_active;
 					break;
 				case DLG_BTN_RETRY:
+					rollback_bank_info();
+					reset_bi = false;
 /* FIXME: в этом случае по окончании работы с ИПТ мы не посылаем INIT CHECK (pos_new) */
 					if (pos_get_state() == pos_finish)
 						pos_set_state(pos_idle);
@@ -2373,6 +2406,8 @@ static void on_end_pos(void)
 		apc = false;
 		set_term_astate(ast_pos_error);
 	}
+	if (reset_bi)
+		reset_bank_info();
 	if (!apc)
 		redraw_term(true, main_title);
 
@@ -2460,6 +2495,10 @@ int get_cmd(bool check_scr, bool busy)
 	struct kbd_event e;
 	int cm = cmd_none;
 	uint32_t idle = kbd_idle_interval();
+	if (sigterm_caught){
+		ret_val = RET_SIGTERM;
+		return cmd_exit;
+	}
 #if defined __USE_USB_KEY__
 	if (!check_usbkey())
 		return cmd_exit;
@@ -3990,6 +4029,7 @@ static bool need_pos(void)
 				s *= -1;
 			bi.amount1 = s / 100;
 			bi.amount2 = ((s % 100) + 5) / 10;
+			clear_bank_info(&bi_pos, true);
 			ret = true;
 		}
 	}

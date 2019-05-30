@@ -206,6 +206,7 @@ extern void	hangup_ppp(void);
 #define RET_EDIT_IPLIR		10
 #define RET_SHELL		20
 #define RET_VERSION		30
+#define RET_SIGTERM		40
 #define RET_ERROR		99
 
 #endif		/* STERM_H */
