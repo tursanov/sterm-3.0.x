@@ -9,7 +9,8 @@ BINARIES =		\
 	chipid		\
 	chkrmlic	\
 	mkbind		\
-	mklicenses	\
+	mkbnklic	\
+	mklprnlic	\
 	mklog		\
 	mw		\
 	usbload
@@ -27,8 +28,10 @@ HELPERS_OBJS =		\
 	chkrmlic	\
 	licsig		\
 	mkbind		\
-	mklicenses	\
+	mkbnklic	\
+	mklic		\
 	mklog		\
+	mklprnlic	\
 	mw		\
 	usbload
 
@@ -91,21 +94,22 @@ mkbind:		$(MKBIND_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^
 
-## mklicenses
-MKLICENSES_BASE_OBJS =	\
+## mkbnklic
+MKBNKLIC_BASE_OBJS =	\
 	base64		\
 	md5		\
 	tki
 
-MKLICENSES_HELPERS_OBJS =	\
+MKBNKLIC_HELPERS_OBJS =	\
 	licsig		\
-	mklicenses
+	mkbnklic	\
+	mklic
 
-MKLICENSES_OBJS =	\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(MKLICENSES_BASE_OBJS))) \
-	$(addsuffix .o, $(MKLICENSES_HELPERS_OBJS))
+MKBNKLIC_OBJS =	\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(MKBNKLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(MKBNKLIC_HELPERS_OBJS))
 
-mklicenses:	$(MKLICENSES_OBJS)
+mkbnklic:	$(MKBNKLIC_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^
 
@@ -121,6 +125,25 @@ MKLOG_OBJS =		\
 	$(addsuffix .o, $(MKLOG_HELPERS_OBJS))
 
 mklog:		$(MKLOG_OBJS)
+		@echo -e "\t$(LD_NAME)   $@"
+		@$(CC) $(CFLAGS) -o $@ $^
+
+## mklprnlic
+MKLPRNLIC_BASE_OBJS =	\
+	base64		\
+	md5		\
+	tki
+
+MKLPRNLIC_HELPERS_OBJS =\
+	licsig		\
+	mklic		\
+	mklprnlic
+
+MKLPRNLIC_OBJS =	\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(MKLPRNLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(MKLPRNLIC_HELPERS_OBJS))
+
+mklprnlic:	$(MKLPRNLIC_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^
 

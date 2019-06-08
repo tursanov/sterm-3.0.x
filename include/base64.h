@@ -6,7 +6,7 @@
 #include "sysdefs.h"
 
 extern int base64_get_encoded_len(int l);
-extern int base64_encode(uint8_t *src, int l, uint8_t *dst);
-extern int base64_decode(uint8_t *src, int l, uint8_t *dst);
+extern int base64_encode(const uint8_t *src, int l, uint8_t *dst);
+extern int base64_decode(const uint8_t *src, int l, uint8_t *dst);
 
 #endif		/* BASE64_H */

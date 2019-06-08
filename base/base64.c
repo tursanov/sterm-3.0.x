@@ -33,7 +33,7 @@ int base64_get_encoded_len(int l)
 }	
 
 /* Кодирование base64 */
-int base64_encode(uint8_t *src, int l, uint8_t *dst)
+int base64_encode(const uint8_t *src, int l, uint8_t *dst)
 {
 	int i, j, k, m;
 	uint8_t b[3];
@@ -59,7 +59,7 @@ int base64_encode(uint8_t *src, int l, uint8_t *dst)
 }
 
 /* Раскодирование base64 */
-int base64_decode(uint8_t *src, int l, uint8_t *dst)
+int base64_decode(const uint8_t *src, int l, uint8_t *dst)
 {
 	int i, j, k, b[4];
 	if ((src == NULL) || (dst == NULL) || (l % 4))

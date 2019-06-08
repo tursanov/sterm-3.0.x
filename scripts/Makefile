@@ -4,20 +4,23 @@ DIR = scripts/
 INCLUDE = ../include
 
 BINARIES =		\
+	bnklic		\
 	dsd		\
 	iplirhlp	\
-	license		\
-	mwl		\
+	lprnlic		\
 	multiport	\
-	rmlic		\
-	rmlicx		\
+	mwl		\
+	rmbnklic	\
+	rmbnklicx	\
+	rmlprnlic	\
+	rmlprnlicx	\
 	tpld		\
 	tstbeep		\
 	tstcom		\
-	unlock		\
+	unlkbnk		\
+	unlklprn	\
 	usbcheck	\
-	usbread		\
-	xlicense
+	usbread
 
 BASE_OBJS =		\
 	base64		\
@@ -37,20 +40,25 @@ LOG_OBJS =		\
 	logdbg
 
 SCRIPTS_OBJS =		\
+	bnklic		\
 	dsd		\
 	iplirhlp	\
-	license		\
+	lprnlic		\
 	multiport	\
 	mwl		\
 	rmlic		\
-	rmlicx		\
+	rmbnklic	\
+	rmbnklicx	\
+	rmlprnlic	\
+	rmlprnlicx	\
 	tpld		\
 	tstbeep		\
 	tstcom		\
+	unlkbnk		\
+	unlklprn	\
 	unlock		\
 	usbcheck	\
-	usbread		\
-	xlicense
+	usbread
 
 USB_OBJ =		\
 	core		\
@@ -72,6 +80,22 @@ all:		depend $(BINARIES)
 
 depend:
 		@$(CC) $(CFLAGS) -MM $(OBJS:.o=.c) > .depend
+
+## bnklic
+BNKLIC_BASE_OBJS =	\
+	licsig		\
+	md5
+
+BNKLIC_SCRIPTS_OBJS =	\
+	bnklic
+
+BNKLIC_OBJS =		\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(BNKLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(BNKLIC_SCRIPTS_OBJS))
+
+bnklic:		$(BNKLIC_OBJS)
+		@echo -e "\t$(LD_NAME)   $@"
+		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
 ## dsd
 DSD_BASE_OBJS =		\
@@ -108,18 +132,19 @@ iplirhlp:	$(IPLIRHLP_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
-## license
-LICENSE_BASE_OBJS =	\
+## lprnlic
+LPRNLIC_BASE_OBJS =	\
+	licsig		\
 	md5
 
-LICENSE_SCRIPTS_OBJS =	\
-	license
+LPRNLIC_SCRIPTS_OBJS =	\
+	lprnlic
 
-LICENSE_OBJS =		\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(LICENSE_BASE_OBJS))) \
-	$(addsuffix .o, $(LICENSE_SCRIPTS_OBJS))
+LPRNLIC_OBJS =		\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(LPRNLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(LPRNLIC_SCRIPTS_OBJS))
 
-license:	$(LICENSE_OBJS)
+lprnlic:	$(LPRNLIC_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
@@ -151,39 +176,79 @@ mwl:		$(MWL_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
-## rmlic
-RMLIC_BASE_OBJS =	\
+## rmbnklic
+RMBNKLIC_BASE_OBJS =	\
 	licsig		\
 	md5		\
 	rndtbl
 
-RMLIC_SCRIPTS_OBJS =	\
+RMBNKLIC_SCRIPTS_OBJS =	\
+	rmbnklic	\
 	rmlic
 
-RMLIC_OBJS =		\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMLIC_BASE_OBJS))) \
-	$(addsuffix .o, $(RMLIC_SCRIPTS_OBJS))
+RMBNKLIC_OBJS =		\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMBNKLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(RMBNKLIC_SCRIPTS_OBJS))
 
-rmlic:		$(RMLIC_OBJS)
+rmbnklic:	$(RMBNKLIC_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
-## rmlicx
-RMLICX_BASE_OBJS =	\
+## rmbnklicx
+RMBNKLICX_BASE_OBJS =	\
 	base64		\
 	licsig		\
 	md5		\
 	rndtbl		\
 	tki
 
-RMLICX_SCRIPTS_OBJS =	\
-	rmlicx
+RMBNKLICX_SCRIPTS_OBJS =\
+	rmbnklicx	\
+	rmlic
 
-RMLICX_OBJS =		\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMLICX_BASE_OBJS))) \
-	$(addsuffix .o, $(RMLICX_SCRIPTS_OBJS))
+RMBNKLICX_OBJS =	\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMBNKLICX_BASE_OBJS))) \
+	$(addsuffix .o, $(RMBNKLICX_SCRIPTS_OBJS))
 
-rmlicx:		$(RMLICX_OBJS)
+rmbnklicx:	$(RMBNKLICX_OBJS)
+		@echo -e "\t$(LD_NAME)   $@"
+		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
+
+## rmlprnlic
+RMLPRNLIC_BASE_OBJS =	\
+	licsig		\
+	md5		\
+	rndtbl
+
+RMLPRNLIC_SCRIPTS_OBJS =\
+	rmlprnlic	\
+	rmlic
+
+RMLPRNLIC_OBJS =	\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMLPRNLIC_BASE_OBJS))) \
+	$(addsuffix .o, $(RMLPRNLIC_SCRIPTS_OBJS))
+
+rmlprnlic:	$(RMLPRNLIC_OBJS)
+		@echo -e "\t$(LD_NAME)   $@"
+		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
+
+## rmlprnlicx
+RMLPRNLICX_BASE_OBJS =	\
+	base64		\
+	licsig		\
+	md5		\
+	rndtbl		\
+	tki
+
+RMLPRNLICX_SCRIPTS_OBJS =	\
+	rmlprnlicx	\
+	rmlic
+
+RMLPRNLICX_OBJS =	\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(RMLPRNLICX_BASE_OBJS))) \
+	$(addsuffix .o, $(RMLPRNLICX_SCRIPTS_OBJS))
+
+rmlprnlicx:	$(RMLPRNLICX_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
@@ -234,18 +299,37 @@ tstcom:		$(TSTCOM_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
-## unlock
-UNLOCK_BASE_OBJS =	\
+## unlkbnk
+UNLKBNK_BASE_OBJS =	\
+	licsig		\
 	md5
 
-UNLOCK_SCRIPTS_OBJS =	\
+UNLKBNK_SCRIPTS_OBJS =	\
+	unlkbnk		\
 	unlock
 
-UNLOCK_OBJS =		\
-	$(addprefix $(DIR_BASE), $(addsuffix .o, $(UNLOCK_BASE_OBJS))) \
-	$(addsuffix .o, $(UNLOCK_SCRIPTS_OBJS))
+UNLKBNK_OBJS =		\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(UNLKBNK_BASE_OBJS))) \
+	$(addsuffix .o, $(UNLKBNK_SCRIPTS_OBJS))
 
-unlock:		$(UNLOCK_OBJS)
+unlkbnk:	$(UNLKBNK_OBJS)
+		@echo -e "\t$(LD_NAME)   $@"
+		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
+
+## unlklprn
+UNLKLPRN_BASE_OBJS =	\
+	licsig		\
+	md5
+
+UNLKLPRN_SCRIPTS_OBJS =	\
+	unlklprn	\
+	unlock
+
+UNLKLPRN_OBJS =		\
+	$(addprefix $(DIR_BASE), $(addsuffix .o, $(UNLKLPRN_BASE_OBJS))) \
+	$(addsuffix .o, $(UNLKLPRN_SCRIPTS_OBJS))
+
+unlklprn:	$(UNLKLPRN_OBJS)
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
@@ -276,10 +360,6 @@ USBREAD_OBJS =		\
 	$(addsuffix .o, $(USBREAD_SCRIPTS_OBJS))
 
 usbread:	$(USBREAD_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
-		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
-
-xlicense:	xlicense.o ../base/md5.o
 		@echo -e "\t$(LD_NAME)   $@"
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 

@@ -49,6 +49,12 @@ extern bool usb_ok;	/* обнаружен USB-диск для данного терминала */
 extern bool iplir_ok;	/* обнаружен dst-файл для этого терминала */
 extern bool bank_ok;	/* найден правильный файл банковской лицензии */
 
+/* Перестановка старшего и младшего полубайтов */
+static inline uint8_t swap_nibbles(uint8_t b)
+{
+	return (b << 4) | (b >> 4);
+}
+
 extern void encrypt_data(uint8_t *p, int l);
 extern void decrypt_data(uint8_t *p, int l);
 

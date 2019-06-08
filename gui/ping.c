@@ -317,11 +317,9 @@ static bool draw_ping_lines(void)
 		if (ping_lines[n][0] != 0)
 			m = n + 1;
 	}
-	printf("%s: m = %d\n", __func__, m);
 
 	for (int n = 0, y = 0; n < m; n++){
 		if (ping_lines[n][0] != 0){
-			printf("%s: y = %d\n", __func__, y);
 			ClearGC(pMemGC, cfg.bg_color);
 			PixmapTextOut(pMemGC, ping_font, 0, 0, ping_lines[n]);
 			CopyGC(pGC, 0, y, pMemGC, 0, 0, GetCX(pMemGC), GetCY(pMemGC));

@@ -175,7 +175,7 @@ static void restore_sigterm_handler(void)
 }
 
 /* Обработчик сигнала SIGTERM */
-static void sigterm_handler(int n)
+static void sigterm_handler(int n __attribute__((unused)))
 {
 	restore_sigterm_handler();
 	sigterm_caught = true;

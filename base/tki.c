@@ -38,12 +38,6 @@ struct md5_hash iplir_check_sum = ZERO_MD5_HASH;
 /* Считанный файл банковской лицензии */
 struct md5_hash bank_license;
 
-/* Перестановка старшего и младшего полубайтов */
-static inline uint8_t swap_nibbles(uint8_t b)
-{
-	return (b << 4) | (b >> 4);
-}
-
 /* Шифрование данных */
 void encrypt_data(uint8_t *p, int l)
 {

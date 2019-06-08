@@ -1,7 +1,7 @@
 /*
  * Таблица случайных чисел для программы снятия лицензий ИПТ.
  * Каждая запись в таблице состоит из 3-х 32-разрядных случайных чисел.
- * (c) gsr 2006
+ * (c) gsr 2006, 2019
  */
 
 #if !defined RNDTBL_H
@@ -19,6 +19,10 @@ struct rnd_rec {
 /* Количество записей в таблице случайных чисел */
 #define NR_RND_REC		100
 
-extern struct rnd_rec rnd_tbl[NR_RND_REC];
+/* Таблица случайных чисел для формирования кода удаления лицензии ИПТ */
+extern struct rnd_rec rnd_tbl_bnk[NR_RND_REC];
+
+/* Таблица случайных чисел для формирования кода удаления лицензии ППУ */
+extern struct rnd_rec rnd_tbl_lprn[NR_RND_REC];
 
 #endif		/* RNDTBL_H */

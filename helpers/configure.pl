@@ -68,6 +68,9 @@ print HFILE <<EOF;
 #define VERSION_RELEASE(v) (((v) >> 8) & 0xff)
 #define VERSION_PATCH(v) ((v) & 0xff)
 
+/* Размещение файлов терминала */
+#define STERM_HOME\t\t"$mk_options{STERM_HOME}"
+
 /* Опции компиляции */
 EOF
 ;

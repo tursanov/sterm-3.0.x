@@ -1,30 +1,29 @@
-/* Работа с лицензиями ИПТ. (c) gsr 2005-2006 */
+/* Работа с лицензиями ИПТ и ППУ. (c) gsr 2005-2006, 2011, 2019 */
 
 #if !defined LICENSE_H
 #define LICENSE_H
 
 #include "md5.h"
 
-/* Размер сектора жесткого диска */
-#define SECTOR_SIZE		512
-/* Признак установленной лицензии */
-#define LIC_SIGNATURE		0x8680
-/* Смещение признака установленной лицензии в MBR */
-#define LIC_SIGNATURE_OFFSET	0x1fa
-/* Файл устройства для работы с DiskOnChip */
-#define DOC_DEV			"/dev/msys/fla"
-/* Файл устройства для работы с DiskOnModule */
-#define DOM_DEV			"/dev/hda"
-
-/* Максимальное количество лицензий в файле */
-#define MAX_LICENSES		2000
-/* Имя файла хеша заводского номера терминала */
-#define TERM_NUMBER_FILE	"/sdata/disk.dat"
-
 /* Информация о лицензии ИПТ */
-struct license_info {
-	struct md5_hash number;
-	struct md5_hash license;
+struct bank_license_info {
+	struct md5_hash number;		/* хеш заводского номера */
+	struct md5_hash license;	/* лицензия */
 };
+
+/* Максимальное количество лицензий ИПТ в файле */
+#define MAX_BANK_LICENSES		10000
+
+/* Информация о лицензии ППУ */
+struct lprn_license_info {
+	struct md5_hash number;		/* хеш заводского номера */
+	struct md5_hash license;	/* лицензия */
+};
+
+/* Максимальное количество лицензий ППУ в файле */
+#define MAX_LPRN_LICENSES		MAX_BANK_LICENSES
+
+/* Имя файла хеша заводского номера терминала (для проверки лицензии) */
+#define TERM_NUMBER_FILE		"/sdata/disk.dat"
 
 #endif		/* LICENSE_H */

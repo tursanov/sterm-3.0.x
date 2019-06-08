@@ -1,16 +1,18 @@
-/* Размещение файлов терминала. (c) gsr 2018 */
+/* Размещение файлов терминала. (c) gsr 2018-2019 */
 
 #if !defined PATHS_H
 #define PATHS_H
 
-/* Основной каталог терминала */
-#define STERM_HOME		"/home/sterm"
+#include "config.h"
+
 /* Для удобства указания пути */
 #define _(s)			STERM_HOME "/" s
 /* Имя файла ключевой информации */
 #define STERM_TKI_NAME		_("sterm.dat")
 /* Имя файла банковской лицензии */
 #define BANK_LICENSE		_("bank.dat")
+/* Имя файла лицензии ППУ */
+#define LPRN_LICENSE		_("lprn.dat")
 /* Имя файла ЦКЛ */
 #define STERM_XLOG_NAME		_("express.log")
 /* Имя файла ЦКЛ в предыдущих версиях */
