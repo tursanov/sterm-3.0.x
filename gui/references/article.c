@@ -106,27 +106,27 @@ static void article_free(article_t *a) {
 	free(a);
 }
 
-int article_save(FILE *f, article_t *a) {
-	if (SAVE_INT(f, a->n) < 0 ||
-		save_string(f, a->name) < 0 ||
-		SAVE_INT(f, a->tax_system) < 0 ||
-		SAVE_INT(f, a->pay_method) < 0 ||
-		SAVE_INT(f, a->price_per_unit) < 0 ||
-		SAVE_INT(f, a->vat_rate) < 0 ||
-		SAVE_INT(f, a->pay_agent) < 0)
+int article_save(int fd, article_t *a) {
+	if (SAVE_INT(fd, a->n) < 0 ||
+		save_string(fd, a->name) < 0 ||
+		SAVE_INT(fd, a->tax_system) < 0 ||
+		SAVE_INT(fd, a->pay_method) < 0 ||
+		SAVE_INT(fd, a->price_per_unit) < 0 ||
+		SAVE_INT(fd, a->vat_rate) < 0 ||
+		SAVE_INT(fd, a->pay_agent) < 0)
 		return -1;
 	return 0;
 }
 
-article_t* article_load(FILE *f) {
+article_t* article_load(int fd) {
 	article_t *a = article_new();
-	if (LOAD_INT(f, a->n) < 0 ||
-		load_string(f, &a->name) < 0 ||
-		LOAD_INT(f, a->tax_system) < 0 ||
-		LOAD_INT(f, a->pay_method) < 0 ||
-		LOAD_INT(f, a->price_per_unit) < 0 ||
-		LOAD_INT(f, a->vat_rate) < 0 ||
-		LOAD_INT(f, a->pay_agent) < 0) {
+	if (LOAD_INT(fd, a->n) < 0 ||
+		load_string(fd, &a->name) < 0 ||
+		LOAD_INT(fd, a->tax_system) < 0 ||
+		LOAD_INT(fd, a->pay_method) < 0 ||
+		LOAD_INT(fd, a->price_per_unit) < 0 ||
+		LOAD_INT(fd, a->vat_rate) < 0 ||
+		LOAD_INT(fd, a->pay_agent) < 0) {
 		article_free(a);
 		return NULL;
 	}
@@ -314,35 +314,37 @@ list_t articles = { NULL, NULL, 0, (list_item_delete_func_t)article_free };
 #define ARTICLES_FILE_NAME	"/home/sterm/articles.bin"
 
 int articles_load() {
-    FILE *f = fopen(ARTICLES_FILE_NAME, "rb");
+    int fd = s_open(ARTICLES_FILE_NAME, false);
 	int ret;
     
-    if (f == NULL) {
+    if (fd == -1) {
         return -1;
     }
 
-    if (load_list(f, &articles, (load_item_func_t)article_load) < 0)
+    if (load_list(fd, &articles, (load_item_func_t)article_load) < 0)
 		ret = -1;
 	else
 		ret = 0;
+
+	s_close(fd);
 
 	return ret;
 }
 
 int articles_save() {
-    FILE *f = fopen(ARTICLES_FILE_NAME, "wb");
+    int fd = s_open(ARTICLES_FILE_NAME, true);
 	int ret;
     
-    if (f == NULL) {
+    if (fd == -1) {
         return -1;
     }
 
-    if (save_list(f, &articles, (list_item_func_t)article_save) < 0)
+    if (save_list(fd, &articles, (list_item_func_t)article_save) < 0)
 		ret = -1;
 	else
 		ret = 0;
 
-	fclose(f);
+	s_close(fd);
 
 	return ret;
 }
