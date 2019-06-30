@@ -7,7 +7,7 @@
 typedef struct {
 	int n;
 	char *name;
-	uint8_t tax_system;
+//	uint8_t tax_system;
 	uint8_t pay_method;
 	uint64_t price_per_unit;
 	uint8_t vat_rate;

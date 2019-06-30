@@ -80,7 +80,6 @@ void ffd_tlv_commit(int curr_tlv_size) {
 	tlv = (ffd_tlv_t *)(tlv_data + tlv_size);
 }
 
-
 void *ffd_tlv_prepare(uint16_t tag, size_t size)
 {
 	int curr_tlv_size = ffd_tlv_check_size(size);

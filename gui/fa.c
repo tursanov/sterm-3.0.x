@@ -236,6 +236,7 @@ static bool fa_set_group(int n)
 static uint8_t rereg_data[2048];
 static size_t rereg_data_len = sizeof(rereg_data);
 static int64_t user_inn = 0;
+uint8_t reg_tax_systems = 0;
 
 static int fa_get_reregistration_data() {
 	int ret;
@@ -248,6 +249,9 @@ static int fa_get_reregistration_data() {
 			switch (tlv->tag) {
 				case 1018:
 					user_inn = atoll(FFD_TLV_DATA_AS_STRING(tlv));
+					break;
+				case 1062:
+					reg_tax_systems = FFD_TLV_DATA_AS_UINT8(tlv);
 					break;
 			}
 		}

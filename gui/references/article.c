@@ -4,7 +4,7 @@
 
 static int article_max_id = 0;
 
-static int get_bit(uint8_t v) {
+/*static int get_bit(uint8_t v) {
 	switch (v) {
 		case 0x1:
 			return 0;
@@ -25,7 +25,7 @@ static int get_bit(uint8_t v) {
 		default:
 			return -1;
 	}
-}
+}*/
 
 static const char * str_pay_methods[] = 
 {
@@ -109,7 +109,7 @@ static void article_free(article_t *a) {
 int article_save(FILE *f, article_t *a) {
 	if (SAVE_INT(f, a->n) < 0 ||
 		save_string(f, a->name) < 0 ||
-		SAVE_INT(f, a->tax_system) < 0 ||
+		//SAVE_INT(f, a->tax_system) < 0 ||
 		SAVE_INT(f, a->pay_method) < 0 ||
 		SAVE_INT(f, a->price_per_unit) < 0 ||
 		SAVE_INT(f, a->vat_rate) < 0 ||
@@ -122,7 +122,7 @@ article_t* article_load(FILE *f) {
 	article_t *a = article_new();
 	if (LOAD_INT(f, a->n) < 0 ||
 		load_string(f, &a->name) < 0 ||
-		LOAD_INT(f, a->tax_system) < 0 ||
+		//LOAD_INT(f, a->tax_system) < 0 ||
 		LOAD_INT(f, a->pay_method) < 0 ||
 		LOAD_INT(f, a->price_per_unit) < 0 ||
 		LOAD_INT(f, a->vat_rate) < 0 ||
@@ -152,14 +152,14 @@ static bool process_article_edit(form_t *form, article_t *a) {
 	while (form_execute(form) == 1) {
 		form_data_t name;
 		form_data_t price_per_unit;
-		int tax_system;
+		//int tax_system;
 		int pay_method;
 		int vat_rate;
 		int pay_agent;
 		char *endp;
 		
 		form_get_data(form, 1030, 1, &name);
-		tax_system = form_get_int_data(form, 1055, 0, -1);
+		//tax_system = form_get_int_data(form, 1055, 0, -1);
 		pay_method = form_get_int_data(form, 1214, 0, -1);
 		vat_rate = form_get_int_data(form, 1199, 0, -1);
 		pay_agent = form_get_int_data(form, 1054, 0, 0);
@@ -173,8 +173,8 @@ static bool process_article_edit(form_t *form, article_t *a) {
 
 		if (name.size == 0)
 			fa_show_error(form, 100, "Наименование не заполнено");
-        else if (tax_system == -1)
-			fa_show_error(form, 1055, "Выберите систему налогообложения");
+        /*else if (tax_system == -1)
+			fa_show_error(form, 1055, "Выберите систему налогообложения");*/
 		else if (pay_method == -1)
 			fa_show_error(form, 1214, "Выберите признак способа расчета");
 		else if (vat_rate == -1)
@@ -189,7 +189,7 @@ static bool process_article_edit(form_t *form, article_t *a) {
 				a->price_per_unit = (uint64_t)((v + 0.009) * 100.0);
 				if (a->name) free(a->name); a->name = strdup((char *)name.data);
 				a->name[name.size] = 0;
-				a->tax_system = (1 << tax_system);
+				//a->tax_system = (1 << tax_system);
 				a->pay_method = pay_method + 1;
 				a->vat_rate = vat_rate + 1;
 				a->pay_agent = get_agent_id_by_index(pay_agent);
@@ -231,7 +231,7 @@ void* create_new_article(data_source_t *ds) {
 
 	BEGIN_FORM(form, "Новый товар/работа/услуга")
 		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", NULL, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, str_tax_system_count, -1)
+//		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, str_tax_system_count, -1)
 		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), -1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", NULL, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), -1)
@@ -261,7 +261,7 @@ int edit_article(data_source_t *ds, void *obj) {
 	int ret = -1;
 	article_t *a = (article_t *)obj;
 	form_t *form = NULL;
-	int tax_system = get_bit(a->tax_system);
+//	int tax_system = get_bit(a->tax_system);
 	char price_per_unit[17];
 	char **agent_info_list = create_agent_info_list();
 	int pay_agent_index = 0;
@@ -280,7 +280,7 @@ int edit_article(data_source_t *ds, void *obj) {
 
 	BEGIN_FORM(form, "Изменить данные товара/работы/услуги")
 		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", a->name, FORM_INPUT_TYPE_TEXT, 32)
-		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, str_tax_system_count, tax_system)
+//		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, str_tax_system_count, tax_system)
 		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), a->pay_method - 1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", price_per_unit, FORM_INPUT_TYPE_MONEY, 16)
 		FORM_ITEM_COMBOBOX(1199, "Ставка НДС:", str_vats, ASIZE(str_vats), a->vat_rate - 1)

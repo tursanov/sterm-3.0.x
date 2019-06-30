@@ -35,6 +35,7 @@ typedef struct {
 } cheque_article_t;
 
 typedef struct {
+	int tax_system;
 	int pay_type;
 	int pay_kind;
 	char* phone_or_email;
@@ -53,6 +54,7 @@ static void cheque_article_free(cheque_article_t *ca) {
 
 static newcheque_t newcheque = {
 	.pay_type = 1,
+	.tax_system = 0,
 	.pay_kind = 0,
 	.phone_or_email = NULL,
 	.add_info = NULL,
@@ -134,7 +136,9 @@ static bool newcheque_save() {
 	bool ret = false;
 	FILE *f = fopen(FILE_NAME, "wb");
 	if (f != NULL) {
-		ret = SAVE_INT(f, newcheque.pay_type) == 0 &&
+		ret =
+			SAVE_INT(f, newcheque.tax_system) == 0 &&
+			SAVE_INT(f, newcheque.pay_type) == 0 &&
 			SAVE_INT(f, newcheque.pay_kind) == 0 &&
 			save_string(f, newcheque.phone_or_email) == 0 &&
 			save_string(f, newcheque.add_info) == 0 &&
@@ -150,7 +154,9 @@ bool newcheque_load() {
 	bool ret = false;
 	FILE *f = fopen(FILE_NAME, "rb");
 	if (f != NULL) {
-		ret = LOAD_INT(f, newcheque.pay_type) == 0 &&
+		ret =
+			LOAD_INT(f, newcheque.tax_system) == 0 &&
+			LOAD_INT(f, newcheque.pay_type) == 0 &&
 			LOAD_INT(f, newcheque.pay_kind) == 0 &&
 			load_string(f, &newcheque.phone_or_email) == 0 &&
 			load_string(f, &newcheque.add_info) == 0 &&
@@ -263,7 +269,7 @@ static void article_new(window_t *parent) {
 			window_show_error(win, 1059, "Кол-во предмета расчета указано неверно");
 			continue;
 		}
-		
+
 		cheque_article_t *ca;
 		if (newcheque.articles.head) {
 			ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
@@ -350,13 +356,11 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 
 
 typedef struct {
-	int tax_system;
 	int agent_id;
 } article_group_params_t;
 
 int remove_articles(article_group_params_t *p, cheque_article_t *a) {
-	if (a->article->tax_system == p->tax_system && 
-			a->article->pay_agent == p->agent_id)
+	if (a->article->pay_agent == p->agent_id)
 		return 0;
 	return -1;
 }
@@ -464,6 +468,11 @@ static void newcheque_show_op(window_t *w, const char *title) {
 	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
 }
 
+extern uint8_t reg_tax_systems;
+static const char * s_tax_systems[6];
+static uint8_t b_tax_systems[6];
+static int s_tax_system_count;
+
 bool newcheque_print(window_t *w) {
 	data_t cashier;
 	data_t post;
@@ -473,7 +482,7 @@ bool newcheque_print(window_t *w) {
 	window_get_data(w, 1021, 1, &cashier);
 	window_get_data(w, 9999, 1, &post);
 	window_get_data(w, 1203, 1, &inn);
-	
+
 	if (newcheque.phone_or_email && newcheque.phone_or_email[0] && !check_phone_or_email(newcheque.phone_or_email)) {
 		window_show_error(w, 1008, "Номер тел. или e-mail имеют недопустимый формат.\n"
 			"Пример ввода: +71111111111 или name@mail.ru");
@@ -495,7 +504,7 @@ bool newcheque_print(window_t *w) {
 
 	while (newcheque.articles.count > 0) {
 		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
-		article_group_params_t p = { ca->article->tax_system, ca->article->pay_agent };
+		article_group_params_t p = { ca->article->pay_agent };
 		uint64_t sum = 0;
 		agent_t *agent = NULL;
 
@@ -519,9 +528,9 @@ bool newcheque_print(window_t *w) {
 			ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
 		ffd_tlv_add_uint8(1054, newcheque.pay_type);
 
-		printf("p.tax_system = %d, p.agent = %d\n", p.tax_system, p.agent_id);
+		printf("p.tax_system = %d, p.agent = %d\n", newcheque.tax_system, p.agent_id);
 
-		ffd_tlv_add_uint8(1055, p.tax_system);
+		ffd_tlv_add_uint8(1055, b_tax_systems[newcheque.tax_system]);
 		if (newcheque.phone_or_email && newcheque.phone_or_email[0])
 			ffd_tlv_add_string(1008, newcheque.phone_or_email);
 
@@ -537,7 +546,7 @@ bool newcheque_print(window_t *w) {
 
 		for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
 			cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
-			if (ca->article->pay_agent == p.agent_id && ca->article->tax_system == p.tax_system) {
+			if (ca->article->pay_agent == p.agent_id /*&& ca->article->tax_system == p.tax_system*/) {
 				printf("add new 1059\n");
 				ffd_tlv_stlv_begin(1059, 1024);
 				ffd_tlv_add_uint8(1214, ca->article->pay_method);
@@ -628,6 +637,16 @@ int newcheque_execute() {
 
 	window_t *win = window_create(NULL, "Чек(и) (Esc - выход)", newcheque_process);
 	GCPtr screen = window_get_gc(win);
+	
+	s_tax_system_count = 0;
+	for (int i = 0; i < str_tax_system_count; i++) {
+		uint8_t b = 1 << i;
+		if (reg_tax_systems & b) {
+			s_tax_systems[s_tax_system_count] = str_tax_systems[i];
+			b_tax_systems[s_tax_system_count] = b;
+			s_tax_system_count++;
+		}
+	}
 
 	int x = CONTROLS_START;
 	int y = CONTROLS_TOP;
@@ -642,6 +661,7 @@ int newcheque_execute() {
 		"Расход",
 		"Возврат расхода"
 	};
+	
 	const char *pay_kind[] = {
 		"Наличные",
 		"Безналичные",
@@ -650,10 +670,19 @@ int newcheque_execute() {
 		"Распределение по видам оплаты"
 	};
 
+	if (newcheque.tax_system >= s_tax_system_count)
+		newcheque.tax_system = 0;
+
 	window_add_label(win, TEXT_START, y, align_left, "Признак расчета:");
 	window_add_control(win, 
 			simple_combobox_create(1054, screen, x, y, w, h, pay_type, ASIZE(pay_type), 
 				newcheque.pay_type - 1));
+	y += h + YGAP;
+
+	window_add_label(win, TEXT_START, y, align_left, "СНО:");
+	window_add_control(win, 
+				simple_combobox_create(1055, screen, x, y, w, h, s_tax_systems, s_tax_system_count, 
+				newcheque.tax_system));
 	y += h + YGAP;
 
 	window_add_label(win, TEXT_START, y, align_left, "Вид оплаты:");
@@ -742,6 +771,7 @@ int newcheque_execute() {
 
 		newcheque.pay_type = window_get_int_data(win, 1054, 0, 0) + 1;
 		newcheque.pay_kind = window_get_int_data(win, 9998, 0, 0);
+		newcheque.tax_system = window_get_int_data(win, 1055, 0, 0);
 
 		newcheque_save();
 
