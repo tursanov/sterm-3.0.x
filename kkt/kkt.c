@@ -251,6 +251,7 @@ static uint32_t get_timeout(uint8_t prefix, uint8_t cmd)
 				case KKT_SRV_FDO_ADDR:
 					ret = KKT_FDO_ADDR_TIMEOUT;
 					break;
+				case KKT_SRV_FDO_REQ:
 				case KKT_SRV_FDO_DATA:
 					ret = KKT_FDO_DATA_TIMEOUT;
 					break;
