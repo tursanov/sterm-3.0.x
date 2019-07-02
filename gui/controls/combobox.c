@@ -44,6 +44,8 @@ control_t* combobox_create(int id, GCPtr gc, int x, int y, int width, int height
 		(bool (*)(struct control_t *, int, data_t *))combobox_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))combobox_set_data,
 		(bool (*)(struct control_t *control))combobox_is_empty,
+		NULL,
+		NULL,
     };
 
     control_init(&combobox->control, id, gc, x, y, width, height, &api);

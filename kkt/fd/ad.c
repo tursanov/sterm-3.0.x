@@ -545,7 +545,7 @@ int int64_array_add(int64_array_t *array, int64_t v, bool unique) {
 	}
 	if (array->count == array->capacity) {
 		array->capacity *= 2;
-		array->values = (int64_t *)realloc(array->values, array->capacity);
+		array->values = (int64_t *)realloc(array->values, array->capacity * sizeof(int64_t));
 		if (array->values == NULL)
 			return -1;
 	}
@@ -594,7 +594,7 @@ int string_array_add(string_array_t *array, const char *v, bool unique, int cnv)
 	}
 	if (array->count == array->capacity) {
 		array->capacity *= 2;
-		array->values = (char **)realloc(array->values, array->capacity);
+		array->values = (char **)realloc(array->values, array->capacity * sizeof(char *));
 		if (array->values == NULL)
 			return -1;
 	}

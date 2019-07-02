@@ -1,5 +1,6 @@
 #include "sysdefs.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include "kkt/fd/tlv.h"
@@ -320,6 +321,24 @@ bool ffd_string_to_fvln(const char *s, size_t size, ffd_fvln_t *value) {
 
 	value->value = v;
 	value->dot = dot < 0 ? 0 : dot;
+
+	return true;
+}
+
+bool ffd_string_to_vln(const char *s, size_t size, uint64_t *value) {
+	ffd_fvln_t v;
+	if (!ffd_string_to_fvln(s, size, &v) || v.dot > 2)
+		return false;
+
+	if (v.dot == 2)
+		*value = v.value;
+	else if (v.dot == 1)
+		*value = v.value * 10;
+	else
+		*value = v.value * 100;
+	
+	if (*value > MAX_VLN)
+		return false;
 
 	return true;
 }

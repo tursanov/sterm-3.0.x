@@ -20,6 +20,7 @@ typedef struct listview_t {
 	int item_height;
 	int max_items;
 	listview_get_item_text_func_t get_item_text_func;
+	listview_selected_changed_t selected_changed_func;
 } listview_t;
 
 void listview_destroy(listview_t *listview);
@@ -29,11 +30,24 @@ bool listview_handle(listview_t *listview, const struct kbd_event *e);
 bool listview_get_data(listview_t *listview, int what, data_t *data);
 bool listview_set_data(listview_t *listview, int what, const void *data, size_t data_len);
 bool listview_is_empty(listview_t *listview);
+void listview_set_parent(listview_t *listview);
 
 #define screen listview->control.gc
 #define BORDER_WIDTH	2
 
 static bool listview_redraw_row(listview_t *listview, int index);
+
+static void listview_selected_index_changed(listview_t *lv) {
+	if (lv->selected_changed_func) {
+		list_item_t *li = lv->items->head;
+		int si = lv->selected_index - lv->top_index;
+		for (int i = 0; li && i < lv->max_items; i++, li = li->next) {
+			if (i == si) 
+				break;
+		}
+		lv->selected_changed_func(&lv->control, lv->selected_index, li->obj);
+	}
+}
 
 static void listview_set_selected_index(listview_t *lv, int index, bool refresh) {
 	if (index < 0)
@@ -73,6 +87,7 @@ static void listview_set_selected_index(listview_t *lv, int index, bool refresh)
 				listview_redraw_row(lv, lv->selected_index);
 			}
 		}
+		listview_selected_index_changed(lv);
 	}
 }
 
@@ -80,6 +95,7 @@ static void listview_set_selected_index(listview_t *lv, int index, bool refresh)
 control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height,
 		listview_column_t *columns, size_t column_count,
 		list_t *items, listview_get_item_text_func_t get_item_text_func,
+		listview_selected_changed_t selected_changed_func,
         int selected_index) {
     listview_t *listview = (listview_t *)malloc(sizeof(listview_t));
     control_api_t api = {
@@ -90,6 +106,8 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 		(bool (*)(struct control_t *, int, data_t *))listview_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))listview_set_data,
 		(bool (*)(struct control_t *control))listview_is_empty,
+		(void (*)(struct control_t *))listview_set_parent,
+		NULL,
     };
 
     control_init(&listview->control, id, gc, x, y, width, height, &api);
@@ -105,6 +123,7 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 
 	listview->items = items;
 	listview->get_item_text_func = get_item_text_func;
+	listview->selected_changed_func = selected_changed_func;
 	listview->header_height = GetTextHeight(screen) + 2;
 	listview->item_height = GetTextHeight(screen) + 2;
 	listview->max_items = (listview->control.height - 
@@ -122,6 +141,11 @@ void listview_destroy(listview_t *listview) {
         free(c->title);
     free(listview->columns);
 	free(listview);
+}
+
+void listview_set_parent(listview_t *listview) {
+//	if (listview->control.parent.parent && listview->selected_index >= 0)
+//		listview_selected_index_changed(listview);
 }
 
 static void listview_draw_column(listview_t *listview, listview_column_t *c, 
@@ -308,6 +332,9 @@ bool listview_set_data(listview_t *listview, int what, const void *data, size_t 
 	case 0:
 		listview->selected_index = (int32_t)data;
 		listview_draw(listview);
+		return true;
+	case 1:
+		listview_selected_index_changed(listview);
 		return true;
 	}
 	return false;

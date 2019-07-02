@@ -37,6 +37,8 @@ control_t* button_create(int id, GCPtr gc, int x, int y, int width, int height,
 		NULL,
 		NULL,
 		NULL,
+		NULL,
+		NULL,
     };
 
     control_init(&button->control, id, gc, x, y, width, height, &api);

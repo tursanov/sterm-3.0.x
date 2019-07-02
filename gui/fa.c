@@ -255,7 +255,6 @@ static int fa_get_reregistration_data() {
 					break;
 			}
 		}
-		return 0;
 	}
 
 	return ret;
@@ -276,8 +275,10 @@ bool init_fa(int arg)
 	set_scr_mode(m80x20, true, false);
 	set_term_busy(true);
 
+	fdo_suspend();
 	fa_check_fn();
 	fa_get_reregistration_data();
+	fdo_resume();
 
 	if (arg == cmd_fa) {
 		ClearScreen(clBlack);
@@ -544,6 +545,7 @@ bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 {
 	uint8_t status;
 
+	fdo_suspend();
 	if ((status = fd_create_doc(doc_type, pattern_footer, pattern_footer_size)) != 0) {
 		if (status == 0x46) {
 			struct kkt_last_doc_info ldi;
@@ -569,13 +571,13 @@ LCheckLastDocNo:
 
 					//printf("LD: status = %d\n", status);
 
-					if (status != 0) {
+					if (status != 0)
 						fd_set_error(status, err_info, err_info_len);
-					} else
-						return true;
 				}
 			}
 		}
+
+		fdo_resume();
 
 		if (status != 0) {
 			const char *error;
@@ -583,7 +585,8 @@ LCheckLastDocNo:
 			message_box("Ошибка", error, dlg_yes, 0, al_center);
 			if (update_func)
 				update_func(update_func_arg);
-		}
+		} else
+			return true;
 
 		printf("status: %.2X\n", status);
 
@@ -1188,7 +1191,9 @@ void fa_print_last_doc() {
 	uint8_t err_info[32];
 	size_t err_info_len = sizeof(err_info);
 
+	fdo_suspend();
 	uint8_t status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
+	fdo_resume();
 	printf("status = 0x%x\n", status);
 	if (status != 0) {
 		fd_set_error(status, err_info, err_info_len);
@@ -1197,10 +1202,10 @@ void fa_print_last_doc() {
 			"Будет напечатан последний сформированный документ.\n"
 			"Продолжить?",
 					dlg_yes_no, 0, al_center) == DLG_BTN_YES) {
-					
+
 			ClearScreen(clBlack);
 			draw_menu(fa_menu);
-					
+
 			status = fd_print_last_doc(ldi.last_type);
 
 			if (status != 0) {

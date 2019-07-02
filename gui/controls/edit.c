@@ -105,6 +105,8 @@ control_t* edit_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, int, data_t *))edit_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))edit_set_data,
 		(bool (*)(struct control_t *control))edit_is_empty,
+		NULL,
+		NULL,
     };
 
     control_init(&edit->control, id, gc, x, y, width, height, &api);
@@ -154,14 +156,20 @@ void edit_draw(edit_t *edit)
 	Color bgColor;
 	Color fgColor;
 
-	if (edit->control.focused) {
-		borderColor = clRopnetDarkBrown;
-		bgColor = clRopnetBrown;
-		fgColor = clBlack;
+	if (edit->control.enabled) {
+		if (edit->control.focused) {
+			borderColor = clRopnetDarkBrown;
+			bgColor = clRopnetBrown;
+			fgColor = clBlack;
+		} else {
+			borderColor = RGB(184, 184, 184);
+			bgColor = RGB(200, 200, 200);
+			fgColor = RGB(32, 32, 32);
+		}
 	} else {
 		borderColor = RGB(184, 184, 184);
 		bgColor = RGB(200, 200, 200);
-		fgColor = RGB(32, 32, 32);
+		fgColor = clGray;
 	}
 
 	fill_rect(screen, edit->control.x, edit->control.y,

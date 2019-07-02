@@ -46,6 +46,8 @@ control_t* bitset_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, int, data_t *))bitset_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))bitset_set_data,
 		(bool (*)(struct control_t *control))bitset_is_empty,
+		NULL,
+		NULL,
     };
 
     control_init(&bitset->control, id, gc, x, y, width, height, &api);

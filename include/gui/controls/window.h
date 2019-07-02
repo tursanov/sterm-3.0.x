@@ -37,6 +37,7 @@ bool window_set_focus(window_t *w, int id);
 
 bool window_get_data(window_t *w, int id, int what, data_t *data);
 bool window_set_data(window_t *w, int id, int what, const void *data, size_t data_size);
+bool window_set_enabled(window_t *w, int id, bool enabled);
 
 static inline int window_get_int_data(window_t *w, int id, int what, int default_value) {
 	data_t data;

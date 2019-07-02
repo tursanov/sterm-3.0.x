@@ -85,6 +85,8 @@ control_t* listbox_create(int id, GCPtr gc, int x, int y, int width, int height,
 		(bool (*)(struct control_t *, int, data_t *))listbox_get_data,
 		(bool (*)(struct control_t *control, int, const void *, size_t))listbox_set_data,
 		(bool (*)(struct control_t *control))listbox_is_empty,
+		NULL,
+		NULL,
     };
 
     control_init(&listbox->control, id, gc, x, y, width, height, &api);

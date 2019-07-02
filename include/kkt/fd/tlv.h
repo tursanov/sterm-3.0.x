@@ -18,6 +18,8 @@ typedef struct {
 } ffd_fvln_t;
 #pragma pack(pop)
 
+#define MAX_VLN	1099511627776
+
 #define FFD_TLV_SIZE(tlv) ((tlv)->length + sizeof(ffd_tlv_t))
 #define FFD_TLV_NEXT(tlv) ((const ffd_tlv_t *)((uint8_t *)(tlv) + FFD_TLV_SIZE(tlv)))
 #define FFD_TLV_DATA(tlv) ((uint8_t *)(((const ffd_tlv_t *)(tlv)) + 1))
@@ -33,6 +35,7 @@ int ffd_tlv_data_as_fvln(const ffd_tlv_t *tlv, ffd_fvln_t *value);
 
 double ffd_fvln_to_double(const ffd_fvln_t *value);
 bool ffd_string_to_fvln(const char *s, size_t size, ffd_fvln_t *value);
+bool ffd_string_to_vln(const char *s, size_t size, uint64_t *value);
 
 int ffd_tlv_vln_length(uint64_t value);
 

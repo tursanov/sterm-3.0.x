@@ -564,15 +564,17 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 		uint8_t *tlv_buf = tlv_data;
 	#define MAX_SEND_SIZE	4096
 
+		int i = 0;
 		while (tlv <= end) {
-			if (tlv == end || tlv_buf_size + tlv->length > MAX_SEND_SIZE) {
+		
+			if (tlv == end || tlv_buf_size + FFD_TLV_SIZE(tlv) > MAX_SEND_SIZE) {
 				err_info_len = sizeof(err_info);
 
-//				printf("tlv_buf_size = %d\n", tlv_buf_size);
+				printf("tlv_buf_size = %d\n", tlv_buf_size);
 
 				if ((ret = kkt_send_doc_data(tlv_buf, tlv_buf_size, err_info, &err_info_len)) != 0) {
 					fd_set_error(ret, err_info, err_info_len);
-//					printf("kkt_send_doc_data->ret = %.2x\n", ret);
+					printf("i = %d, kkt_send_doc_data->ret = %.2x\n", i, ret);
 
 					if (ret == 0x80 || ret == 0x8c) {
 						if (err_info_len > 0) {
@@ -586,6 +588,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 					fdo_resume();
 					return ret;
 				}
+				i++;
 
 				if (tlv == end)
 					break;
@@ -670,6 +673,8 @@ int fd_print_last_doc(uint8_t doc_type) {
 	}
 
 	err_info_len = sizeof(err_info);
+	
+	fdo_suspend();
 
 	if ((ret = kkt_print_last_doc(doc_type, pattern, pattern_size, &lpi,
 					err_info, &err_info_len)) != 0) {
@@ -686,8 +691,10 @@ int fd_print_last_doc(uint8_t doc_type) {
 
 		goto LOut;
 	}
+	
 
 LOut:
+	fdo_resume();
 	free(pattern);
 
 	return ret;

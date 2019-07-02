@@ -182,15 +182,26 @@ void window_move_focus(window_t *w, bool next) {
 	if (w->controls.count == 0)
 		return;
 
-	if (w->focused) {
-		control_focus(LIST_ITEM(w->focused, control_t), false);
+	list_item_t *f = w->focused;
 
-		w->focused = next ? w->focused->next : w->focused->prev;
-		if (w->focused == NULL)
-			w->focused = next ? w->controls.head : w->controls.tail;
-	} else
-		w->focused = w->controls.head;
-	control_focus(LIST_ITEM(w->focused, control_t), true);
+	if (f)
+		control_focus(LIST_ITEM(f, control_t), false);
+	else
+		f = w->controls.head;
+
+	list_item_t *c = f;
+	while (true) {
+		c = next ? c->next : c->prev;
+
+		if (c == NULL)
+			c = next ? w->controls.head : w->controls.tail;
+		if (LIST_ITEM(c, control_t)->enabled)
+			break;
+		if (c == f)
+			break;
+	}
+	w->focused = c;
+	control_focus(LIST_ITEM(c, control_t), true);
 }
 
 bool window_handle_focus_event(window_t *w, const struct kbd_event *e) {
@@ -323,6 +334,15 @@ bool window_set_data(window_t *w, int id, int what, const void *data, size_t dat
 		control_t *c = LIST_ITEM(li, control_t);
 		if (c->id == id)
 			return control_set_data(c, what, data, data_size);
+	}
+	return false;
+}
+
+bool window_set_enabled(window_t *w, int id, bool enabled) {
+	for (list_item_t *li = w->controls.head; li; li = li->next) {
+		control_t *c = LIST_ITEM(li, control_t);
+		if (c->id == id)
+			return control_set_enabled(c, enabled);
 	}
 	return false;
 }

@@ -19,6 +19,8 @@ typedef struct control_api_t {
 	bool (*get_data)(struct control_t *control, int what, data_t *data);
 	bool (*set_data)(struct control_t *control, int what, const void *data, size_t data_len);
 	bool (*is_empty)(struct control_t *control);
+	void (*set_parent)(struct control_t *control);
+	bool (*set_enabled)(struct control_t *control, bool enabled);
 } control_api_t;
 
 typedef void (*draw_func_t)(void *obj);
@@ -37,6 +39,7 @@ typedef struct control_t {
    	int height;
    	control_api_t api;
    	bool focused;
+   	bool enabled;
 	void *extra;
 	control_parent_t parent;
 } control_t;
@@ -57,6 +60,7 @@ bool control_set_data(struct control_t *control, int what, const void *data, siz
 bool control_is_empty(struct control_t * control);
 void control_set_parent(struct control_t *control, control_parent_t *parent);
 void control_refresh_parent(struct control_t *control);
+bool control_set_enabled(struct control_t *control, bool enabled);
 
 void fill_rect(GCPtr screen, int x, int y, int width, int height, int border_width,
 		Color border_color, int bg_color);

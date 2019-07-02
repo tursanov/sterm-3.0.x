@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -33,6 +32,7 @@
 typedef struct {
 	article_t *article;
 	ffd_fvln_t count;
+	uint64_t price_per_unit;
 	uint64_t sum;
 } cheque_article_t;
 
@@ -77,7 +77,7 @@ static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
 //	printf("price_per_unit: %lld, count->value = %lld, count->dot = %d\n",
 //			ca->article->price_per_unit, ca->count.value, ca->count.dot);
 
-	uint64_t sum = ca->article->price_per_unit * ca->count.value;
+	uint64_t sum = ca->price_per_unit * ca->count.value;
 	uint64_t rem = 0;
 	for (int i = 0; i < ca->count.dot; i++) {
 		rem = sum % 10;
@@ -98,7 +98,8 @@ static int cheque_article_save(int fd, cheque_article_t *a) {
 
 	if (SAVE_INT(fd, i) ||
 			SAVE_INT(fd, a->count.value) ||
-			SAVE_INT(fd, a->count.dot))
+			SAVE_INT(fd, a->count.dot) ||
+			SAVE_INT(fd, a->price_per_unit))
 		return -1;
 	return 0;
 }
@@ -109,7 +110,8 @@ static cheque_article_t * cheque_article_load(int fd) {
 
 	if (LOAD_INT(fd, article_index) ||
 			LOAD_INT(fd, a->count.value) ||
-			LOAD_INT(fd, a->count.dot)) {
+			LOAD_INT(fd, a->count.dot) ||
+			LOAD_INT(fd, a->price_per_unit)) {
 		free(a);
 		return NULL;
 	}
@@ -180,7 +182,7 @@ static int article_get_text(void *obj, int index, char *text, size_t text_size) 
 			snprintf(text, text_size, "%s", a->name);
 			break;
 		case 2:
-			snprintf(text, text_size, "%.lld.%.2lld",
+			snprintf(text, text_size, "%.1lld.%.2lld",
 					a->price_per_unit / 100, a->price_per_unit % 100);
 			break;
 		case 3:
@@ -205,6 +207,24 @@ static void newcheque_update_sum(window_t *w, bool redraw) {
 	window_set_label_text(w, 1, text, redraw);
 }
 
+static void article_selected_changed(control_t *c, int index, void *item) {
+	window_t *win = (window_t *)c->parent.parent;
+	char text[64] = "";
+
+	if (win) {
+		control_t *c = window_get_control(win, 1079);
+
+		if (item) {
+			article_t *a = (article_t *)item;
+			snprintf(text, sizeof(text), "%.1lld.%.2lld",
+					a->price_per_unit / 100, a->price_per_unit % 100);
+			c->enabled = a->price_per_unit == 0;
+		}
+
+		control_set_data(c, 0, text, strlen(text));
+	}
+}
+
 static void article_new(window_t *parent) {
 	bool added = false;
 	window_t *win = window_create(NULL, "Выберите товар/работу/услугу", NULL);
@@ -227,12 +247,13 @@ static void article_new(window_t *parent) {
 
 	window_add_control(win, 
 			listview_create(1059, screen, TEXT_START, y, DISCX - GAP * 2, h, columns, ASIZE(columns),
-				&articles, (listview_get_item_text_func_t)article_get_text, 0));
+				&articles, (listview_get_item_text_func_t)article_get_text, 
+				article_selected_changed, 0));
 	y += h + GAP;
 
 	window_add_label(win, TEXT_START, y + 4, align_left, "Цена за ед.:");
 	window_add_control(win,
-			edit_create(1079, screen, TEXT_START + 150, y, w, th + 8, NULL, EDIT_INPUT_TYPE_DOUBLE, 16));
+			edit_create(1079, screen, TEXT_START + 150, y, w, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 14));
 	y += 40;
 
 	window_add_label(win, TEXT_START, y + 4, align_left, "Кол-во:");
@@ -249,6 +270,8 @@ static void article_new(window_t *parent) {
 			button_create(0, screen, x + BUTTON_WIDTH + GAP,
 				DISCY - BUTTON_HEIGHT - GAP, 
 				BUTTON_WIDTH, BUTTON_HEIGHT, 0, "Отмена", button_action));
+
+	window_set_data(win, 1059, 1, NULL, 0);
 
 	int result;
 	while ((result = window_show_dialog(win, -1)) == 1) {
@@ -270,6 +293,18 @@ static void article_new(window_t *parent) {
 			continue;
 		}
 
+		window_get_data(win, 1079, 0, &data);
+		if (data.size == 0) {
+			window_show_error(win, 1079, "Не указана цена за ед. предмета расчета");
+			continue;
+		}
+
+		uint64_t vln;
+		if (!ffd_string_to_vln(data.data, data.size, &vln)) {
+			window_show_error(win, 1079, "Цена за ед. предмета расчета указано неверно");
+			continue;
+		}
+
 		cheque_article_t *ca;
 		if (newcheque.articles.head) {
 			ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
@@ -283,6 +318,7 @@ static void article_new(window_t *parent) {
 		ca = cheque_article_new();
 		ca->article = a;
 		ca->count = fvln;
+		ca->price_per_unit = vln;
 		ca->sum = cheque_article_vln_sum(ca);
 
 		newcheque.sum += ca->sum;
@@ -326,7 +362,7 @@ static void listbox_get_item_text(void *obj, char *text, size_t text_size) {
 	//double price_per_unit = (ca->article ? (double)ca->article->price_per_unit : 0) / 100.0;
 	//double sum = (count * price_per_unit);
 	snprintf(text, text_size, "%.1lld.%.2lld*%.3f=%.1lld.%.2lld %s",
-			ca->article->price_per_unit / 100, ca->article->price_per_unit % 100,
+			ca->price_per_unit / 100, ca->article->price_per_unit % 100,
 			count, ca->sum / 100, ca->sum % 100, 
 			ca->article ? ca->article->name :
 			"<Товар/работа/услуга не найден(а) в справочнике>");
@@ -498,10 +534,16 @@ bool newcheque_print(window_t *w) {
 		window_show_error(w, 1021, "Ошибка записи в файл данных о кассире");
 		return false;
 	}
+	
+	
+	if (newcheque.pay_type < 1 || newcheque.pay_type > 4) {
+		window_show_error(w, 1054, "Выберите признак расчета");
+		return false;
+	}
 
 	if (newcheque.pay_kind == 4 && !newcheque_distribute_sum(w, dsum))
 		return false;
-
+		
 	while (newcheque.articles.count > 0) {
 		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
 		article_group_params_t p = { ca->article->pay_agent };
@@ -551,7 +593,7 @@ bool newcheque_print(window_t *w) {
 				ffd_tlv_stlv_begin(1059, 1024);
 				ffd_tlv_add_uint8(1214, ca->article->pay_method);
 				ffd_tlv_add_string(1030, ca->article->name);
-				ffd_tlv_add_vln(1079, ca->article->price_per_unit);
+				ffd_tlv_add_vln(1079, ca->price_per_unit);
 				ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
 				ffd_tlv_add_uint8(1199, ca->article->vat_rate);
 				if (agent != NULL)
@@ -611,6 +653,12 @@ bool newcheque_print(window_t *w) {
 		ffd_tlv_add_vln(1215, dsum[2]);
 		ffd_tlv_add_vln(1216, dsum[3]);
 		ffd_tlv_add_vln(1217, dsum[4]);
+		
+/*		printf("dsum[0] = %llu\n", dsum[0]);
+		printf("dsum[1] = %llu\n", dsum[1]);
+		printf("dsum[2] = %llu\n", dsum[2]);
+		printf("dsum[3] = %llu\n", dsum[3]);
+		printf("dsum[4] = %llu\n", dsum[4]);*/
 
 		cashier_save();
 

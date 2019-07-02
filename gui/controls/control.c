@@ -22,6 +22,7 @@ void control_init(control_t *control,
 	control->height = height;
 	control->api = *api;
 	control->focused = false;
+	control->enabled = true;
 	control->extra = NULL;
 	control->parent.parent = NULL;
 	control->parent.draw = NULL;
@@ -39,6 +40,8 @@ void control_set_parent(struct control_t *control, control_parent_t *parent) {
 		memcpy(&control->parent, parent, sizeof(*parent));
 	else
 		memset(&control->parent, 0, sizeof(*parent));
+	if (control->api.set_parent)
+		control->api.set_parent(control);
 }
 
 void control_refresh_parent(struct control_t *control) {
@@ -77,6 +80,12 @@ bool control_set_data(struct control_t *control, int what, const void *data, siz
 bool control_is_empty(struct control_t * control) {
 	if (control->api.is_empty)
 		return control->api.is_empty(control);
+	return true;
+}
+
+bool control_set_enabled(struct control_t *control, bool enabled) {
+	if (control->api.set_enabled)
+		return control->api.set_enabled(control, enabled);
 	return true;
 }
 

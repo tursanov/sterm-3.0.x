@@ -3269,6 +3269,24 @@ static const char *fs_nr_unconfirmed(void)
 	return txt;
 }
 
+#include <stdarg.h>
+
+__attribute__((format (printf, 2, 3))) static void __dbg(const char *fn, const char *fmt, ...)
+{
+	struct timeb tb;
+	ftime(&tb);
+	struct tm *tm = localtime(&tb.time);
+	fprintf(stderr, "%.2d:%.2d:%.2d.%.3d %s: ", tm->tm_hour, tm->tm_min, tm->tm_sec,
+		tb.millitm, fn);
+	va_list ap;
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+}
+
+#define dbg(fmt, arg...) __dbg(__func__, fmt "\n", ## arg)
+
+
 static void show_kkt_info(void)
 {
 	if (!cfg.has_kkt || (kkt == NULL)){
@@ -3277,6 +3295,7 @@ static void show_kkt_info(void)
 	}else
 		set_term_astate(ast_none);
 	fdo_suspend();
+	dbg("запрос состояния ккт");
 	struct kkt_fs_status fs_status;
 	bool fs_status_ok = kkt_get_fs_status(&fs_status) == KKT_STATUS_OK;
 	struct kkt_fs_lifetime fs_lifetime;
@@ -3291,7 +3310,11 @@ static void show_kkt_info(void)
 	bool rtc_ok = kkt_get_rtc(&rtc) == RTC_GET_STATUS_OK;
 	struct kkt_fs_transmission_state fs_tstate;
 	bool tstate_ok = kkt_get_fs_transmission_state(&fs_tstate) == KKT_STATUS_OK;
+	dbg("окончание запроса состояния ккт");
 	fdo_resume();
+	
+	printf("fs_status_ok: %d, rtc_ok: %d\n", fs_status_ok, rtc_ok);
+	
 	if (!fs_status_ok || !rtc_ok){
 		show_no_kkt();
 		return;

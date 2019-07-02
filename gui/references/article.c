@@ -73,7 +73,7 @@ int article_get_text(void *obj, int index, char *text, size_t text_size) {
 			snprintf(text, text_size, "%s", str_pay_methods[a->pay_method - 1]);
 			break;			
 		case 3:
-			snprintf(text, text_size, "%.lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
+			snprintf(text, text_size, "%.1lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
 			break;
 		case 4:
 			snprintf(text, text_size, "%s", str_vats[a->vat_rate - 1]);
