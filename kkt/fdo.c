@@ -93,6 +93,7 @@ enum {
 /* Состояние потока для работы с ОФД */
 static int fdo_thread_state = fdo_thread_active;
 
+#if 0
 /* Для сигнализации об изменении состояния потока используется механизм сигналов */
 #define SIG_THREAD_STATE_CHANGED	SIGRTMIN
 
@@ -128,6 +129,7 @@ static bool fdo_reset_sig_handler(void)
 		dbg("ошибка sigaction(): %s.", strerror(errno));
 	return ret;
 }
+#endif
 
 static pthread_mutex_t fdo_mtx = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static pthread_mutex_t susp_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -151,13 +153,13 @@ static bool fdo_set_thread_state(int state)
 		if (state == fdo_thread_active)
 			fdo_reset_rx();
 		fdo_unlock();
-		int rc = pthread_kill(fdo_thread, SIG_THREAD_STATE_CHANGED);
-		if (rc == 0){
+/*		int rc = pthread_kill(fdo_thread, SIG_THREAD_STATE_CHANGED);
+		if (rc == 0){*/
 			pthread_mutex_lock(&susp_mtx);
 			pthread_mutex_unlock(&susp_mtx);
 			ret = true;
-		}else
-			dbg("ошибка pthread_kill(): %s.", strerror(errno));
+/*		}else
+			dbg("ошибка pthread_kill(): %s.", strerror(errno));*/
 	}
 	return ret;
 }
@@ -543,7 +545,8 @@ static void *fdo_thread_proc(void *arg __attribute__((unused)))
 {
 	while (fdo_thread_state != fdo_thread_stopped){
 		if (fdo_thread_state == fdo_thread_suspended)
-			pause();
+/*			pause();*/
+			pthread_yield();
 		else if ((fdo_thread_state == fdo_thread_active) &&
 				cfg.has_kkt && (kkt != NULL)){
 			pthread_mutex_lock(&susp_mtx);
@@ -558,9 +561,9 @@ static void *fdo_thread_proc(void *arg __attribute__((unused)))
 bool fdo_init(void)
 {
 	bool ret = false;
-	if (!fdo_set_sig_handler())
+/*	if (!fdo_set_sig_handler())
 		;
-	else if (pthread_create(&fdo_thread, NULL, fdo_thread_proc, NULL) == 0){
+	else*/ if (pthread_create(&fdo_thread, NULL, fdo_thread_proc, NULL) == 0){
 		dbg("модуль ОФД готов к работе.");
 		ret = true;
 	}else
@@ -573,6 +576,6 @@ void fdo_release(void)
 	fdo_stop_thread();
 	pthread_mutex_unlock(&fdo_mtx);
 	fdo_sock_close();
-	fdo_reset_sig_handler();
+/*	fdo_reset_sig_handler();*/
 	dbg("модуль ОФД завершил работу.");
 }
