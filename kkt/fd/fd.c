@@ -6,6 +6,7 @@
 #include "kkt/fd/tlv.h"
 #include "kkt/fd/fd.h"
 #include "kkt/kkt.h"
+#include "kkt/fd/tags.h"
 #include "kkt/fdo.h"
 #include <limits.h>
 
@@ -206,7 +207,8 @@ static void set_fn_error(char *s, uint8_t *err_info, size_t err_info_len)
 }
 
 static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
-    s += sprintf(s, "\nтэг %.4d\n", *(uint16_t *)err_info);
+	uint16_t tag = *(uint16_t *)err_info;
+    s += sprintf(s, "\nтэг %.4d (%s)\n", tag, tags_get_text(tag));
     switch (err_info[2]) {
         case 0x01: // ERR_TAG_UNKNOWN
             sprintf(s, "%s", "Неизвестный для данного документа TLV");

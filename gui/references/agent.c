@@ -57,39 +57,39 @@ static void agent_free(agent_t *a) {
 	free(a);
 }
 
-int agent_save(FILE *f, agent_t *a) {
-	if (SAVE_INT(f, a->n) < 0 ||
-		save_string(f, a->name) < 0 ||
-		save_string(f, a->inn) < 0 ||
-		save_string(f, a->description) < 0 ||
-		SAVE_INT(f, a->pay_agent) < 0 ||
-		save_string(f, a->transfer_operator_phone) < 0 ||
-		save_string(f, a->pay_agent_operation) < 0 ||
-		save_string(f, a->pay_agent_phone) < 0 ||
-		save_string(f, a->payment_processor_phone) < 0 ||
-		save_string(f, a->money_transfer_operator_name) < 0 ||
-		save_string(f, a->money_transfer_operator_address) < 0 ||
-		save_string(f, a->money_transfer_operator_inn) < 0 ||
-		save_string(f, a->supplier_phone) < 0)
+int agent_save(int fd, agent_t *a) {
+	if (SAVE_INT(fd, a->n) < 0 ||
+		save_string(fd, a->name) < 0 ||
+		save_string(fd, a->inn) < 0 ||
+		save_string(fd, a->description) < 0 ||
+		SAVE_INT(fd, a->pay_agent) < 0 ||
+		save_string(fd, a->transfer_operator_phone) < 0 ||
+		save_string(fd, a->pay_agent_operation) < 0 ||
+		save_string(fd, a->pay_agent_phone) < 0 ||
+		save_string(fd, a->payment_processor_phone) < 0 ||
+		save_string(fd, a->money_transfer_operator_name) < 0 ||
+		save_string(fd, a->money_transfer_operator_address) < 0 ||
+		save_string(fd, a->money_transfer_operator_inn) < 0 ||
+		save_string(fd, a->supplier_phone) < 0)
 		return -1;
 	return 0;
 }
 
-agent_t* agent_load(FILE *f) {
+agent_t* agent_load(int fd) {
 	agent_t *a = agent_new();
-	if (LOAD_INT(f, a->n) < 0 ||
-		load_string(f, &a->name) < 0 ||
-		load_string(f, &a->inn) < 0 ||
-		load_string(f, &a->description) < 0 ||
-		LOAD_INT(f, a->pay_agent) < 0 ||
-		load_string(f, &a->transfer_operator_phone) < 0 ||
-		load_string(f, &a->pay_agent_operation) < 0 ||
-		load_string(f, &a->pay_agent_phone) < 0 ||
-		load_string(f, &a->payment_processor_phone) < 0 ||
-		load_string(f, &a->money_transfer_operator_name) < 0 ||
-		load_string(f, &a->money_transfer_operator_address) < 0 ||
-		load_string(f, &a->money_transfer_operator_inn) < 0 ||
-		load_string(f, &a->supplier_phone) < 0) {
+	if (LOAD_INT(fd, a->n) < 0 ||
+		load_string(fd, &a->name) < 0 ||
+		load_string(fd, &a->inn) < 0 ||
+		load_string(fd, &a->description) < 0 ||
+		LOAD_INT(fd, a->pay_agent) < 0 ||
+		load_string(fd, &a->transfer_operator_phone) < 0 ||
+		load_string(fd, &a->pay_agent_operation) < 0 ||
+		load_string(fd, &a->pay_agent_phone) < 0 ||
+		load_string(fd, &a->payment_processor_phone) < 0 ||
+		load_string(fd, &a->money_transfer_operator_name) < 0 ||
+		load_string(fd, &a->money_transfer_operator_address) < 0 ||
+		load_string(fd, &a->money_transfer_operator_inn) < 0 ||
+		load_string(fd, &a->supplier_phone) < 0) {
 		agent_free(a);
 		return NULL;
 	}
@@ -271,35 +271,37 @@ list_t agents = { NULL, NULL, 0, (list_item_delete_func_t)agent_free };
 #define AGENTS_FILE_NAME	"/home/sterm/agents.bin"
 
 int agents_load() {
-    FILE *f = fopen(AGENTS_FILE_NAME, "rb");
+    int fd = s_open(AGENTS_FILE_NAME, false);
 	int ret;
     
-    if (f == NULL) {
+    if (fd == -1) {
         return -1;
     }
 
-    if (load_list(f, &agents, (load_item_func_t)agent_load) < 0)
+    if (load_list(fd, &agents, (load_item_func_t)agent_load) < 0)
 		ret = -1;
 	else
 		ret = 0;
+
+	s_close(fd);
 
 	return ret;
 }
 
 int agents_save() {
-    FILE *f = fopen(AGENTS_FILE_NAME, "wb");
+    int fd = s_open(AGENTS_FILE_NAME, true);
 	int ret;
     
-    if (f == NULL) {
+    if (fd == -1) {
         return -1;
     }
 
-    if (save_list(f, &agents, (list_item_func_t)agent_save) < 0)
+    if (save_list(fd, &agents, (list_item_func_t)agent_save) < 0)
 		ret = -1;
 	else
 		ret = 0;
 
-	fclose(f);
+	s_close(fd);
 
 	return ret;
 }

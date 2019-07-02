@@ -25,9 +25,9 @@ extern L *L_create(void);
 // удаление составляющей
 extern void L_destroy(L *l);
 // запись составляющей в файл
-extern int L_save(FILE *f, L *l);
+extern int L_save(int fd, L *l);
 // загрузка составляющей из файла
-extern L *L_load(FILE *f);
+extern L *L_load(int fd);
 
 // номер документа
 typedef struct {
@@ -39,9 +39,9 @@ void doc_no_init(doc_no_t *d, const char *s);
 // освобождение памяти для номера документа
 void doc_no_free(doc_no_t *d);
 // сохранение номера документа в файле
-int doc_no_save(FILE *f, doc_no_t *d);
+int doc_no_save(int fd, doc_no_t *d);
 // загрузка номера документа из файла
-int doc_no_load(FILE *f, doc_no_t *d);
+int doc_no_load(int fd, doc_no_t *d);
 // копирование номера документа из одной ячейки в другую
 void doc_no_copy(doc_no_t *dst, doc_no_t *src);
 // сравнение номеров документа
@@ -62,9 +62,9 @@ void op_doc_no_init(op_doc_no_t *d);
 // освобождение
 void op_doc_no_free(op_doc_no_t *d);
 // сохранение из файла
-int op_doc_no_save(FILE *f, op_doc_no_t *d);
+int op_doc_no_save(int fd, op_doc_no_t *d);
 // загрузка из файла
-int op_doc_no_load(FILE *f, op_doc_no_t *d);
+int op_doc_no_load(int fd, op_doc_no_t *d);
 // копирование
 void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src);
 // установка значения
@@ -104,9 +104,9 @@ extern bool K_equalByL(K *k1, K *k2);
 extern int64_t K_get_sum(K *k);
 
 // запись документа в файл
-extern int K_save(FILE *f, K *k);
+extern int K_save(int fd, K *k);
 // загрузка документа из файла
-extern K *K_load(FILE *f);
+extern K *K_load(int fd);
 
 // сумма
 typedef struct S {
@@ -132,8 +132,8 @@ extern C* C_create(void);
 extern void C_destroy(C *c);
 extern bool C_addK(C *c, K *k);
 
-extern int C_save(FILE *f, C *c);
-extern C* C_load(FILE *f);
+extern int C_save(int fd, C *c);
+extern C* C_load(int fd);
 void C_calc_sum(C *c);
 
 // данные кассира
@@ -146,8 +146,8 @@ typedef struct P1 {
 
 extern P1 *P1_create(void);
 extern void P1_destroy(P1 *p1);
-extern int P1_save(FILE *f, P1 *p1);
-extern P1* P1_load(FILE *f);
+extern int P1_save(int fd, P1 *p1);
+extern P1* P1_load(int fd);
 
 // массив 64-битных величин
 typedef struct {

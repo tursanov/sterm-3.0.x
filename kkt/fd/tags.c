@@ -150,6 +150,15 @@ kkt_tag_t tags[] = {
 };
 static kkt_tag_t unknown = { 0, "неизвестный тэг", tag_type_bytes };
 
+const char *tags_get_text(uint16_t tag) {
+	kkt_tag_t *t = tags;
+	for (int i = 0; i < ASIZE(tags); i++, t++) {
+		if (t->tag == tag)
+			return t->desc;
+	}
+	return "неизвестный тэг";
+}
+
 tag_type_t tags_get_tlv_text(ffd_tlv_t *tlv, char *text, size_t text_size) {
 	kkt_tag_t *t = tags;
 	uint8_t *data = (uint8_t *)(tlv + 1);

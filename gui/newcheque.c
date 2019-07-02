@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "list.h"
 #include "sysdefs.h"
 #include "kbd.h"
@@ -87,27 +89,27 @@ static uint64_t cheque_article_vln_sum(cheque_article_t *ca) {
 	return sum;
 }
 
-static int cheque_article_save(FILE *f, cheque_article_t *a) {
+static int cheque_article_save(int fd, cheque_article_t *a) {
 	int i = 0;
 	for (list_item_t *li = articles.head; li; li = li->next, i++) {
 		if (li->obj == a->article)
 			break;
 	}
 
-	if (SAVE_INT(f, i) ||
-			SAVE_INT(f, a->count.value) ||
-			SAVE_INT(f, a->count.dot))
+	if (SAVE_INT(fd, i) ||
+			SAVE_INT(fd, a->count.value) ||
+			SAVE_INT(fd, a->count.dot))
 		return -1;
 	return 0;
 }
 
-static cheque_article_t * cheque_article_load(FILE *f) {
+static cheque_article_t * cheque_article_load(int fd) {
 	cheque_article_t *a = cheque_article_new();
 	int article_index = -1;
 
-	if (LOAD_INT(f, article_index) ||
-			LOAD_INT(f, a->count.value) ||
-			LOAD_INT(f, a->count.dot)) {
+	if (LOAD_INT(fd, article_index) ||
+			LOAD_INT(fd, a->count.value) ||
+			LOAD_INT(fd, a->count.dot)) {
 		free(a);
 		return NULL;
 	}
@@ -134,17 +136,14 @@ static cheque_article_t * cheque_article_load(FILE *f) {
 #define FILE_NAME	"/home/sterm/newcheque.dat"
 static bool newcheque_save() {
 	bool ret = false;
-	FILE *f = fopen(FILE_NAME, "wb");
-	if (f != NULL) {
-		ret =
-			SAVE_INT(f, newcheque.tax_system) == 0 &&
-			SAVE_INT(f, newcheque.pay_type) == 0 &&
-			SAVE_INT(f, newcheque.pay_kind) == 0 &&
-			save_string(f, newcheque.phone_or_email) == 0 &&
-			save_string(f, newcheque.add_info) == 0 &&
-			save_list(f, &newcheque.articles, (list_item_func_t)cheque_article_save) == 0;
+	int fd = s_open(FILE_NAME, true);
+	if (fd != -1) {
+		ret = SAVE_INT(fd, newcheque.pay_type) == 0 &&
+			SAVE_INT(fd, newcheque.pay_kind) == 0 &&
+			save_string(fd, newcheque.add_info) == 0 &&
+			save_list(fd, &newcheque.articles, (list_item_func_t)cheque_article_save) == 0;
 
-		fclose(f);
+		s_close(fd);
 	}
 
 	return ret;
@@ -152,17 +151,14 @@ static bool newcheque_save() {
 
 bool newcheque_load() {
 	bool ret = false;
-	FILE *f = fopen(FILE_NAME, "rb");
-	if (f != NULL) {
-		ret =
-			LOAD_INT(f, newcheque.tax_system) == 0 &&
-			LOAD_INT(f, newcheque.pay_type) == 0 &&
-			LOAD_INT(f, newcheque.pay_kind) == 0 &&
-			load_string(f, &newcheque.phone_or_email) == 0 &&
-			load_string(f, &newcheque.add_info) == 0 &&
-			load_list(f, &newcheque.articles, (load_item_func_t)cheque_article_load) == 0;
+	int fd = s_open(FILE_NAME, false);
+	if (fd != -1) {
+		ret = LOAD_INT(fd, newcheque.pay_type) == 0 &&
+			LOAD_INT(fd, newcheque.pay_kind) == 0 &&
+			load_string(fd, &newcheque.add_info) == 0 &&
+			load_list(fd, &newcheque.articles, (load_item_func_t)cheque_article_load) == 0;
 
-		fclose(f);
+		s_close(fd);
 	}
 
 	return ret;
@@ -224,20 +220,24 @@ static void article_new(window_t *parent) {
 	int y = CONTROLS_TOP;
 	int w = DISCX - x - GAP;
 	int th = GetTextHeight(screen);
-	int h = DISCY - 150;
+	int h = DISCY - 200;
 
 	window_add_label(win, TEXT_START, y, align_left, "Список товаров/работ/услуг:");
 	y += th + 2;
 
-
 	window_add_control(win, 
 			listview_create(1059, screen, TEXT_START, y, DISCX - GAP * 2, h, columns, ASIZE(columns),
 				&articles, (listview_get_item_text_func_t)article_get_text, 0));
-	y += h + GAP * 2;
+	y += h + GAP;
+
+	window_add_label(win, TEXT_START, y + 4, align_left, "Цена за ед.:");
+	window_add_control(win,
+			edit_create(1079, screen, TEXT_START + 150, y, w, th + 8, NULL, EDIT_INPUT_TYPE_DOUBLE, 16));
+	y += 40;
 
 	window_add_label(win, TEXT_START, y + 4, align_left, "Кол-во:");
 	window_add_control(win,
-			edit_create(1023, screen, TEXT_START + 100, y, w, th + 8, NULL, EDIT_INPUT_TYPE_DOUBLE, 16));
+			edit_create(1023, screen, TEXT_START + 150, y, w, th + 8, NULL, EDIT_INPUT_TYPE_DOUBLE, 16));
 
 
 	x = (DISCX - (BUTTON_WIDTH + GAP)*2 - GAP) / 2;

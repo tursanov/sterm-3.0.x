@@ -43,12 +43,12 @@ void doc_no_free(doc_no_t *d) {
 	}
 }
 
-int doc_no_save(FILE *f, doc_no_t *d) {
-	return save_string(f, d->s);
+int doc_no_save(int fd, doc_no_t *d) {
+	return save_string(fd, d->s);
 }
 
-int doc_no_load(FILE *f, doc_no_t *d) {
-	int ret = load_string(f, &d->s);
+int doc_no_load(int fd, doc_no_t *d) {
+	int ret = load_string(fd, &d->s);
 	return ret;
 }
 
@@ -118,12 +118,12 @@ void op_doc_no_free(op_doc_no_t *d) {
 	}
 }
 
-int op_doc_no_save(FILE *f, op_doc_no_t *d) {
-	return save_string(f, d->s);
+int op_doc_no_save(int fd, op_doc_no_t *d) {
+	return save_string(fd, d->s);
 }
 
-int op_doc_no_load(FILE *f, op_doc_no_t *d) {
-	int ret = load_string(f, &d->s);
+int op_doc_no_load(int fd, op_doc_no_t *d) {
+	int ret = load_string(fd, &d->s);
 	return ret;
 }
 
@@ -191,25 +191,25 @@ void L_destroy(L *l) {
     free(l);
 }
 
-int L_save(FILE *f, L *l) {
-    if (save_string(f, l->s) < 0 ||
-        SAVE_INT(f, l->p) < 0 ||
-        SAVE_INT(f, l->r) < 0 ||
-        SAVE_INT(f, l->t) < 0 ||
-        SAVE_INT(f, l->n) < 0 ||
-        SAVE_INT(f, l->c) < 0)
+int L_save(int fd, L *l) {
+    if (save_string(fd, l->s) < 0 ||
+        SAVE_INT(fd, l->p) < 0 ||
+        SAVE_INT(fd, l->r) < 0 ||
+        SAVE_INT(fd, l->t) < 0 ||
+        SAVE_INT(fd, l->n) < 0 ||
+        SAVE_INT(fd, l->c) < 0)
         return -1;
     return 0;
 }
 
-L *L_load(FILE *f) {
+L *L_load(int fd) {
     L *l = L_create();
-    if (load_string(f, &l->s) < 0 ||
-        LOAD_INT(f, l->p) < 0 ||
-        LOAD_INT(f, l->r) < 0 ||
-        LOAD_INT(f, l->t) < 0 ||
-        LOAD_INT(f, l->n) < 0 ||
-        LOAD_INT(f, l->c) < 0) {
+    if (load_string(fd, &l->s) < 0 ||
+        LOAD_INT(fd, l->p) < 0 ||
+        LOAD_INT(fd, l->r) < 0 ||
+        LOAD_INT(fd, l->t) < 0 ||
+        LOAD_INT(fd, l->n) < 0 ||
+        LOAD_INT(fd, l->c) < 0) {
         L_destroy(l);
         return NULL;
     }
@@ -357,22 +357,22 @@ int64_t K_get_sum(K *k) {
 	return sum;
 }
 
-int K_save(FILE *f, K *k) {
-    if (save_list(f, &k->llist, (list_item_func_t)L_save) < 0 ||
-        SAVE_INT(f, k->o) < 0 ||
-		SAVE_INT(f, k->a) < 0 ||
-        doc_no_save(f, &k->d) < 0 ||
-		doc_no_save(f, &k->r) < 0 ||
-		doc_no_save(f, &k->i1) < 0 ||
-		doc_no_save(f, &k->i2) < 0 ||
-		doc_no_save(f, &k->i21) < 0 ||
-		doc_no_save(f, &k->u) < 0 ||
-		op_doc_no_save(f, &k->b) < 0 ||
-		SAVE_INT(f, k->p) < 0 ||
-        save_string(f, k->h) < 0 ||
-        SAVE_INT(f, k->m) < 0 ||
-        save_string(f, k->t) < 0 ||
-        save_string(f, k->e) < 0)
+int K_save(int fd, K *k) {
+    if (save_list(fd, &k->llist, (list_item_func_t)L_save) < 0 ||
+        SAVE_INT(fd, k->o) < 0 ||
+		SAVE_INT(fd, k->a) < 0 ||
+        doc_no_save(fd, &k->d) < 0 ||
+		doc_no_save(fd, &k->r) < 0 ||
+		doc_no_save(fd, &k->i1) < 0 ||
+		doc_no_save(fd, &k->i2) < 0 ||
+		doc_no_save(fd, &k->i21) < 0 ||
+		doc_no_save(fd, &k->u) < 0 ||
+		op_doc_no_save(fd, &k->b) < 0 ||
+		SAVE_INT(fd, k->p) < 0 ||
+        save_string(fd, k->h) < 0 ||
+        SAVE_INT(fd, k->m) < 0 ||
+        save_string(fd, k->t) < 0 ||
+        save_string(fd, k->e) < 0)
         return -1;
     return 0;
 }
@@ -387,23 +387,23 @@ static void K_after_add(K *k) {
 	}
 }
 
-K *K_load(FILE *f) {
+K *K_load(int fd) {
     K *k = K_create();
-    if (load_list(f, &k->llist, (load_item_func_t)L_load) < 0 ||
-            LOAD_INT(f, k->o) < 0 ||
-			LOAD_INT(f, k->a) < 0 ||
-            doc_no_load(f, &k->d) < 0 ||
-			doc_no_load(f, &k->r) < 0 ||
-			doc_no_load(f, &k->i1) < 0 ||
-			doc_no_load(f, &k->i2) < 0 ||
-			doc_no_load(f, &k->i21) < 0 ||
-			doc_no_load(f, &k->u) < 0 ||
-			op_doc_no_load(f, &k->b) < 0 ||
-			LOAD_INT(f, k->p) < 0 ||
-            load_string(f, &k->h) < 0 ||
-            LOAD_INT(f, k->m) < 0 ||
-            load_string(f, &k->t) < 0 ||
-            load_string(f, &k->e) < 0) {
+    if (load_list(fd, &k->llist, (load_item_func_t)L_load) < 0 ||
+            LOAD_INT(fd, k->o) < 0 ||
+			LOAD_INT(fd, k->a) < 0 ||
+            doc_no_load(fd, &k->d) < 0 ||
+			doc_no_load(fd, &k->r) < 0 ||
+			doc_no_load(fd, &k->i1) < 0 ||
+			doc_no_load(fd, &k->i2) < 0 ||
+			doc_no_load(fd, &k->i21) < 0 ||
+			doc_no_load(fd, &k->u) < 0 ||
+			op_doc_no_load(fd, &k->b) < 0 ||
+			LOAD_INT(fd, k->p) < 0 ||
+            load_string(fd, &k->h) < 0 ||
+            LOAD_INT(fd, k->m) < 0 ||
+            load_string(fd, &k->t) < 0 ||
+            load_string(fd, &k->e) < 0) {
         K_destroy(k);
         return NULL;
     }
@@ -449,25 +449,25 @@ bool C_addK(C *c, K *k) {
 	return false;
 }
 
-int C_save(FILE *f, C *c) {
-    if (save_list(f, &c->klist, (list_item_func_t)K_save) < 0 ||
-            SAVE_INT(f, c->p) < 0 ||
-            save_string(f, c->h) < 0 ||
-            SAVE_INT(f, c->t1054) < 0 ||
-            SAVE_INT(f, c->t1055) < 0 ||
-            save_string(f, c->pe) < 0)
+int C_save(int fd, C *c) {
+    if (save_list(fd, &c->klist, (list_item_func_t)K_save) < 0 ||
+            SAVE_INT(fd, c->p) < 0 ||
+            save_string(fd, c->h) < 0 ||
+            SAVE_INT(fd, c->t1054) < 0 ||
+            SAVE_INT(fd, c->t1055) < 0 ||
+            save_string(fd, c->pe) < 0)
         return -1;
     return 0;
 }
 
-C * C_load(FILE *f) {
+C * C_load(int fd) {
     C *c = C_create();
-    if (load_list(f, &c->klist, (load_item_func_t)K_load) < 0 ||
-            LOAD_INT(f, c->p) < 0 ||
-            load_string(f, &c->h) < 0 ||
-            LOAD_INT(f, c->t1054) < 0 ||
-            LOAD_INT(f, c->t1055) < 0 ||
-            load_string(f, &c->pe) < 0) {
+    if (load_list(fd, &c->klist, (load_item_func_t)K_load) < 0 ||
+            LOAD_INT(fd, c->p) < 0 ||
+            load_string(fd, &c->h) < 0 ||
+            LOAD_INT(fd, c->t1054) < 0 ||
+            LOAD_INT(fd, c->t1055) < 0 ||
+            load_string(fd, &c->pe) < 0) {
         C_destroy(c);
         return NULL;
     }
@@ -493,21 +493,21 @@ void P1_destroy(P1 *p1) {
     free(p1);
 }
 
-int P1_save(FILE *f, P1 *p1) {
-    if (save_string(f, p1->i) < 0 ||
-        save_string(f, p1->p) < 0 ||
-        save_string(f, p1->t) < 0 ||
-        save_string(f, p1->c) < 0)
+int P1_save(int fd, P1 *p1) {
+    if (save_string(fd, p1->i) < 0 ||
+        save_string(fd, p1->p) < 0 ||
+        save_string(fd, p1->t) < 0 ||
+        save_string(fd, p1->c) < 0)
         return -1;
     return 0;
 }
 
-P1* P1_load(FILE *f) {
+P1* P1_load(int fd) {
     P1 *p1 = P1_create();
-    if (load_string(f, &p1->i) < 0 ||
-        load_string(f, &p1->p) < 0 ||
-        load_string(f, &p1->t) < 0 ||
-        load_string(f, &p1->c) < 0)
+    if (load_string(fd, &p1->i) < 0 ||
+        load_string(fd, &p1->p) < 0 ||
+        load_string(fd, &p1->t) < 0 ||
+        load_string(fd, &p1->c) < 0)
         return NULL;
     printf("P1->i = %s\n, P1->p = %s, P1->t = %s, P1->c = %s\n",
             p1->i, p1->p, p1->t, p1->c);
@@ -656,21 +656,21 @@ void AD_destroy() {
 
 int AD_save() {
     int ret = -1;
-    FILE *f = fopen(FILE_NAME, "wb");
+    int fd = s_open(FILE_NAME, true);
     
-    if (f == NULL) {
+    if (fd == -1) {
         return -1;
     }
     
-    if (SAVE_INT(f, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
-        (_ad->p1 != NULL && P1_save(f, _ad->p1) < 0) ||
-        save_string(f, _ad->t1086) < 0 ||
-        save_list(f, &_ad->clist, (list_item_func_t)C_save) < 0)
+    if (SAVE_INT(fd, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
+        (_ad->p1 != NULL && P1_save(fd, _ad->p1) < 0) ||
+        save_string(fd, _ad->t1086) < 0 ||
+        save_list(fd, &_ad->clist, (list_item_func_t)C_save) < 0)
         ret = -1;
     else
         ret = 0;
 
-    fclose(f);
+    s_close(fd);
     return ret;
 }
 
@@ -683,16 +683,16 @@ int AD_load(uint8_t t1055, bool clear) {
 	if (clear)
 		return 0;
 
-    FILE *f = fopen(FILE_NAME, "rb");
-    if (f == NULL)
+    int fd = s_open(FILE_NAME, false);
+    if (fd == -1)
         return -1;
     int ret;
     uint8_t hasP1 = 0;
     
-    if (LOAD_INT(f, hasP1) < 0 ||
-        (hasP1 && (_ad->p1 = P1_load(f)) == NULL) ||
-        load_string(f, &_ad->t1086) < 0 ||
-        load_list(f, &_ad->clist, (load_item_func_t)C_load) < 0)
+    if (LOAD_INT(fd, hasP1) < 0 ||
+        (hasP1 && (_ad->p1 = P1_load(fd)) == NULL) ||
+        load_string(fd, &_ad->t1086) < 0 ||
+        load_list(fd, &_ad->clist, (load_item_func_t)C_load) < 0)
         ret = -1;
     else
         ret = 0;
@@ -703,7 +703,7 @@ int AD_load(uint8_t t1055, bool clear) {
     	_ad->docs.count);
     printf("ad.t1086: %s\n", _ad->t1086);
     
-    fclose(f);
+    s_close(fd);
     return ret;
 }
 
@@ -1048,7 +1048,7 @@ static int stage = 0;
 	AD_calc_sum();
 	char buf[1024];
 	sprintf(buf, "stage%d.txt", ++stage);
-	FILE *f = fopen(buf, "w");
+	int fd = fopen(buf, "w");
 	AD_print(f);
 	fclose(f);
 #endif
@@ -1513,40 +1513,40 @@ bool AD_get_state(AD_state *s) {
 
 #define CN(s) ((s) ? (s) : "")
 
-void AD_print(FILE *f) {
-	fprintf(f, "AD\n");
+void AD_print(FILE *fd) {
+	fprintf(fd, "AD\n");
 	S *s = _ad->sum;
 	const char *s_title[] = { "Приход", "Возврат прихода", "Расход", "Возврат расхода" };
 	for(size_t i = 0; i < 4; i++, s++) {
-		fprintf(f, "  SUM[%s]\n", s_title[i]);
-		fprintf(f, "    N = %lld\n", s->n);
-		fprintf(f, "    E = %lld\n", s->e);
-		fprintf(f, "    P = %lld\n", s->p);
-		fprintf(f, "    B = %lld\n", s->b);
-		fprintf(f, "    A = %lld\n", s->a);
+		fprintf(fd, "  SUM[%s]\n", s_title[i]);
+		fprintf(fd, "    N = %lld\n", s->n);
+		fprintf(fd, "    E = %lld\n", s->e);
+		fprintf(fd, "    P = %lld\n", s->p);
+		fprintf(fd, "    B = %lld\n", s->b);
+		fprintf(fd, "    A = %lld\n", s->a);
 	}
 
 	for (list_item_t *li1 = _ad->clist.head; li1; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
-		fprintf(f, "C (P=%llu, H=%s, T1054=%d, T1055=%d, PE=%s)\n", c->p, c->h, c->t1054, c->t1055, CN(c->pe));
-		fprintf(f, "  SUM\n");
-		fprintf(f, "    N = %lld\n", c->sum.n);
-		fprintf(f, "    E = %lld\n", c->sum.e);
-		fprintf(f, "    P = %lld\n", c->sum.p);
-		fprintf(f, "    B = %lld\n", c->sum.b);
-		fprintf(f, "    A = %lld\n", c->sum.a);
+		fprintf(fd, "C (P=%llu, H=%s, T1054=%d, T1055=%d, PE=%s)\n", c->p, c->h, c->t1054, c->t1055, CN(c->pe));
+		fprintf(fd, "  SUM\n");
+		fprintf(fd, "    N = %lld\n", c->sum.n);
+		fprintf(fd, "    E = %lld\n", c->sum.e);
+		fprintf(fd, "    P = %lld\n", c->sum.p);
+		fprintf(fd, "    B = %lld\n", c->sum.b);
+		fprintf(fd, "    A = %lld\n", c->sum.a);
 		for (list_item_t *li2 = c->klist.head; li2; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
-			fprintf(f, "  K (P=%lld, H=%s, M=%d, ", k->p, k->h, k->m);
-			fprintf(f, "D=%s, R=%s, \n     N=%s, ", CN(k->d.s), CN(k->r.s), CN(k->n.s));
-			fprintf(f, "I1=%s, I2=%s, I21=%s, ", CN(k->i1.s), CN(k->i2.s), CN(k->i21.s)); 
-			fprintf(f, "U=%s, A=%lld,\n     ", CN(k->u.s), k->a);
-			fprintf(f, "B=%s, ", CN(k->b.s));
-			fprintf(f, "T=%s, E=%s)\n", CN(k->t), CN(k->e));
+			fprintf(fd, "  K (P=%lld, H=%s, M=%d, ", k->p, k->h, k->m);
+			fprintf(fd, "D=%s, R=%s, \n     N=%s, ", CN(k->d.s), CN(k->r.s), CN(k->n.s));
+			fprintf(fd, "I1=%s, I2=%s, I21=%s, ", CN(k->i1.s), CN(k->i2.s), CN(k->i21.s)); 
+			fprintf(fd, "U=%s, A=%lld,\n     ", CN(k->u.s), k->a);
+			fprintf(fd, "B=%s, ", CN(k->b.s));
+			fprintf(fd, "T=%s, E=%s)\n", CN(k->t), CN(k->e));
 			for (list_item_t *li3 = k->llist.head; li3; li3 = li3->next) {
 				L *l = LIST_ITEM(li3, L);
-				fprintf(f, "       L (S=%s, P=%d, R=%d, ", l->s, l->p, l->r);
-				fprintf(f, "T=%lld, N=%d, C=%lld)\n", l->t, l->n, l->c);
+				fprintf(fd, "       L (S=%s, P=%d, R=%d, ", l->s, l->p, l->r);
+				fprintf(fd, "T=%lld, N=%d, C=%lld)\n", l->t, l->n, l->c);
 			}
 		}
 	}
