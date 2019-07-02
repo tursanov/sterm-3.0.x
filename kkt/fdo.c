@@ -130,6 +130,7 @@ static bool fdo_reset_sig_handler(void)
 }
 
 static pthread_mutex_t fdo_mtx = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t susp_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 bool fdo_lock(void)
 {
@@ -151,9 +152,11 @@ static bool fdo_set_thread_state(int state)
 			fdo_reset_rx();
 		fdo_unlock();
 		int rc = pthread_kill(fdo_thread, SIG_THREAD_STATE_CHANGED);
-		if (rc == 0)
+		if (rc == 0){
+			pthread_mutex_lock(&susp_mtx);
+			pthread_mutex_unlock(&susp_mtx);
 			ret = true;
-		else
+		}else
 			dbg("ошибка pthread_kill(): %s.", strerror(errno));
 	}
 	return ret;
@@ -542,9 +545,11 @@ static void *fdo_thread_proc(void *arg __attribute__((unused)))
 		if (fdo_thread_state == fdo_thread_suspended)
 			pause();
 		else if ((fdo_thread_state == fdo_thread_active) &&
-				cfg.has_kkt && (kkt != NULL))
+				cfg.has_kkt && (kkt != NULL)){
+			pthread_mutex_lock(&susp_mtx);
 			fdo_poll_kkt();
-		else
+			pthread_mutex_unlock(&susp_mtx);
+		}else
 			pthread_yield();
 	}
 	return NULL;

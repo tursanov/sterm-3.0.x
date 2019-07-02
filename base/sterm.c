@@ -418,6 +418,7 @@ static bool set_term_defaults(void)
 	cfg.tz_offs = 0;
 	cfg.kkt_base_timeout = KKT_BASE_TIMEOUT * 10;
 	cfg.kkt_brightness = 0;
+	cfg.kkt_apc = false;
 
 	cfg.blank_time = 0;
 	cfg.color_scheme = 0;
@@ -3275,6 +3276,7 @@ static void show_kkt_info(void)
 		return;
 	}else
 		set_term_astate(ast_none);
+	fdo_suspend();
 	struct kkt_fs_status fs_status;
 	bool fs_status_ok = kkt_get_fs_status(&fs_status) == KKT_STATUS_OK;
 	struct kkt_fs_lifetime fs_lifetime;
@@ -3289,6 +3291,7 @@ static void show_kkt_info(void)
 	bool rtc_ok = kkt_get_rtc(&rtc) == RTC_GET_STATUS_OK;
 	struct kkt_fs_transmission_state fs_tstate;
 	bool tstate_ok = kkt_get_fs_transmission_state(&fs_tstate) == KKT_STATUS_OK;
+	fdo_resume();
 	if (!fs_status_ok || !rtc_ok){
 		show_no_kkt();
 		return;
