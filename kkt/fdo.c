@@ -183,7 +183,11 @@ static void fdo_stop_thread(void)
 static bool fdo_sleep(uint32_t ms)
 {
 	bool ret = false;
-	if (ms == 0)
+	ms /= 10;
+	uint32_t t0 = u_times();
+	while ((fdo_thread_state == fdo_thread_active) && ((u_times() - t0) > ms))
+		pthread_yield();
+/*	if (ms == 0)
 		ret = pthread_yield() == 0;
 	else{
 		struct timespec ts = {
@@ -191,7 +195,7 @@ static bool fdo_sleep(uint32_t ms)
 			.tv_nsec = (ms % 1000) * 1000000
 		};
 		ret = nanosleep(&ts, NULL) == 0;
-	}
+	}*/
 	return ret;
 }
 
