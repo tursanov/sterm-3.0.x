@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include "express.h"
 #include "sysdefs.h"
 #include "serialize.h"
 #if defined WIN32 || defined __APPLE__
@@ -1057,7 +1058,8 @@ static int stage = 0;
 
 #define REQUIRED_K_MASK 0x71
 #define REQUIRED_L_MASK 0x1F
-#define ERR_INVALID_VALUE   45
+#define ERR_INVALID_VALUE   E_KKT_ILL_ATTR
+#define ERR_NO_REQ_ATTR   	E_KKT_NO_ATTR
 
 static K* _k = NULL;
 static L* _l = NULL;
@@ -1117,13 +1119,15 @@ static int process_doc_no_value(const char *tag, const char *name, const char *v
 	const char *s = val;
 	int i;
 
-	for (i = 0; *s && i < 14; i++) {
+//	printf("%s/@%s: %s\n", tag, name, val);
+	for (i = 0; *s && i < 14; i++, s++) {
 		if (!isdigit(*s) && (!can_stars || *s != '*' || i == 0 || i >= 4)) {
 			printf("%s/@%s: Неправильный символ в номере документа\n", tag, name);
 			return ERR_INVALID_VALUE;
 		}
 	}
 
+//	printf("  i = %d\n", i);
 	if (i < 13) {
 		printf("%s/@%s: Неправильная длина номера документа\n", tag, name);
 		return ERR_INVALID_VALUE;
@@ -1267,9 +1271,11 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                         if (i == 1)
                             required = _k->o <= 2;
 
-                        if (required && !present)
+                        if (required && !present) {
                             printf("Обязательный атрибут K/@%c отсутствует\n",
                                    tags[i]);
+                            return ERR_NO_REQ_ATTR;
+                        }
                     }
                     K_destroy(_k);
                 }
@@ -1286,9 +1292,11 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                         if (i == 5 && _l->n > 0 && _l->n <= 4)
                             required = true;
 
-                        if (required && !present)
+                        if (required && !present) {
                             printf("Обязательный атрибут L/@%c отсутствует\n",
                                    tags[i]);
+							return ERR_NO_REQ_ATTR;
+                        }
                     }
                     L_destroy(_l);
                 }
