@@ -85,11 +85,16 @@ uint8_t *parse_kkt_xml(uint8_t *data, uint32_t check, kkt_xml_callback_t cbk, in
 		ret = handle_xml(xml, check, cbk, ecode);
 		if (ret == NULL)
 			ret = data;
+		if (*ecode != E_OK){
+			fprintf(stderr, "%s: ошибка %d\n", __func__, *ecode);
+			goto exit;
+		}
 	} catch (const parse_error &pe){
 		*ecode = E_KKT_XML;
 		ret = pe.where<uint8_t>();
-		printf("%s: %s %s\n", __func__, pe.what(), ret);
+		fprintf(stderr, "%s: %s %s\n", __func__, pe.what(), ret);
 	}
+exit:
 	return ret;
 }
 
