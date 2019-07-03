@@ -7,7 +7,7 @@
 #include "serialize.h"
 
 int s_open(const char *file_name, int open_for_write) {
-	int flags = open_for_write ? O_CREAT | O_WRONLY | O_SYNC | O_TRUNC : O_RDONLY;
+	int flags = open_for_write ? O_CREAT | O_WRONLY | O_TRUNC : O_RDONLY;
 	return open(file_name, flags, 0666);
 }
 

@@ -582,7 +582,7 @@ bool newcheque_print(window_t *w) {
 			ffd_tlv_add_string(1086, _ad->t1086);
 			ffd_tlv_stlv_end();
 		}
-		
+
 		if (newcheque.add_info && newcheque.add_info[0])
 			ffd_tlv_add_string(1192, newcheque.add_info);
 
