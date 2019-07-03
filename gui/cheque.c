@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 static FontPtr fnt = NULL;
+static FontPtr fnt1 = NULL;
 static GCPtr screen = NULL;
 extern int kbd_lang_ex;
 extern int kbd_get_char_ex(int key);
@@ -25,6 +26,9 @@ static int64_t sumE = 0;
 static list_item_t *first = NULL;
 static int first_n = 0;
 static bool main_view = true;
+static int expanded_top_n = 0;
+static bool scroll_enabled = false;
+static int draw_flags = 0;
 
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
@@ -32,6 +36,9 @@ static bool main_view = true;
 int cheque_init(void) {
 	if (fnt == NULL)
 		fnt = CreateFont(_("fonts/fixedsys8x16.fnt"), false);
+	if (fnt1 == NULL)
+		fnt1 = CreateFont(_("fonts/terminal10x18.fnt"), false);
+		
 	if (screen == NULL)
 	  	screen = CreateGC(0, 0, DISCX, DISCY);
     SetFont(screen, fnt);
@@ -71,6 +78,10 @@ void cheque_release(void) {
 	if (fnt) {
 		DeleteFont(fnt);
 		fnt = NULL;
+	}
+	if (fnt1) {
+		DeleteFont(fnt1);
+		fnt1 = NULL;
 	}
 	if (screen) {
 		DeleteGC(screen);
@@ -136,21 +147,34 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 	char text[1024];
 
 	SetTextColor(screen, clBlack);
-	
-	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next) {
+
+	int i = 0;
+	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next, i++) {
+		if (i < expanded_top_n)
+			continue;
+
 		K *k = LIST_ITEM(li1, K);
 		uint64_t sum = 0;
-		
+
+		int y1 = y + fnt->max_height;
 		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
 			L *l = LIST_ITEM(li2, L);
 			sum += l->t;
+			y1 += fnt->max_height;
 		}
-		
+
+#define MAX_Y	540
+		if (y1 > MAX_Y) {
+			scroll_enabled = true;
+			break;
+		} else
+			scroll_enabled = false;
+
 		sprintf(text, "Документ N%s (СУММА: %.1lld.%.2lld)", k->d.s ? k->d.s : "",
 			sum / 100, sum % 100);
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
-		
+
 		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
 			const char *svat[] = {
 				"НДС 20%",
@@ -169,7 +193,15 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 			y += fnt->max_height;
 		}
 	}
-	y += GAP;
+	if (scroll_enabled || expanded_top_n > 0) {
+	    SetFont(screen, fnt1);
+	    if (expanded_top_n > 0)
+			TextOut(screen, DISCX - 30, 140, "\x1e");
+		if (scroll_enabled)
+			TextOut(screen, DISCX - 30, DISCY - 100, "\x1f");
+	    SetFont(screen, fnt);
+	}
+	y = MAX_Y;
 
 	return y;
 }
@@ -192,12 +224,16 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 	w1 = TextWidth(fnt, cheque_n);
 	h = fnt->max_height + GAP;
 	x = (DISCX - w - GAP*5);
-	fill_rect(screen, x - GAP, y, w + GAP*5, h, 2, clGray, clSilver);
-	SetTextColor(screen, clBlack);
-	TextOut(screen, x, y + GAP/2, cheque_title);
-	SetBrushColor(screen, clGray);
-	FillBox(screen, DISCX - w1 - GAP * 3, y + GAP/2 - 4, 2, h - 3);
-	TextOut(screen, DISCX - w1 - GAP * 2, y + GAP/2, cheque_n);
+
+	if (draw_flags == 0) {
+		fill_rect(screen, x - GAP, y, w + GAP*5, h, 2, clGray, clSilver);
+		SetTextColor(screen, clBlack);
+		TextOut(screen, x, y + GAP/2, cheque_title);
+		SetBrushColor(screen, clGray);
+		FillBox(screen, DISCX - w1 - GAP * 3, y + GAP/2 - 4, 2, h - 3);
+		TextOut(screen, DISCX - w1 - GAP * 2, y + GAP/2, cheque_n);
+	}
+
 	y += GAP;
 
 	w = 0;
@@ -213,22 +249,29 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 	}
 
 	for (int i = 0; i < ASIZE(payout_kind); i++) {
-		int tw = TextWidth(fnt, ss[i]);
-		SetTextColor(screen, s[i] > 0 ? clBlack : IR_COLOR);
-		TextOut(screen, GAP*2, y, payout_kind[i]);
-		TextOut(screen, GAP*3 + w + sw - tw, y, ss[i]);
+		if (draw_flags == 0) {
+			int tw = TextWidth(fnt, ss[i]);
+			SetTextColor(screen, s[i] > 0 ? clBlack : IR_COLOR);
+			TextOut(screen, GAP*2, y, payout_kind[i]);
+			TextOut(screen, GAP*3 + w + sw - tw, y, ss[i]);
+		}
 		y += fnt->max_height;
 		if (i == ASIZE(payout_kind) - 2)
 			y += 4;
 	}
 
-	y = email_or_phone_draw(c, start_y);
+	if (draw_flags == 0)
+		y = email_or_phone_draw(c, start_y);
+	else
+		y = fnt->max_height*7 + GAP + 10;
+
 	if (doc_info_collapsed_view)
 		y = doc_view_collapsed_draw(c, y);
 	else
 		y = doc_view_expanded_draw(c, y);
 
-	fill_rect(screen, 10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
+	if (draw_flags == 0)
+		fill_rect(screen, 10, start_y, DISCX - 20, y - start_y, 2, clGray, 0);
 	y += GAP;
 
 	return y;
@@ -375,22 +418,37 @@ static void cheque_info_draw() {
 	int y = GAP*2;
 	C *c = LIST_ITEM(active_item, C);
 
-	char title[256];
-	sprintf(title, "Просмотр информации чека %d", active_item_n + 1);
-
-	draw_title(screen, fnt, title);
+	if (draw_flags == 0) {
+		char title[256];
+		sprintf(title, "Просмотр информации чека %d", active_item_n + 1);
+		draw_title(screen, fnt, title);
+	}
 
 	y = cheque_draw_cheque(c, active_item_n, y + 2, false);
 
-	draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+	if (draw_flags == 0) {
+		draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Закрыть", true);
+	}
 }
 
-int cheque_draw() {
-	ClearGC(screen, clSilver);
+int cheque_draw_ex(int flags) {
+	draw_flags = flags;
+	if (draw_flags == 0)
+		ClearGC(screen, clSilver);
+	else {
+		SetBrushColor(screen, clSilver);
+		FillBox(screen, 20, 134, DISCX - 40, DISCY - 200);
+	}
 	if (main_view)
 		cheque_main_draw();
 	else
 		cheque_info_draw();
+	draw_flags = 0;
+	return 0;
+}
+
+int cheque_draw() {
+	cheque_draw_ex(0);
 	return 0;
 }
 
@@ -554,6 +612,8 @@ static void select_phone_or_email() {
 
 static void show_doc_info() {
 	main_view = false;
+	expanded_top_n = 0;
+	scroll_enabled = false;
 	cheque_draw();
 }
 
@@ -585,7 +645,7 @@ static void change_cashier() {
 			form_draw(form);
 			continue;
 		}
-		
+
 		if (inn.size > 0 && inn.size != 12 && inn.size != 10) {
 			form_focus(form, 1203);
 			message_box("Ошибка", "Длина поля \"ИНН кассира\" должна быть 10 или 12 цифр", dlg_yes, 0, al_center);
@@ -648,11 +708,9 @@ static bool cheque_process(const struct kbd_event *_e) {
 					if (first) {
 						list_item_t *li = first;
 						int li_n = first_n;
-						
 						for (int i = 0; li && i < MAX_CHEQUE_PER_PAGE; i++, li = li->next, li_n++);
 						if (!li)
 							break;
-							
 						first = li;
 						first_n = li_n;
 						if (active_button == -1) {
@@ -683,6 +741,18 @@ static bool cheque_process(const struct kbd_event *_e) {
 			}
 		} else {
 			switch (e.key) {
+				case KEY_DOWN:
+					if (scroll_enabled) {
+						expanded_top_n++;
+						cheque_draw_ex(1);
+					}
+					break;
+				case KEY_UP:
+					if (expanded_top_n > 0) {
+						expanded_top_n--;
+						cheque_draw_ex(1);
+					}
+					break;
 				case KEY_ESCAPE:
 				case KEY_ENTER:
 					main_view = true;
