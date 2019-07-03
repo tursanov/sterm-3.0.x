@@ -149,6 +149,7 @@ bool can_reject = false;		/* флаг возможности отказа от заказа */
 bool resp_handling = false;		/* можно обрабатывать ответ по F8 */
 bool resp_executing = false;		/* устанавливается в execute_resp */
 bool resp_printed = false;		/* при обработке ответа выполнялась печать на БПУ */
+bool has_bank_data = false;		/* в ответе есть данные для ИПТ */
 bool has_kkt_data = false;		/* в ответе есть данные для ККТ */
 
 static bool full_resp;			/* флаг прихода ответа от хост-ЭВМ */
@@ -1088,167 +1089,6 @@ static void release_devices(void)
 	}
 	kkt = NULL;
 }
-
-#if 0
-static bool test_kkt(void)
-{
-	bool ret = true;
-	static uint8_t data[4096];
-	size_t len = sizeof(data);
-	uint8_t rc = KKT_STATUS_OK;
-/*	uint8_t cmd = 0;
-	rc = kkt_get_fdo_cmd(UINT8_MAX, 0, &cmd, data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_get_fdo_cmd: cmd = 0x%.2hhX; len = %u\n", cmd, len);
-	else{
-		printf("kkt_get_fdo_cmd: rc = 0x%.2hhX\n", rc);
-		ret = false;
-	}
-	for (int i = 0; i < sizeof(data); i++)
-		data[i] = i;
-	rc = kkt_send_fdo_data(data, sizeof(data));
-	printf("kkt_send_fdo_data: rc = 0x%.2hhX\n", rc);
-	if (rc != FDO_DATA_STATUS_OK)
-		ret = false;
-	struct kkt_rtc_data rtc;
-	rc = kkt_get_rtc(&rtc);
-	if (rc == RTC_GET_STATUS_OK)
-		printf("kkt_get_rtc: %.2hhu.%.2hhu.%.4hu %.2hhu:%.2hhu:%.2hhu\n",
-			rtc.day, rtc.month, rtc.year, rtc.hour, rtc.minute, rtc.second);
-	else{
-		printf("kkt_get_rtc: 0x%.2hhx\n", rc);
-		ret = false;
-	}
-	rc = kkt_set_rtc(time(NULL));
-	printf("kkt_set_rtc: 0x%.2hhx\n", rc);
-	if (rc != RTC_SET_STATUS_OK)
-		ret = false;
-	struct kkt_last_doc_info ldi;
-	rc = kkt_get_last_doc_info(&ldi, data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_get_last_doc_info: last_nr = %u; last_type = %hu; "
-			"last_printed_nr = %u; last_printed_type = %hu\n",
-			ldi.last_nr, ldi.last_type,
-			ldi.last_printed_nr, ldi.last_printed_type);
-	else
-		printf("kkt_get_last_doc_info: 0x%.2hhx; err_len = %u\n", rc, len);
-	static uint8_t tmpl[] = {
-		0x06, 0x1b, 0x0c, 0x30, 0x33, 0x65, 0x38, 0x1e, 0x07,
-		0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x06, 0x1b, 0x0c, 0x30, 0x33, 0x66, 0x34, 0x1b, 0x11, 0x0d,
-		0x0a, 0x1b, 0x0d, 0x06, 0x1b, 0x0c, 0x30, 0x34, 0x31, 0x38, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d,
-		0x06, 0x1b, 0x0c, 0x30, 0x33, 0x66, 0x31, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x33, 0x66, 0x61, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x31, 0x31, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x30, 0x44, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x33, 0x46, 0x35, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x41, 0x34, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x41, 0x35, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x41, 0x36, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x32, 0x34, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x35, 0x44, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x33, 0x46, 0x39, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x31, 0x36, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x32, 0x36, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x32, 0x31, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30, 0x33, 0x45, 0x41, 0x1b,
-		0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30, 0x34, 0x35, 0x35, 0x1b, 0x11, 0x0d, 0x0a, 0x1b,
-		0x0d, 0x1b, 0x0c, 0x30, 0x34, 0x35, 0x36, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x35, 0x34, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30, 0x34, 0x32, 0x30, 0x1b,
-		0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30, 0x33, 0x45, 0x39, 0x1b, 0x11, 0x0d, 0x0a, 0x1b,
-		0x0d, 0x1b, 0x0c, 0x30, 0x34, 0x43, 0x35, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x30, 0x43, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x41, 0x33, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x33, 0x46, 0x44, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b, 0x0c, 0x30,
-		0x34, 0x34, 0x44, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x0d, 0x0a, 0x1b,
-		0x0c, 0x30, 0x34, 0x31, 0x30, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d, 0x1b,
-		0x0c, 0x30, 0x34, 0x33, 0x35, 0x1b, 0x10, 0x20, 0x05, 0x1b, 0x11, 0x0d, 0x0a, 0x1b, 0x0d,
-	};
-	struct kkt_last_printed_info lpi;
-	rc = kkt_print_last_doc(1, tmpl, sizeof(tmpl), &lpi, data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_print_last_doc: nr = %u; sign = %u; type = %hu\n",
-			lpi.nr, lpi.sign, lpi.type);
-	else
-		printf("kkt_print_last_doc: 0x%.2hhx; err_len = %u\n", rc, len);
-	rc = kkt_begin_doc(UINT16_MAX, data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_begin_doc: ok\n");
-	else
-		printf("kkt_begin_doc: 0x%.2hhx; err_len = %u\n", rc, len);
-	rc = kkt_send_doc_data(tmpl, sizeof(tmpl), data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_send_doc_data: ok\n");
-	else
-		printf("kkt_send_doc_data: 0x%.2hhx; err_len = %u\n", rc, len);
-	struct kkt_doc_info di;
-	rc = kkt_end_doc(UINT16_MAX, tmpl, sizeof(tmpl), &di, data, &len);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_end_doc: nr = %u; sign = 0x%.8x\n", di.nr, di.sign);
-	else
-		printf("kkt_end_doc: 0x%.2hhx; err_len = %u\n", rc, len);
-	struct kkt_fs_status fs_st;
-	rc = kkt_get_fs_status(&fs_st);
-	if (rc == KKT_STATUS_OK)
-		printf("kkt_get_fs_status: fs_nr = %.*s\n", sizeof(fs_st.nr), fs_st.nr);
-	else
-		printf("kkt_get_fs_status: 0x%.2hhx\n", rc);
-	char fs_nr[KKT_FS_NR_LEN + 1];
-	rc = kkt_get_fs_nr(fs_nr);
-	if (rc == KKT_STATUS_OK)
-		printf("fs_nr = %s\n", kkt_fs_nr);
-	else
-		printf("kkt_get_fs_nr: 0x%.2hhx\n", rc);
-	struct kkt_fs_lifetime lt;
-	rc = kkt_get_fs_lifetime(&lt);
-	if (rc == KKT_STATUS_OK)
-		printf("%.2u.%.2u.%.4u %.2u:%.2u; reg_complete = %u; reg_remain = %u\n",
-			lt.dt.date.day, lt.dt.date.month, lt.dt.date.year,
-			lt.dt.time.hour, lt.dt.time.minute,
-			lt.reg_complete, lt.reg_remain);
-	else
-		printf("kkt_get_fs_lifetime: 0x%.2hhx\n", rc);
-	struct kkt_fs_version ver;
-	rc = kkt_get_fs_version(&ver);
-	if (rc == KKT_STATUS_OK)
-		printf("version = %s; type = %u\n", ver.version, ver.type);
-	else
-		printf("kkt_get_fs_version: 0x%.2hhx\n", rc);
-	rc = kkt_get_fs_last_error(data, &len);
-	printf("kkt_get_fs_last_error: rc = 0x%.2hhx; len = %u\n", rc, len);
-	struct kkt_fs_shift_state ss;
-	rc = kkt_get_fs_shift_state(&ss);
-	if (rc == KKT_STATUS_OK)
-		printf("shift state: opened = %d; shift_nr = %u; cheque_nr = %u\n",
-			ss.opened, ss.shift_nr, ss.cheque_nr);
-	else
-		printf("kkt_get_fs_shift_state: rc = 0x%.2hhx\n", rc);
-	struct kkt_fs_transmission_state ts;
-	rc = kkt_get_fs_transmission_state(&ts);
-	if (rc == KKT_STATUS_OK)
-		printf("transmission state: state = 0x%.2hhx; read_msg_started = %d; "
-			"sndq_len = %u; first_doc_nr = %u; "
-			"first_doc_dt = %.2u.%.2u.%.4u %.2u:%.2u\n",
-			ts.state, ts.read_msg_started, ts.sndq_len, ts.first_doc_nr,
-			ts.first_doc_dt.date.day, ts.first_doc_dt.date.month,
-			ts.first_doc_dt.date.year,
-			ts.first_doc_dt.time.hour, ts.first_doc_dt.time.minute);
-	else
-		printf("kkt_ger_fs_transmission_state: 0x%.2hhx\n", rc);
-	uint32_t nr_docs = 0;
-	rc = kkt_get_unconfirmed_docs_nr(&nr_docs);
-	if (rc == KKT_STATUS_OK)
-		printf("nr_docs = %u\n", nr_docs);
-	else
-		printf("kkt_get_unconfirmed_docs_nr: 0x%.2hhx\n", rc);*/
-	rc = kkt_get_last_reg_data(data, &len);
-	if (rc == KKT_STATUS_OK){
-		printf("kkt_get_last_reg_data: len = %u\n", len);
-		if (len > 0)
-			write(STDOUT_FILENO, data, len);
-	}else
-		printf("kkt_get_last_reg_data: rc = 0x%.2hhx\n", rc);
-	return ret;
-}
-#endif
 
 /* Получение информации об опрашиваемых устройствах */
 static void init_devices(void)
@@ -3269,24 +3109,6 @@ static const char *fs_nr_unconfirmed(void)
 	return txt;
 }
 
-#include <stdarg.h>
-
-__attribute__((format (printf, 2, 3))) static void __dbg(const char *fn, const char *fmt, ...)
-{
-	struct timeb tb;
-	ftime(&tb);
-	struct tm *tm = localtime(&tb.time);
-	fprintf(stderr, "%.2d:%.2d:%.2d.%.3d %s: ", tm->tm_hour, tm->tm_min, tm->tm_sec,
-		tb.millitm, fn);
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	va_end(ap);
-}
-
-#define dbg(fmt, arg...) __dbg(__func__, fmt "\n", ## arg)
-
-
 static void show_kkt_info(void)
 {
 	if (!cfg.has_kkt || (kkt == NULL)){
@@ -3295,7 +3117,6 @@ static void show_kkt_info(void)
 	}else
 		set_term_astate(ast_none);
 	fdo_suspend();
-	dbg("запрос состояния ккт");
 	struct kkt_fs_status fs_status;
 	bool fs_status_ok = kkt_get_fs_status(&fs_status) == KKT_STATUS_OK;
 	struct kkt_fs_lifetime fs_lifetime;
@@ -3310,10 +3131,7 @@ static void show_kkt_info(void)
 	bool rtc_ok = kkt_get_rtc(&rtc) == RTC_GET_STATUS_OK;
 	struct kkt_fs_transmission_state fs_tstate;
 	bool tstate_ok = kkt_get_fs_transmission_state(&fs_tstate) == KKT_STATUS_OK;
-	dbg("окончание запроса состояния ккт");
 	fdo_resume();
-	
-	printf("fs_status_ok: %d, rtc_ok: %d\n", fs_status_ok, rtc_ok);
 	
 	if (!fs_status_ok || !rtc_ok){
 		show_no_kkt();
@@ -4046,7 +3864,7 @@ static bool need_pos(void)
 #if defined __EXT_POS__
 			!cfg.ext_pos &&
 #endif
-			cfg.kkt_apc){
+			cfg.kkt_apc && has_bank_data){
 		struct AD_state ads;
 		AD_get_state(&ads);
 		if (ads.has_cashless_payments){

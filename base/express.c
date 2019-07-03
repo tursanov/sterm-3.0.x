@@ -42,6 +42,7 @@ extern bool can_reject;
 extern bool resp_handling;
 extern bool resp_executing;
 extern bool resp_printed;
+extern bool has_bank_data;
 extern bool has_kkt_data;
 
 extern int astate_for_req;
@@ -2070,7 +2071,7 @@ bool execute_resp(void)
 	else
 		can_reject = TST_FLAG(OBp, GDF_RESP_REJ_ENABLED);
 	resp_executing = true;
-	resp_printed = has_kkt_data = false;
+	resp_printed = has_bank_data = has_kkt_data = false;
 	lprn_error_shown = false;
 	preexecute_resp();
 	if (need_lock_term)
@@ -2082,7 +2083,6 @@ bool execute_resp(void)
 	bool jump_next = true;
 	bool has_req = false;
 	bool ndest_shown = false;
-	bool has_kkt_resp = false;
 	while ((n > 0) && !has_req && resp_executing){
 		int l = 0;
 		if (jump_next && !lprn_error_shown){
@@ -2163,9 +2163,10 @@ bool execute_resp(void)
 					if (AD_get_state(&ads))
 						xlog_set_rec_flags(hxlog, log_number, n_para,
 							XLOG_REC_CPC);
-					has_kkt_resp = true;	/* pass through */
-				}
+				}				/* pass through */
 				case dst_bank:
+					if (p->dst == dst_bank)
+						has_bank_data = true;
 					n_para++;		/* pass through */
 				default:
 					p->handled = true;
@@ -2249,7 +2250,7 @@ bool execute_resp(void)
 	can_reject = false;
 	lprn_error_shown = false;
 
-	if (has_kkt_resp)
+	if (has_kkt_data)
 		show_hints();
 
 	if (kt != key_none){
