@@ -185,7 +185,7 @@ static bool fdo_sleep(uint32_t ms)
 	bool ret = false;
 	ms /= 10;
 	uint32_t t0 = u_times();
-	while ((fdo_thread_state == fdo_thread_active) && ((u_times() - t0) > ms))
+	while ((fdo_thread_state == fdo_thread_active) && ((u_times() - t0) < ms))
 		pthread_yield();
 /*	if (ms == 0)
 		ret = pthread_yield() == 0;
