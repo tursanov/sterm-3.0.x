@@ -413,8 +413,9 @@ bool edit_handle(edit_t *edit, const struct kbd_event *e) {
 					return true;
 				}
 			}
-			if (e->ch == '.' && s == NULL && edit->cur_pos >= edit->length - 2)
+			if (e->ch == '.' && s == NULL && edit->cur_pos >= edit->length - 1) {
 				break;
+			}
 		}
 		case EDIT_INPUT_TYPE_NUMBER:
 		case EDIT_INPUT_TYPE_DATE:
