@@ -250,7 +250,7 @@ bool log_add_scr_str(struct log_gui_context *ctx, bool need_recode, const char *
 	vsnprintf(s, sizeof(s), format, ap);
 	va_end(ap);
 	len = strlen(s);
-	if ((ctx->scr_data_len + len + 2) <= sizeof(ctx->scr_data)){
+	if ((ctx->scr_data_len + len + 2) <= ctx->scr_data_size){
 		ctx->scr_data[ctx->scr_data_len++] = 0;
 		for (i = 0; i < len; i++){
 			char ch = s[i];

@@ -282,6 +282,8 @@ static bool klog_can_show_rec(struct log_handle *hlog, uint32_t index)
 		(hlog->map[(hlog->map_head + index) % hlog->map_size].tag == cfg.kkt_log_stream);
 }
 
+static uint8_t klog_scr_data[GUI_KLOG_BUF_LEN];
+
 static struct log_gui_context _klog_gui_ctx = {
 	.hlog		= NULL,
 	.active		= &klog_active,
@@ -289,6 +291,8 @@ static struct log_gui_context _klog_gui_ctx = {
 	.cur_rec_index	= 0,
 	.nr_head_lines	= 2,
 	.nr_hint_lines	= 3,
+	.scr_data	= klog_scr_data,
+	.scr_data_size	= sizeof(klog_scr_data),
 	.scr_data_len	= 0,
 	.scr_data_lines	= 0,
 	.first_line	= 0,
