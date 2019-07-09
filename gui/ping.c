@@ -440,7 +440,7 @@ static char *get_ping_line(int n)
 {
 	static char line[128];
 	char desc[30];
-	struct in_addr ip;
+	struct in_addr ip = {.s_addr = 0};
 	switch (n){
 		case HOST_GW:
 			snprintf(desc, sizeof(desc), "˜«î§");

@@ -20,7 +20,7 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 	bool dle = false, nl = false, line_begin = true;
 	uint8_t b = 0;
 	ctx->scr_data[0] = 0;
-	for (i = 0, j = 1; (i < plog_data_len) && (j < sizeof(ctx->scr_data)); i++){
+	for (i = 0, j = 1; (i < plog_data_len) && (j < ctx->scr_data_size); i++){
 		b = plog_data[i];
 		if (dle){
 			nl = (b == XPRN_WR_BCODE) || (b == XPRN_NO_BCODE) ||
@@ -49,7 +49,7 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 				j = m;
 				ctx->scr_data[j++] = 0;
 				k = j++;
-				if (k < sizeof(ctx->scr_data))
+				if (k < ctx->scr_data_size)
 					ctx->scr_data[k] = col;
 				break;
 			case 0x0d:
@@ -65,14 +65,14 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 					col = 0;
 					ctx->scr_data_lines++;
 					ctx->scr_data[j++] = 0;
-					if (j < sizeof(ctx->scr_data))
+					if (j < ctx->scr_data_size)
 						ctx->scr_data[j++] = 0;
 					line_begin = true;
 				}else if (col == LOG_SCREEN_COLS){
 					col = 0;
 					ctx->scr_data_lines++;
 					ctx->scr_data[j++] = 0;
-					if (j < sizeof(ctx->scr_data))
+					if (j < ctx->scr_data_size)
 						ctx->scr_data[j++] = 0;
 					line_begin = true;
 				}
@@ -85,7 +85,7 @@ static void plog_fill_scr_normal(struct log_gui_context *ctx)
 					b |= 0x80;
 				}else if (b < 0x20)
 					b += 0xc0;
-				if (j < sizeof(ctx->scr_data))
+				if (j < ctx->scr_data_size)
 					ctx->scr_data[j++] = b;
 				col++;
 				break;
@@ -264,6 +264,8 @@ static void plog_init_gui_ctx(struct log_gui_context *ctx)
 	ctx->hlog = hplog;
 }
 
+static uint8_t plog_scr_data[LOG_BUF_LEN];
+
 static struct log_gui_context _plog_gui_ctx = {
 	.hlog		= NULL,
 	.active		= &plog_active,
@@ -271,6 +273,8 @@ static struct log_gui_context _plog_gui_ctx = {
 	.cur_rec_index	= 0,
 	.nr_head_lines	= 2,
 	.nr_hint_lines	= 3,
+	.scr_data	= plog_scr_data,
+	.scr_data_size	= sizeof(plog_scr_data),
 	.scr_data_len	= 0,
 	.scr_data_lines	= 0,
 	.first_line	= 0,
