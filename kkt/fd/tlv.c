@@ -95,6 +95,13 @@ void *ffd_tlv_prepare(uint16_t tag, size_t size)
 	return prev;
 }
 
+int ffd_tlv_add(ffd_tlv_t *tlv) {
+	uint8_t* data = (uint8_t*)ffd_tlv_prepare(tlv->tag, tlv->length);
+	if (!data)
+		return -1;
+	memcpy(data, FFD_TLV_DATA(tlv), tlv->length);
+	return 0;
+}
 
 int ffd_tlv_add_uint8(uint16_t tag, uint8_t value)
 {
@@ -336,9 +343,23 @@ bool ffd_string_to_vln(const char *s, size_t size, uint64_t *value) {
 		*value = v.value * 10;
 	else
 		*value = v.value * 100;
-	
+
 	if (*value > MAX_VLN)
 		return false;
 
 	return true;
+}
+
+uint64_t ffd_tlv_data_as_vln(const ffd_tlv_t *tlv) {
+	uint64_t v = 0;
+	memcpy(&v, FFD_TLV_DATA(tlv), tlv->length);
+	return v;
+}
+
+int ffd_tlv_data_as_fvln(const ffd_tlv_t *tlv, ffd_fvln_t *value) {
+	uint8_t *p = FFD_TLV_DATA(tlv);
+	value->dot = p[0];
+	value->value = 0;
+	memcpy(&value->value, p + 1, tlv->length - 1);
+	return 0;
 }

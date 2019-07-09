@@ -46,6 +46,36 @@ int s_read(int fd, void *d, size_t n) {
 	return size;
 }
 
+int save_data(int fd, const void *data, size_t size) {
+    if (s_write(fd, &size, sizeof(size)) < 0)
+        return -1;
+    if (size > 0 && s_write(fd, data, size) < 0)
+        return -1;
+    return 0;
+
+}
+
+int load_data(int fd, void **data, size_t *size) {
+    size_t len = 0;
+    if (s_read(fd, &len, sizeof(len)) < 0)
+        return -1;
+	if (len > 0) {
+		uint8_t *s = (uint8_t *)malloc(len);
+		if (s == NULL)
+			return -1;
+
+		if (s_read(fd, s, len) < 0) {
+			free(s);
+			return -1;
+		}
+		*data = s;
+	} else
+		*data = NULL;
+	*size = len;
+    return 0;
+}
+
+
 int save_string(int fd, const char *s) {
     size_t len = s != NULL ? strlen(s) : 0;
     if (s_write(fd, &len, sizeof(len)) < 0)

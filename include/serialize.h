@@ -8,6 +8,9 @@ int s_close(int fd);
 
 int save_string(int fd, const char *s);
 int load_string(int fd, char **ret);
+int save_data(int fd, const void *data, size_t size);
+int load_data(int fd, void **data, size_t *size);
+
 int save_int(int fd, uint64_t v, size_t size);
 int load_int(int fd, uint64_t *v, size_t size);
 

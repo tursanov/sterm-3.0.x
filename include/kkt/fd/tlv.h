@@ -42,6 +42,7 @@ int ffd_tlv_vln_length(uint64_t value);
 uint8_t *ffd_tlv_data();
 size_t ffd_tlv_size();
 void ffd_tlv_reset();
+int ffd_tlv_add(ffd_tlv_t *tlv);
 int ffd_tlv_add_uint8(uint16_t tag, uint8_t value);
 int ffd_tlv_add_uint16(uint16_t tag, uint16_t value);
 int ffd_tlv_add_uint32(uint16_t tag, uint32_t value);

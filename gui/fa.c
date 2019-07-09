@@ -1107,7 +1107,9 @@ void fa_cheque() {
 						if (l->n > 0)
 							ffd_tlv_add_uint8(1199, l->n);
 						if (l->n >= 1 && l->n <= 4) {
+							printf("ADD 1198, %lld\n", l->c);
 							ffd_tlv_add_vln(1198, l->c);
+							printf("ADD 1200, %lld\n", l->c);
 							ffd_tlv_add_vln(1200, l->c);
 						}
 						if (c->p != user_inn) {

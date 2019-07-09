@@ -314,6 +314,7 @@ static void print_stlv(uint8_t *p, size_t size, int level) {
 	size_t i = 0;
 	while (i < size) {
 		ffd_tlv_t *t = (ffd_tlv_t *)p;
+
 		tag_type_t type = tags_get_tlv_text(t, text, sizeof(text));
 		out_printf("%s%s", tmp, text);
 
