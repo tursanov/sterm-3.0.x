@@ -228,8 +228,8 @@ static bool klog_fill_map(struct log_handle *hlog)
 		uint32_t crc = klog_rec_hdr.crc32;
 		klog_rec_hdr.crc32 = 0;
 		if (klog_rec_crc32() != crc){
-			logdbg("%s: Несовпадение контрольной суммы для записи %s #%u.\n",
-				__func__, hlog->log_type, i);
+			logdbg("%s: Несовпадение контрольной суммы для записи %s #%u (0x%.8x).\n",
+				__func__, hlog->log_type, i, offs);
 			return log_truncate(hlog, i, tail);
 		}
 		klog_rec_hdr.crc32 = crc;
@@ -668,15 +668,6 @@ uint32_t klog_write_rec(struct log_handle *hlog, const struct timeb *t0,
 		klog_rec_hdr.stream = stream;
 		klog_rec_hdr.cmd = (cfg.kkt_log_level == KLOG_LEVEL_ERR) ? KKT_NUL : cmd;
 		klog_rec_hdr.status = status;
-/*		if (cfg.kkt_log_level == KLOG_LEVEL_ALL){
-			memcpy(klog_data, req, req_len);
-			if ((resp != NULL) && (resp_len > 0))
-				memcpy(klog_data + req_len, resp, resp_len);
-			klog_data_len = len;
-			klog_rec_hdr.len = len;
-			klog_rec_hdr.req_len = req_len;
-			klog_rec_hdr.resp_len = resp_len;
-		}*/
 		klog_rec_hdr.crc32 = klog_rec_crc32();
 		if (klog_add_rec(hlog))
 			ret = klog_rec_hdr.number;
