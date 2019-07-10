@@ -232,7 +232,7 @@ bool window_handle_focus_event(window_t *w, const struct kbd_event *e) {
 
 static bool window_process(window_t *w, const struct kbd_event *_e) {
 	struct kbd_event e = *_e;
-	
+
 	if (e.key == KEY_CAPS && e.pressed && !e.repeated) {
 		if (kbd_lang_ex == lng_rus)
 			kbd_lang_ex = lng_lat;

@@ -471,7 +471,15 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 			char text[32];
 			sprintf(text, "%u", fsign);
 			window_set_data(parent, 1192, 0, text, strlen(text));
-		} else if (tlv->tag == 1057 || tlv->tag == 1171) {
+		} else if (tlv->tag == 1057 || 
+					tlv->tag == 1171 ||
+					tlv->tag == 1075 ||
+					tlv->tag == 1044 ||
+					tlv->tag == 1073 ||
+					tlv->tag == 1026 ||
+					tlv->tag == 1005 ||
+					tlv->tag == 1016 ||
+					tlv->tag == 1174) {
 			printf("tlv->tag = %d\n", tlv->tag);
 			size_t t_size = FFD_TLV_SIZE(tlv);
 			size_t new_size = newcheque.agent_data_size + t_size;
@@ -485,6 +493,8 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 			}
 			memcpy(newcheque.agent_data + newcheque.agent_data_size, tlv, t_size);
 			newcheque.agent_data_size = new_size;
+		} else if (tlv->tag == 1008) {
+			window_set_data(parent, 1008, 0, FFD_TLV_DATA(tlv), tlv->length);
 		}
 
 		ptr += FFD_TLV_SIZE(tlv);
@@ -834,7 +844,8 @@ bool newcheque_print(window_t *w) {
 				ffd_tlv_add_string(1030, ca->article->name);
 				ffd_tlv_add_vln(1079, ca->price_per_unit);
 				ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
-				ffd_tlv_add_uint8(1199, ca->article->vat_rate);
+				if (ca->article->vat_rate < 6)
+					ffd_tlv_add_uint8(1199, ca->article->vat_rate);
 				if (agent != NULL)
 					ffd_tlv_add_fixed_string(1226, agent->inn, 12);
 			}
@@ -921,7 +932,7 @@ bool newcheque_print(window_t *w) {
 			free(newcheque.agent_data);
 			newcheque.agent_data = NULL;
 		}
-		
+
 		if (newcheque.add_info) {
 			free(newcheque.add_info);
 			newcheque.add_info = NULL;

@@ -47,6 +47,7 @@ static const char * str_vats[] =
 	"НДС 10/110",
 	"НДС 0%",
 	"НДС НЕ ОБЛАГАЕТСЯ",
+	"НЕ ЯВЛЯЕТСЯ ПРЕДМЕТОМ НАЛОГООБЛОЖЕНИЯ"
 };
 
 int article_get_text(void *obj, int index, char *text, size_t text_size) {
@@ -230,7 +231,7 @@ void* create_new_article(data_source_t *ds) {
 	char **agent_info_list = create_agent_info_list();
 
 	BEGIN_FORM(form, "Новый товар/работа/услуга")
-		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", NULL, FORM_INPUT_TYPE_TEXT, 32)
+		FORM_ITEM_EDIT_TEXT(1030, "Наименование:", NULL, FORM_INPUT_TYPE_TEXT, 128)
 //		FORM_ITEM_COMBOBOX(1055, "Система налогообложения:", str_tax_systems, str_tax_system_count, -1)
 		FORM_ITEM_COMBOBOX(1214, "Признак способа расчета:", str_pay_methods, ASIZE(str_pay_methods), -1)
 		FORM_ITEM_EDIT_TEXT(1079, "Цена за ед. предмета расчета:", NULL, FORM_INPUT_TYPE_MONEY, 16)
