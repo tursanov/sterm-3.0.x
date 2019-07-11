@@ -20,6 +20,7 @@
 #include "gui/forms.h"
 #include "gui/cheque.h"
 #include "gui/cheque_docs.h"
+#include "gui/cheque_reissue_docs.h"
 #include "gui/lvform.h"
 #include "gui/newcheque.h"
 #include "gui/archivefn.h"
@@ -191,6 +192,7 @@ static bool fa_create_menu(void)
 	if (kt != key_reg) {
 		add_menu_item(fa_menu, new_menu_item("Закрытие ФН", cmd_close_fs_fa, true));
 		add_menu_item(fa_menu, new_menu_item("Удаление документа из чека", cmd_del_doc_fa, true));
+		add_menu_item(fa_menu, new_menu_item("Снятие у документа отметки переоформления", cmd_unmark_reissue_fa, true));
 	}
 	add_menu_item(fa_menu, new_menu_item("Расчет без обращения в АСУ \"Экспресс\"", cmd_sales_fa, true));
 	add_menu_item(fa_menu, new_menu_item("Печать последнего сформированного документа", cmd_print_last_doc_fa, true));
@@ -1150,7 +1152,8 @@ void fa_cheque() {
 	AD_calc_sum();
 
 	if (result && have_unformed_docs)
-		message_box("Уведомление", "Внимание! Имеются документы, для которых не завершено переоформление", dlg_yes, 0, al_center);
+		message_box("Уведомление", "Внимание! Имеются документы, для которых\n"
+				"не завершено переоформление", dlg_yes, 0, al_center);
 
 	fa_set_group(FAPP_GROUP_MENU);
 
@@ -1160,6 +1163,13 @@ void fa_cheque() {
 void fa_del_doc() {
 	cheque_docs_init();
 	cheque_docs_execute();
+
+	fa_set_group(FAPP_GROUP_MENU);
+}
+
+void fa_unmark_reissue_doc() {
+	cheque_reissue_docs_init();
+	cheque_reissue_docs_execute();
 
 	fa_set_group(FAPP_GROUP_MENU);
 }
@@ -1288,6 +1298,9 @@ static bool process_fa_cmd(int cmd) {
 			break;
 		case cmd_del_doc_fa:
 			fa_del_doc();
+			break;
+		case cmd_unmark_reissue_fa:
+			fa_unmark_reissue_doc();
 			break;
 		case cmd_reset_fs_fa:
 			fa_reset_fs();
