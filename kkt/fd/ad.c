@@ -781,6 +781,7 @@ void AD_unmark_reissue_doc(int64_t doc) {
 			if (doc_no_to_i64(&k->d) == doc) {
 				doc_no_clear(&k->u);
 				AD_save();
+				AD_calc_sum();
 				return;
 			}
 		}
