@@ -181,7 +181,7 @@ static bool llog_fill_scr_err_code(struct log_gui_context *ctx,
 	bool ret = true;
 	struct lprn_error_txt *err = getter(code);
 	if (prefix != NULL)
-		ret = log_add_scr_str(ctx, true, prefix);
+		ret = log_add_scr_str(ctx, true, "%s" , prefix);
 	if (ret && (err != NULL))
 		ret = log_add_scr_str(ctx, true, "%.2hhX: %s", llog_data[0], err->txt);
 	return ret;
@@ -269,7 +269,7 @@ static void llog_fill_scr_syntax_error(struct log_gui_context *ctx)
 	err_msg = get_syntax_error_txt(code);
 	if (err_msg != NULL){
 		for (slice = err_msg; *slice != 0;){
-			log_add_scr_str(ctx, true, slice);
+			log_add_scr_str(ctx, true, "%s", slice);
 			slice += strlen(slice) + 1;
 		}
 	}
