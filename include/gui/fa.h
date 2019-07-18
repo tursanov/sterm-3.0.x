@@ -13,6 +13,7 @@ extern bool	process_fa(const struct kbd_event *e);
 
 extern bool cashier_load();
 extern bool cashier_save();
+extern bool cashier_destroy();
 extern bool cashier_set(const char *name, const char *post, const char *inn);
 extern bool cashier_set_name(const char *name);
 extern const char *cashier_get_name();
@@ -35,5 +36,7 @@ extern int agents_load();
 extern int articles_load();
 extern int agents_save();
 extern int articles_save();
+extern int agents_destroy();
+extern int articles_destroy();
 
 #endif		/* GUI_KKT_H */

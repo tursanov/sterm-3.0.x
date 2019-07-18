@@ -350,6 +350,10 @@ int articles_save() {
 	return ret;
 }
 
+int articles_destroy() {
+	return list_clear(&articles);
+}
+
 
 void fa_articles() {
 	lvform_column_t columns[] = {

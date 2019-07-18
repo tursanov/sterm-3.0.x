@@ -39,17 +39,24 @@ static bool listview_redraw_row(listview_t *listview, int index);
 
 static void listview_selected_index_changed(listview_t *lv) {
 	if (lv->selected_changed_func) {
-		list_item_t *li = lv->items->head;
-		int si = lv->selected_index - lv->top_index;
-		for (int i = 0; li && i < lv->max_items; i++, li = li->next) {
-			if (i == si) 
-				break;
-		}
-		lv->selected_changed_func(&lv->control, lv->selected_index, li->obj);
+		list_item_t *li;
+		if (lv->items->count > 0) {
+			li = lv->items->head;
+			int si = lv->selected_index - lv->top_index;
+			for (int i = 0; li && i < lv->max_items; i++, li = li->next) {
+				if (i == si) 
+					break;
+			}
+		} else
+			li = NULL;
+		lv->selected_changed_func(&lv->control, lv->selected_index, li ? li->obj : NULL);
 	}
 }
 
 static void listview_set_selected_index(listview_t *lv, int index, bool refresh) {
+	if (lv->items->count == 0)
+		return;
+
 	if (index < 0)
 		index = 0;
 	else if (index >= lv->items->count)
@@ -129,8 +136,13 @@ control_t* listview_create(int id, GCPtr gc, int x, int y, int width, int height
 	listview->max_items = (listview->control.height - 
 			listview->header_height - BORDER_WIDTH*3) / listview->item_height;
 	listview->top_index = 0;
-	listview->selected_index = selected_index + 1;
-	listview_set_selected_index(listview, selected_index, false);
+	if (items->count > 0) {
+		listview->selected_index = selected_index + 1;
+		listview_set_selected_index(listview, selected_index, false);
+	} else {
+		listview->selected_index = -1;
+		listview_draw(listview);
+	}
 
     return (control_t *)listview;
 }

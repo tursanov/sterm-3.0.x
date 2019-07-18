@@ -1589,6 +1589,11 @@ static void release_term(void)
 	release_gd();
 	release_hash(prom);
 	release_hash(rom);
+
+	AD_destroy();
+	agents_destroy();
+	articles_destroy();
+	newcheque_destroy();
 }
 
 /* Проверка нажатия комбинации клавиш для разрыва модемного соединения */

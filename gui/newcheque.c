@@ -219,9 +219,22 @@ bool newcheque_load() {
 		s_close(fd);
 	}
 
+	printf("agents.count = %d\n", agents.count);
+	printf("articles.count = %d\n", articles.count);
+	printf("newcheque.articles.count = %d\n", newcheque.articles.count);
+
 	return ret;
 }
 
+int newcheque_destroy() {
+	if (newcheque.phone_or_email)
+		free(newcheque.phone_or_email);
+	if (newcheque.add_info)
+		free(newcheque.add_info);
+	if (newcheque.agent_data)
+		free(newcheque.agent_data);
+	return list_clear(&newcheque.articles);
+}
 
 static void button_action(control_t *c, int cmd) {
 	window_set_dialog_result(((window_t *)c->parent.parent), cmd);
@@ -264,22 +277,22 @@ static void newcheque_update_sum(window_t *w, bool redraw) {
 }
 
 static void article_selected_changed(control_t *c, int index, void *item) {
-	window_t *win = (window_t *)c->parent.parent;
-	char text[64] = "";
+	if (item) {
+		window_t *win = (window_t *)c->parent.parent;
+		char text[64] = "";
 
-	if (win) {
-		control_t *c = window_get_control(win, 1079);
+		if (win) {
+			control_t *c = window_get_control(win, 1079);
 
-		if (item) {
 			article_t *a = (article_t *)item;
 			if (a->price_per_unit > 0) {
 				snprintf(text, sizeof(text), "%.1lld.%.2lld",
 					a->price_per_unit / 100, a->price_per_unit % 100);
 			}
 			c->enabled = a->price_per_unit == 0;
-		}
 
-		control_set_data(c, 0, text, strlen(text));
+			control_set_data(c, 0, text, strlen(text));
+		}
 	}
 }
 
@@ -614,7 +627,7 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 		case KEY_NUMPLUS:
 		case KEY_PLUS:
 			c = window_get_focus(w);
-			if (c && c->id == 9997) 
+			if (c && c->id == 9997)
 				article_new(w);
 			break;
 		case KEY_NUMMUL:
@@ -732,6 +745,7 @@ static bool newcheque_distribute_sum(window_t *w, uint64_t sum[5]) {
 		}
 		window_show_error(win, tags[0], "Ошибка: сумма всех полей должна быть равна общей сумме чека");
 	}
+	window_destroy(win);
 	window_draw(w);
 	kbd_flush_queue();
 	return ret;
@@ -1097,7 +1111,7 @@ int newcheque_execute() {
 	}
 
 	window_destroy(win);
-
+	
 	return result;
 }
 

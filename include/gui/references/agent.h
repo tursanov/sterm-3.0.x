@@ -19,7 +19,8 @@ typedef struct {
 	char *supplier_phone;
 } agent_t;
 
-
 extern list_t agents;
+
+extern int agents_destroy();
 
 #endif // REF_AGENT_H

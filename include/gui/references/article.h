@@ -15,5 +15,6 @@ typedef struct {
 
 extern list_t articles;
 
+extern int articles_destroy();
 
 #endif // ARTICLE_H

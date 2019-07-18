@@ -288,6 +288,10 @@ int agents_load() {
 	return ret;
 }
 
+int agents_destroy() {
+	return list_clear(&agents);
+}
+
 int agents_save() {
     int fd = s_open(AGENTS_FILE_NAME, true);
 	int ret;
