@@ -23,7 +23,7 @@ static inline bool is_print(uint8_t b)
 static bool klog_show_data(struct log_gui_context *ctx, const uint8_t *data, size_t len,
 	const char *title)
 {
-	if ((title != NULL) && !log_add_scr_str(ctx, !ctx->asis, title))
+	if ((title != NULL) && !log_add_scr_str(ctx, !ctx->asis, "%s", title))
 		return false;
 	else if (len == 0)
 		return true;
@@ -43,7 +43,7 @@ static bool klog_show_data(struct log_gui_context *ctx, const uint8_t *data, siz
 					}else
 						sprintf(line + offs, " ");
 				}
-				if (!log_add_scr_str(ctx, false, line))
+				if (!log_add_scr_str(ctx, false, "%s", line))
 					break;
 				begin += 16;
 			}

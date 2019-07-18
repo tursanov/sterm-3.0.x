@@ -222,6 +222,9 @@ typedef struct AD_state {
 
 // получение состояния корзины (false - корзина пуста)
 extern bool AD_get_state(AD_state *s);
+// получение документов для переоформления
+extern size_t AD_get_reissue_docs(int64_array_t* docs);
+extern void AD_unmark_reissue_doc(int64_t doc);
 
 #ifdef TEST_PRINT
 extern void AD_print(FILE *f);

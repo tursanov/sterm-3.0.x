@@ -108,9 +108,10 @@ static void article_free(article_t *a) {
 }
 
 int article_save(int fd, article_t *a) {
+	uint8_t tax_system = 1;
 	if (SAVE_INT(fd, a->n) < 0 ||
 		save_string(fd, a->name) < 0 ||
-		//SAVE_INT(f, a->tax_system) < 0 ||
+		SAVE_INT(fd, tax_system) < 0 ||
 		SAVE_INT(fd, a->pay_method) < 0 ||
 		SAVE_INT(fd, a->price_per_unit) < 0 ||
 		SAVE_INT(fd, a->vat_rate) < 0 ||
@@ -120,10 +121,11 @@ int article_save(int fd, article_t *a) {
 }
 
 article_t* article_load(int fd) {
+	uint8_t tax_system;
 	article_t *a = article_new();
 	if (LOAD_INT(fd, a->n) < 0 ||
 		load_string(fd, &a->name) < 0 ||
-		//LOAD_INT(f, a->tax_system) < 0 ||
+		LOAD_INT(fd, tax_system) < 0 ||
 		LOAD_INT(fd, a->pay_method) < 0 ||
 		LOAD_INT(fd, a->price_per_unit) < 0 ||
 		LOAD_INT(fd, a->vat_rate) < 0 ||

@@ -771,6 +771,23 @@ int AD_delete_doc(int64_t doc) {
    	return count;
 }
 
+void AD_unmark_reissue_doc(int64_t doc) {
+	for (list_item_t *li1 = _ad->clist.head; li1;) {
+		C *c = LIST_ITEM(li1, C);
+		li1 = li1->next;
+		for (list_item_t *li2 = c->klist.head; li2;) {
+			K *k = LIST_ITEM(li2, K);
+			li2 = li2->next;
+			if (doc_no_to_i64(&k->d) == doc) {
+				doc_no_clear(&k->u);
+				AD_save();
+				AD_calc_sum();
+				return;
+			}
+		}
+	}
+}
+
 void AD_remove_C(C *c) {
 	list_item_t *li = c->klist.head;
 	while (li) {
@@ -1516,6 +1533,21 @@ bool AD_get_state(AD_state *s) {
 	return s->actual_cheque_count > 0;
 }
 
+// получение документов для переоформления
+size_t AD_get_reissue_docs(int64_array_t* docs) {
+	int64_array_clear(docs);
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			if (!doc_no_is_empty(&k->u)) {
+				int64_t d = doc_no_to_i64(&k->d);
+				int64_array_add(docs, d, true);
+			}
+		}
+	}
+	return docs->count;
+}
 
 #ifdef TEST_PRINT
 

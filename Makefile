@@ -35,6 +35,7 @@ GUI_OBJS =		\
 	calc		\
 	cheque		\
 	cheque_docs	\
+	cheque_reissue_docs	\
 	dialog		\
 	exgdi		\
 	fa		\

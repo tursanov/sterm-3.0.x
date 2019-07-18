@@ -98,6 +98,7 @@ static bool end(void)
 	}else
 		return false;
 }
+
 __attribute__((format (printf, 2, 3))) static void xprintf(char *s, char *format, ...)
 {
 	va_list p;
