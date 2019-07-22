@@ -76,7 +76,7 @@ typedef struct fd_cheque_corr_params_t {
 
 // получение последней ошибки
 int fd_get_last_error(const char **error);
-void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len);
+void fd_set_error(uint8_t doc_type, uint8_t status, uint8_t *err_info, size_t err_info_len);
 // формирование фискального документа
 int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t pattern_footer_size);
 // печать последнего фискального документа

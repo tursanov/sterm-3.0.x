@@ -47,7 +47,7 @@ static void archivefn_show_error_ex(const char *where) {
 }
 
 static void archivefn_show_error(uint8_t status, const char *where) {
-	fd_set_error(status, NULL, 0);
+	fd_set_error(0, status, NULL, 0);
 	archivefn_show_error_ex(where);
 }
 

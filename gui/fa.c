@@ -448,7 +448,8 @@ static uint64_t form_data_to_vln(form_data_t *data) {
 	return value;
 }
 
-static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
+static int fa_tlv_add_vln_ex(form_t *form, uint16_t tag, bool required,
+		uint32_t *v, uint8_t bit) {
 	form_data_t data;
 
 	if (!form_get_data(form, tag, 1, &data)) {
@@ -471,8 +472,17 @@ static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
 		fa_show_error(form, tag, "Неправильное значение");
 		return ret;
 	}
+
+	if (v != NULL)
+		*v |= 1 << bit;
+
 	return 0;
 }
+
+static int fa_tlv_add_vln(form_t *form, uint16_t tag, bool required) {
+	return fa_tlv_add_vln_ex(form, tag, required, NULL, 0);
+}
+
 
 static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 	form_data_t data;
@@ -560,7 +570,7 @@ LCheckLastDocNo:
 			status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
 			if (status != 0) {
 				//printf("#2: %d\n", status);
-				fd_set_error(status, err_info, err_info_len);
+				fd_set_error(doc_type, status, err_info, err_info_len);
 			} else {
 				//printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
 				if (ldi.last_nr != ldi.last_printed_nr) {
@@ -574,7 +584,7 @@ LCheckLastDocNo:
 					//printf("LD: status = %d\n", status);
 
 					if (status != 0)
-						fd_set_error(status, err_info, err_info_len);
+						fd_set_error(doc_type, status, err_info, err_info_len);
 				}
 			}
 		}
@@ -996,19 +1006,25 @@ void fa_cheque_corr() {
 			ffd_tlv_stlv_end() != 0)
 			continue;
 
+		uint32_t vat_flags = 0;
 		if (fa_tlv_add_vln(form, 1031, true) != 0 ||
 			fa_tlv_add_vln(form, 1081, true) != 0 ||
 			fa_tlv_add_vln(form, 1215, true) != 0 ||
 			fa_tlv_add_vln(form, 1216, true) != 0 ||
 			fa_tlv_add_vln(form, 1217, true) != 0 ||
 
-			fa_tlv_add_vln(form, 1102, false) != 0 ||
-			fa_tlv_add_vln(form, 1103, false) != 0 ||
-			fa_tlv_add_vln(form, 1104, false) != 0 ||
-			fa_tlv_add_vln(form, 1105, false) != 0 ||
-			fa_tlv_add_vln(form, 1106, false) != 0 ||
-			fa_tlv_add_vln(form, 1107, false) != 0)
+			fa_tlv_add_vln_ex(form, 1102, false, &vat_flags, 0) != 0 ||
+			fa_tlv_add_vln_ex(form, 1103, false, &vat_flags, 1) != 0 ||
+			fa_tlv_add_vln_ex(form, 1104, false, &vat_flags, 2) != 0 ||
+			fa_tlv_add_vln_ex(form, 1105, false, &vat_flags, 3) != 0 ||
+			fa_tlv_add_vln_ex(form, 1106, false, &vat_flags, 4) != 0 ||
+			fa_tlv_add_vln_ex(form, 1107, false, &vat_flags, 5) != 0)
 			continue;
+
+		if (vat_flags == 0) {
+			fa_show_error(form, 1102, "Для данного документа должно быть заполнено хотя бы одно поле с НДС");
+			continue;
+		}
 
 		if (fa_tlv_add_cashier(form) != 0)
 			continue;
@@ -1208,7 +1224,7 @@ void fa_print_last_doc() {
 	fdo_resume();
 	printf("status = 0x%x\n", status);
 	if (status != 0) {
-		fd_set_error(status, err_info, err_info_len);
+		fd_set_error(0, status, err_info, err_info_len);
 	} else if (ldi.last_type != 0) {
 		if (message_box("Уведомление",
 			"Будет напечатан последний сформированный документ.\n"
@@ -1221,7 +1237,7 @@ void fa_print_last_doc() {
 			status = fd_print_last_doc(ldi.last_type);
 
 			if (status != 0) {
-				fd_set_error(status, err_info, err_info_len);
+				fd_set_error(ldi.last_type, status, err_info, err_info_len);
 			}
 		}
 	} else

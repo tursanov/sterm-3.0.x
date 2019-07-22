@@ -206,9 +206,13 @@ static void set_fn_error(char *s, uint8_t *err_info, size_t err_info_len)
     }
 }
 
-static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
+static void set_tag_error(uint8_t doc_type, char *s, uint8_t *err_info, size_t err_info_len) {
 	uint16_t tag = *(uint16_t *)err_info;
-    s += sprintf(s, "\nтэг %.4d (%s)\n", tag, tags_get_text(tag));
+	if ((doc_type == 31 || doc_type == 41) && tag == 1102 && err_info[2] == 0x0c) {
+		s += sprintf(s, "\nДля данного документа необходимо заполнить хотя бы одно из значений НДС");
+		return;
+	} else
+	    s += sprintf(s, "\nтэг %.4d (%s)\n", tag, tags_get_text(tag));
     switch (err_info[2]) {
         case 0x01: // ERR_TAG_UNKNOWN
             sprintf(s, "%s", "Неизвестный для данного документа TLV");
@@ -244,7 +248,7 @@ static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
             sprintf(s, "%s", "Недопустимый для данного документа TLV");
             break;
         case 0x0c: // ERR_TAG_MISS
-            sprintf(s, "%s", "Необходимый для данного документа TLV не был передан");
+	        sprintf(s, "%s", "Необходимый для данного документа TLV не был передан");
             break;
         case 0x0d: // ERR_TAG_INVALID_VALUE
             sprintf(s, "%s", "Неправильное значение TLV");
@@ -267,7 +271,7 @@ static void set_tag_error(char *s, uint8_t *err_info, size_t err_info_len) {
     }
 }
 
-void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len) 
+void fd_set_error(uint8_t doc_type, uint8_t status, uint8_t *err_info, size_t err_info_len) 
 {
 	char *s = last_error;
 	
@@ -466,7 +470,7 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x80: // STATUS_INVALID_TAG
 			s += sprintf(s, "%s", "Ошибка в TLV ");
             if (err_info_len > 0)
-                set_tag_error(s, err_info, err_info_len);
+                set_tag_error(doc_type, s, err_info, err_info_len);
 			break;
 		case 0x81: // STATUS_GET_TIME
 			sprintf(s, "%s", "Ошибка при получении даты/времени");
@@ -507,7 +511,7 @@ void fd_set_error(uint8_t status, uint8_t *err_info, size_t err_info_len)
 		case 0x8c: // STATUS_INVALID_TAG_IN_PATTERN
 			s += sprintf(s, "%s", "Неправильный тэг в шаблоне ");
             if (err_info_len > 0)
-                set_tag_error(s, err_info, err_info_len);
+                set_tag_error(doc_type, s, err_info, err_info_len);
 			break;
 		case 0x8d: // STATUS_SHIFT_ALREADY_CLOSED
 			sprintf(s, "%s", "Смена уже закрыта");
@@ -546,7 +550,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 
 	err_info_len = sizeof(err_info);
 	if ((ret = kkt_begin_doc(doc_type, err_info, &err_info_len)) != 0) {
-		fd_set_error(ret, err_info, err_info_len);
+		fd_set_error(doc_type, ret, err_info, err_info_len);
 		printf("kkt_begin_doc->ret = %.2x\n", ret);
 		fdo_resume();
 		return ret;
@@ -573,7 +577,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 				printf("tlv_buf_size = %d\n", tlv_buf_size);
 
 				if ((ret = kkt_send_doc_data(tlv_buf, tlv_buf_size, err_info, &err_info_len)) != 0) {
-					fd_set_error(ret, err_info, err_info_len);
+					fd_set_error(doc_type, ret, err_info, err_info_len);
 					printf("i = %d, kkt_send_doc_data->ret = %.2x\n", i, ret);
 
 					if (ret == 0x80 || ret == 0x8c) {
@@ -629,7 +633,7 @@ int fd_create_doc(uint8_t doc_type, const uint8_t *pattern_footer, size_t patter
 	err_info_len = sizeof(err_info);
 	if ((ret = kkt_end_doc(doc_type, pattern, pattern_size, timeout_factor,
 			&di, err_info, &err_info_len)) != 0) {
-		fd_set_error(ret, err_info, err_info_len);
+		fd_set_error(doc_type, ret, err_info, err_info_len);
 		printf("kkt_end_doc->ret = %.2x, err_info_len = %d\n", ret, err_info_len);
 
 		if (ret == 0x80 || ret == 0x8c) {
@@ -678,7 +682,7 @@ int fd_print_last_doc(uint8_t doc_type) {
 
 	if ((ret = kkt_print_last_doc(doc_type, pattern, pattern_size, &lpi,
 					err_info, &err_info_len)) != 0) {
-		fd_set_error(ret, err_info, err_info_len);
+		fd_set_error(doc_type, ret, err_info, err_info_len);
 
 		if (ret == 0x80 || ret == 0x8c) {
 			if (err_info_len > 0) {
@@ -721,7 +725,7 @@ int fd_print_doc(uint8_t doc_type, uint32_t doc_no) {
 
 	if ((ret = kkt_print_doc(doc_no, pattern, pattern_size, &lpi,
 					err_info, &err_info_len)) != 0) {
-		fd_set_error(ret, err_info, err_info_len);
+		fd_set_error(doc_type, ret, err_info, err_info_len);
 
 		if (ret == 0x80 || ret == 0x8c) {
 			if (err_info_len > 0) {

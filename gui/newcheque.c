@@ -436,7 +436,7 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 	bool ret = false;
 
 	if ((status = kkt_get_doc_stlv(doc_no, &doc_type, &tlv_size)) != 0) {
-		fd_set_error(status, NULL, 0);
+		fd_set_error(0, status, NULL, 0);
 		show_error_ex(win, "Ошибка при получении документа из ФН");
 		return false;
 	}
@@ -453,7 +453,7 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 	}
 
 	if ((status = kkt_read_doc_tlv(buf, &tlv_size)) != 0) {
-		fd_set_error(status, NULL, 0);
+		fd_set_error(0, status, NULL, 0);
 		show_error_ex(win, "Ошибка при чтении TLV из ФН");
 		goto LOut;
 	}

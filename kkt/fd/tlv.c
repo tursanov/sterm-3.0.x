@@ -56,6 +56,7 @@ void ffd_tlv_reset()
 {
 	tlv_size = 0;
 	tlv = (ffd_tlv_t *)tlv_data;
+	stlv = NULL;
 }
 
 int ffd_stlv_add_length(size_t size) {
