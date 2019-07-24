@@ -47,7 +47,7 @@ static const char * str_vats[] =
 	"„‘ 10/110",
 	"„‘ 0%",
 	"„‘ … ‹€ƒ€…’‘Ÿ",
-	"… Ÿ‚‹Ÿ…’‘Ÿ …„Œ…’Œ €‹ƒ‹†…ˆŸ"
+	"… „‹…†ˆ’ €‹ƒ‹†…ˆ „‘"
 };
 
 int article_get_text(void *obj, int index, char *text, size_t text_size) {

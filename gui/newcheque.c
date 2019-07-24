@@ -112,7 +112,7 @@ static newcheque_t newcheque = {
 	.agent_data = NULL
 };
 
-extern bool check_phone_or_email(const char *pe);
+extern bool check_phone_or_email(const char *pe, bool allowNone);
 
 
 /*static double cheque_article_sum(cheque_article_t *ca) {
@@ -775,7 +775,8 @@ bool newcheque_print(window_t *w) {
 	window_get_data(w, 9999, 1, &post);
 	window_get_data(w, 1203, 1, &inn);
 
-	if (newcheque.phone_or_email && newcheque.phone_or_email[0] && !check_phone_or_email(newcheque.phone_or_email)) {
+	if (newcheque.phone_or_email && newcheque.phone_or_email[0] && 
+			!check_phone_or_email(newcheque.phone_or_email, true)) {
 		window_show_error(w, 1008, "Номер тел. или e-mail имеют недопустимый формат.\n"
 			"Пример ввода: +71111111111 или name@mail.ru");
 		return false;

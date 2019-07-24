@@ -554,8 +554,14 @@ static bool check_email(const char *s) {
 	return left > 0 && right > 0;
 }
 
-bool check_phone_or_email(const char *pe) {
-	return pe[0] == '+' ? check_phone(pe) : check_email(pe);
+bool check_phone_or_email(const char *pe, bool allowNone) {
+	if (pe[0] == '+')
+		return check_phone(pe);
+
+	if (allowNone && strcmp(pe, "none") == 0)
+		return true;
+
+	return check_email(pe);
 }
 
 static void select_phone_or_email() {
@@ -587,7 +593,7 @@ static void select_phone_or_email() {
 		form_data_t data;
 		form_get_data(form, 1008, 1, &data);
 
-		if (data.size > 0 && !check_phone_or_email((const char *)data.data)) {
+		if (data.size > 0 && !check_phone_or_email((const char *)data.data, false)) {
 			message_box("Ошибка", "Номер тел. или e-mail имеют недопустимый формат.\n"
 				"Пример ввода: +71111111111 или name@mail.ru", dlg_yes, 0, al_center);
 			form_draw(form);
