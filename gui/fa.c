@@ -500,14 +500,21 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 		return 0;
 	}
 
+	printf("data.data: %s\n", (const char *)data.data);
+
 	struct tm tm;
+
+	memset(&tm, 0, sizeof(tm));
+
 	char *s;
 	if ((s = strptime((const char *)data.data, "%d.%m.%Y", &tm)) == NULL || *s != 0) {
 		fa_show_error(form, tag, "Неправильное значение");
 		return -1;
 	}
 
-	time_t value = timelocal(&tm);
+	time_t value = timegm(&tm);
+
+	printf("time: %d\n", value);
 
 	int ret;
 	if ((ret = ffd_tlv_add_unix_time(tag, value)) != 0) {

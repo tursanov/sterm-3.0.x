@@ -7,21 +7,21 @@
 
 int ffd_tlv_vln_length(uint64_t value)
 {
-	if (value < 0xffll)
+	if (value <= 0xffll)
 		return 1;
-	if (value < 0xffffll)
+	if (value <= 0xffffll)
 		return 2;
-	if (value < 0xffffffll)
+	if (value <= 0xffffffll)
 		return 3;
-	if (value < 0xffffffffll)
+	if (value <= 0xffffffffll)
 		return 4;
-	if (value < 0xffffffffffll)
+	if (value <= 0xffffffffffll)
 		return 5;
-	if (value < 0xffffffffffffll)
+	if (value <= 0xffffffffffffll)
 		return 6;
-	if (value < 0xffffffffffffffll)
+	if (value <= 0xffffffffffffffll)
 		return 7;
-	if (value < 0xffffffffffffffffll)
+	if (value <= 0xffffffffffffffffll)
 		return 8;
 	return -1;
 }

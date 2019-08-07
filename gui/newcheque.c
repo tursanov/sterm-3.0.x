@@ -484,7 +484,7 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 			char text[32];
 			sprintf(text, "%u", fsign);
 			window_set_data(parent, 1192, 0, text, strlen(text));
-		} else if (tlv->tag == 1057 || 
+		} else if (tlv->tag == 1057 ||
 					tlv->tag == 1171 ||
 					tlv->tag == 1075 ||
 					tlv->tag == 1044 ||
