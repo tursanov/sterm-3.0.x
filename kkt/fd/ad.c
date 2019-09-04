@@ -1286,7 +1286,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                         bool present = (_kMask & mask) != 0;
 
                         if (i == 1)
-                            required = _k->o <= 2;
+                            required = _k->o == 1;
 
                         if (required && !present) {
                             printf("Обязательный атрибут K/@%c отсутствует\n",

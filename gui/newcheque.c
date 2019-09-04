@@ -76,7 +76,7 @@ static void cheque_article_tlv_init(cheque_article_t *ca) {
 				break;
 		}
 
-		ptr += FFD_TLV_SIZE(tlv); 
+		ptr += FFD_TLV_SIZE(tlv);
 	}
 }
 
