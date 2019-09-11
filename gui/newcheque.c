@@ -984,18 +984,38 @@ bool newcheque_print(window_t *w) {
 		switch (newcheque.pay_kind) {
 		case 0:
 			newcheque.dsum[0] = sum;
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 1:
 			newcheque.dsum[1] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 2:
 			newcheque.dsum[2] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 3:
 			newcheque.dsum[3] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 4:
 			newcheque.dsum[4] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] = 0;
 			break;
 		}
 
