@@ -43,7 +43,7 @@ static void archivefn_show_error_ex(const char *where) {
 	const char *error;
 	fd_get_last_error(&error);
 	snprintf(error_text, sizeof(error_text) - 1, "%s:\n%s", where, error_text);
-	message_box("Ошибка", error, dlg_yes, 0, al_center);
+	message_box("Ошибка", error_text, dlg_yes, 0, al_center);
 }
 
 static void archivefn_show_error(uint8_t status, const char *where) {
@@ -270,7 +270,7 @@ static bool archivefn_get_archive_doc() {
 	const char *doc_name = get_doc_name(fdi.doc_type);
 	out_printf("%s", doc_name);
 	print_hdr((struct kkt_report_hdr *)data);
-	
+
 	switch (fdi.doc_type) {
 		case REGISTRATION:
 		case RE_REGISTRATION:
@@ -334,7 +334,12 @@ static bool archivefn_get_doc() {
 	uint8_t *tlv;
 
 	if ((status = kkt_get_doc_stlv(doc_no, &doc_type, &tlv_size)) != 0) {
-		archivefn_show_error(status, "Ошибка при получении информации о документе");
+		if (status == 0x08) {
+			char text[128];
+			sprintf(text, "Документ N%d отсутствует в ФН", doc_no);
+			message_box("Ошибка", text, dlg_yes, 0, al_center);
+		} else
+			archivefn_show_error(status, "Ошибка при получении информации о документе");
 		return false;
 	}
 
@@ -458,7 +463,7 @@ int archivefn_execute() {
 			window_show_error(win, 1040, "Данное значение поля \"Номер документа\" недопустимо");
 			continue;
 		}
-		
+
 		window_set_data(win, 9997, 0, (const void *)-1, 0);
 
 		if (!archivefn_get_data())
