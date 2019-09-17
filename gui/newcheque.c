@@ -859,7 +859,7 @@ bool newcheque_print(window_t *w) {
 				ffd_tlv_add_string(1030, ca->article->name);
 				ffd_tlv_add_vln(1079, ca->price_per_unit);
 				ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
-				if (ca->article->vat_rate < 6)
+				if (ca->article->vat_rate < 7)
 					ffd_tlv_add_uint8(1199, ca->article->vat_rate);
 				if (agent != NULL)
 					ffd_tlv_add_fixed_string(1226, agent->inn, 12);

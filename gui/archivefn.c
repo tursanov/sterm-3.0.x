@@ -71,7 +71,7 @@ static void add_text_to_listbox(const char *text) {
 				for (int i = 0; i < shift; i++)
 					*p++ = ' ';
 			}
-			
+
 			memcpy(p, start, size);
 			txt[l] = 0;
 			list_add(&output, txt);
@@ -270,7 +270,7 @@ static bool archivefn_get_archive_doc() {
 	const char *doc_name = get_doc_name(fdi.doc_type);
 	out_printf("%s", doc_name);
 	print_hdr((struct kkt_report_hdr *)data);
-	
+
 	switch (fdi.doc_type) {
 		case REGISTRATION:
 		case RE_REGISTRATION:
@@ -342,7 +342,7 @@ static bool archivefn_get_doc() {
 
 	tlv = (uint8_t *)malloc(tlv_size);
 	if (!tlv) {
-		message_box("Ошибка", "Ошибка при выделении памти", dlg_yes, 0, al_center);
+		message_box("Ошибка", "Ошибка при выделении памяти", dlg_yes, 0, al_center);
 		return false;
 	}
 
@@ -458,7 +458,7 @@ int archivefn_execute() {
 			window_show_error(win, 1040, "Данное значение поля \"Номер документа\" недопустимо");
 			continue;
 		}
-		
+
 		window_set_data(win, 9997, 0, (const void *)-1, 0);
 
 		if (!archivefn_get_data())
