@@ -49,7 +49,13 @@ typedef struct {
 	list_t articles;
 	size_t agent_data_size;
 	uint8_t *agent_data;
+	uint64_t dsum[5];
 } newcheque_t;
+
+extern uint8_t reg_tax_systems;
+static const char * s_tax_systems[6];
+static uint8_t b_tax_systems[6];
+static int s_tax_system_count;
 
 static cheque_article_t *cheque_article_new() {
 	cheque_article_t *ca =  (cheque_article_t *)malloc(sizeof(cheque_article_t));
@@ -109,7 +115,8 @@ static newcheque_t newcheque = {
 	.sum = 0,
 	.articles = { NULL, NULL, 0, (list_item_delete_func_t)cheque_article_free },
 	.agent_data_size = 0,
-	.agent_data = NULL
+	.agent_data = NULL,
+	.dsum = { 0, 0, 0, 0, 0 }
 };
 
 extern bool check_phone_or_email(const char *pe, bool allowNone);
@@ -199,7 +206,12 @@ static bool newcheque_save() {
 			SAVE_INT(fd, newcheque.pay_kind) == 0 &&
 			save_string(fd, newcheque.add_info) == 0 &&
 			save_list(fd, &newcheque.articles, (list_item_func_t)cheque_article_save) == 0 &&
-			save_data(fd, newcheque.agent_data, newcheque.agent_data_size) == 0;
+			save_data(fd, newcheque.agent_data, newcheque.agent_data_size) == 0 &&
+			SAVE_INT(fd, newcheque.dsum[0]) &&
+			SAVE_INT(fd, newcheque.dsum[1]) &&
+			SAVE_INT(fd, newcheque.dsum[2]) &&
+			SAVE_INT(fd, newcheque.dsum[3]) &&
+			SAVE_INT(fd, newcheque.dsum[4]);
 
 		s_close(fd);
 	}
@@ -215,7 +227,12 @@ bool newcheque_load() {
 			LOAD_INT(fd, newcheque.pay_kind) == 0 &&
 			load_string(fd, &newcheque.add_info) == 0 &&
 			load_list(fd, &newcheque.articles, (load_item_func_t)cheque_article_load) == 0 &&
-			load_data(fd, (void **)&newcheque.agent_data, &newcheque.agent_data_size) == 0;
+			load_data(fd, (void **)&newcheque.agent_data, &newcheque.agent_data_size) == 0 &&
+			LOAD_INT(fd, newcheque.dsum[0]) == 0 &&
+			LOAD_INT(fd, newcheque.dsum[1]) == 0 &&
+			LOAD_INT(fd, newcheque.dsum[2]) == 0 &&
+			LOAD_INT(fd, newcheque.dsum[3]) == 0 &&
+			LOAD_INT(fd, newcheque.dsum[4]) == 0;
 		s_close(fd);
 	}
 
@@ -464,6 +481,14 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 		newcheque.agent_data = NULL;
 	}
 
+	newcheque.dsum[0] = 
+	newcheque.dsum[1] = 
+	newcheque.dsum[2] = 
+	newcheque.dsum[3] = 
+	newcheque.dsum[4] = 0;
+
+	int pay_kind = -1;
+
 	for (uint8_t *ptr = buf, *end = buf + tlv_size; ptr < end; ) {
 		ffd_tlv_t *tlv = (ffd_tlv_t *)ptr;
 
@@ -508,11 +533,47 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 			newcheque.agent_data_size = new_size;
 		} else if (tlv->tag == 1008) {
 			window_set_data(parent, 1008, 0, FFD_TLV_DATA(tlv), tlv->length);
+		} else if (tlv->tag == 1054) {
+			newcheque.pay_type = FFD_TLV_DATA_AS_UINT8(tlv);
+			window_set_data(parent, 1054, 0, (const void *)newcheque.pay_type - 1, 0);
+		} else if (tlv->tag == 1055) {
+			uint8_t tax_system = FFD_TLV_DATA_AS_UINT8(tlv);
+
+			for (int i = 0; i < s_tax_system_count; i++) {
+				if (b_tax_systems[i] == tax_system) {
+					newcheque.tax_system = i;
+					window_set_data(parent, 1055, 0, (const void *)i, 0);
+					break;
+				}
+			}
+		} else if (tlv->tag == 1031) {
+			newcheque.dsum[0] = ffd_tlv_data_as_vln(tlv);
+			if (newcheque.dsum[0] > 0)
+				pay_kind = (pay_kind < 0) ? 0 : 5;
+		} else if (tlv->tag == 1081) {
+			newcheque.dsum[1] = ffd_tlv_data_as_vln(tlv);
+			if (newcheque.dsum[1] > 0)
+				pay_kind = (pay_kind < 0) ? 1 : 5;
+		} else if (tlv->tag == 1215) {
+			newcheque.dsum[2] = ffd_tlv_data_as_vln(tlv);
+			if (newcheque.dsum[2] > 0)
+				pay_kind = (pay_kind < 0) ? 2 : 5;
+		} else if (tlv->tag == 1216) {
+			newcheque.dsum[3] = ffd_tlv_data_as_vln(tlv);
+			if (newcheque.dsum[3] > 0)
+				pay_kind = (pay_kind < 0) ? 3 : 5;
+		} else if (tlv->tag == 1217) {
+			newcheque.dsum[4] = ffd_tlv_data_as_vln(tlv);
+			if (newcheque.dsum[4] > 0)
+				pay_kind = (pay_kind < 0) ? 4 : 5;
 		}
 
 		ptr += FFD_TLV_SIZE(tlv);
 	}
 	ret = true;
+
+	newcheque.pay_kind = pay_kind < 0 ? 0 : pay_kind;
+	window_set_data(parent, 9998, 0, (const void *)newcheque.pay_kind, 0);
 
 LOut:
 	free(buf);
@@ -678,29 +739,52 @@ static bool newcheque_distribute_sum(window_t *w, uint64_t sum[5]) {
 	window_add_label(win, TEXT_START + 350, y, align_left, text);
 	y += height + YGAP*2;
 
+	if (sum[0] > 0)
+		sprintf(text, "%.1llu.%.2llu", sum[0] / 100, sum[0] % 100);
+	else
+		text[0] = 0;
 	window_add_label(win, TEXT_START, y, align_left, "Наличными:");
 	window_add_control(win,
-		edit_create(1031, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1031, screen, TEXT_START + 350, y, width, th + 8, 
+			text, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
+
+	if (sum[1] > 0)
+		sprintf(text, "%.1llu.%.2llu", sum[1] / 100, sum[1] % 100);
+	else
+		text[0] = 0;
 	window_add_label(win, TEXT_START, y, align_left, "Безналичными:");
 	window_add_control(win,
-		edit_create(1081, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1081, screen, TEXT_START + 350, y, width, th + 8, text, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
+	if (sum[2] > 0)
+		sprintf(text, "%.1llu.%.2llu", sum[2] / 100, sum[2] % 100);
+	else
+		text[0] = 0;
 	window_add_label(win, TEXT_START, y, align_left, "В зачет ранее внесенных средств:");
 	window_add_control(win,
-		edit_create(1215, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1215, screen, TEXT_START + 350, y, width, th + 8, text, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
+	if (sum[3] > 0)
+		sprintf(text, "%.1llu.%.2llu", sum[3] / 100, sum[3] % 100);
+	else
+		text[0] = 0;
 	window_add_label(win, TEXT_START, y, align_left, "Постоплатой (кредит):");
 	window_add_control(win,
-		edit_create(1216, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1216, screen, TEXT_START + 350, y, width, th + 8, text, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
+
+	if (sum[4] > 0)
+		sprintf(text, "%.1llu.%.2llu", sum[4] / 100, sum[4] % 100);
+	else
+		text[0] = 0;
 	window_add_label(win, TEXT_START, y, align_left, "Встречным предоставлением:");
 	window_add_control(win,
-		edit_create(1217, screen, TEXT_START + 350, y, width, th + 8, NULL, EDIT_INPUT_TYPE_MONEY, 16));
+		edit_create(1217, screen, TEXT_START + 350, y, width, th + 8, text, EDIT_INPUT_TYPE_MONEY, 16));
 	y += height + YGAP;
 
 	x = (DISCX - (BUTTON_WIDTH + GAP)*2 - GAP) / 2;
@@ -760,16 +844,10 @@ static void newcheque_show_op(window_t *w, const char *title) {
 	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
 }
 
-extern uint8_t reg_tax_systems;
-static const char * s_tax_systems[6];
-static uint8_t b_tax_systems[6];
-static int s_tax_system_count;
-
 bool newcheque_print(window_t *w) {
 	data_t cashier;
 	data_t post;
 	data_t inn;
-	uint64_t dsum[5] = { 0, 0, 0, 0, 0};
 
 	window_get_data(w, 1021, 1, &cashier);
 	window_get_data(w, 9999, 1, &post);
@@ -798,7 +876,7 @@ bool newcheque_print(window_t *w) {
 		return false;
 	}
 
-	if (newcheque.pay_kind == 4 && !newcheque_distribute_sum(w, dsum))
+	if (newcheque.pay_kind == 5 && !newcheque_distribute_sum(w, newcheque.dsum))
 		return false;
 
 	while (newcheque.articles.count > 0) {
@@ -905,24 +983,47 @@ bool newcheque_print(window_t *w) {
 
 		switch (newcheque.pay_kind) {
 		case 0:
-			dsum[0] = sum;
+			newcheque.dsum[0] = sum;
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 1:
-			dsum[1] = sum;
+			newcheque.dsum[1] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 2:
-			dsum[2] = sum;
+			newcheque.dsum[2] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[3] =
+			newcheque.dsum[4] = 0;
 			break;
 		case 3:
-			dsum[4] = sum;
+			newcheque.dsum[3] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[4] = 0;
+			break;
+		case 4:
+			newcheque.dsum[4] = sum;
+			newcheque.dsum[0] =
+			newcheque.dsum[1] =
+			newcheque.dsum[2] =
+			newcheque.dsum[3] = 0;
 			break;
 		}
 
-		ffd_tlv_add_vln(1031, dsum[0]);
-		ffd_tlv_add_vln(1081, dsum[1]);
-		ffd_tlv_add_vln(1215, dsum[2]);
-		ffd_tlv_add_vln(1216, dsum[3]);
-		ffd_tlv_add_vln(1217, dsum[4]);
+		ffd_tlv_add_vln(1031, newcheque.dsum[0]);
+		ffd_tlv_add_vln(1081, newcheque.dsum[1]);
+		ffd_tlv_add_vln(1215, newcheque.dsum[2]);
+		ffd_tlv_add_vln(1216, newcheque.dsum[3]);
+		ffd_tlv_add_vln(1217, newcheque.dsum[4]);
 
 /*		printf("dsum[0] = %llu\n", dsum[0]);
 		printf("dsum[1] = %llu\n", dsum[1]);
@@ -953,6 +1054,13 @@ bool newcheque_print(window_t *w) {
 			newcheque.add_info = NULL;
 			window_set_data(w, 1192, 0, "", 0);
 		}
+
+		newcheque.dsum[0] =
+		newcheque.dsum[1] =
+		newcheque.dsum[2] =
+		newcheque.dsum[3] =
+		newcheque.dsum[4];
+
 		newcheque_save();
 		window_draw(w);
 		kbd_flush_queue();
@@ -995,6 +1103,7 @@ int newcheque_execute() {
 		"Наличные",
 		"Безналичные",
 		"В зачет ранее внесенных средств",
+		"Постоплата (кредит)",
 		"Встречным предоставлением",
 		"Распределение по видам оплаты"
 	};
