@@ -513,8 +513,12 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 	}
 
 	time_t value = timegm(&tm);
+	if (value == 0 || value == -1) {
+		fa_show_error(form, tag, "Неправильное значение. Формат ввода: ДД.ММ.ГГГГ");
+		return -1;
+	}
 
-	printf("time: %d\n", value);
+	printf("time: %ld\n", value);
 
 	int ret;
 	if ((ret = ffd_tlv_add_unix_time(tag, value)) != 0) {
