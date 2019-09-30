@@ -71,7 +71,7 @@ static void add_text_to_listbox(const char *text) {
 				for (int i = 0; i < shift; i++)
 					*p++ = ' ';
 			}
-			
+
 			memcpy(p, start, size);
 			txt[l] = 0;
 			list_add(&output, txt);
@@ -347,7 +347,7 @@ static bool archivefn_get_doc() {
 
 	tlv = (uint8_t *)malloc(tlv_size);
 	if (!tlv) {
-		message_box("Ошибка", "Ошибка при выделении памти", dlg_yes, 0, al_center);
+		message_box("Ошибка", "Ошибка при выделении памяти", dlg_yes, 0, al_center);
 		return false;
 	}
 
