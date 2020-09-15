@@ -6,6 +6,8 @@
 #include "sysdefs.h"
 #include "list.h"
 
+#define AD_VERSION	2
+
 struct C;
 struct L;
 struct K;
@@ -18,6 +20,9 @@ typedef struct L {
     int64_t t;      // Стоимость составляющей, включая НДС
     uint8_t n;      // Стоимость составляющей, включая НДС
     int64_t c;      // Величина НДС за составляющую
+	int64_t i;		// ИНИ поставщика
+	char *h;		// Номер телефона поставщика
+	char *z;		// Наименование поставщика
 } L;
 
 // создание составляющей
@@ -27,7 +32,8 @@ extern void L_destroy(L *l);
 // запись составляющей в файл
 extern int L_save(int fd, L *l);
 // загрузка составляющей из файла
-extern L *L_load(int fd);
+extern L *L_load_v1(int fd);
+extern L *L_load_v2(int fd);
 
 // номер документа
 typedef struct {
@@ -88,6 +94,7 @@ typedef struct K {
     uint8_t m;          // способ оплаты
     char *t;            // номер телефона пассажира
     char *e;            // адрес электронной посты пассажира
+	char *z;			// наименование договорного перевозчика
 } K;
 
 // создание информации о документе
@@ -106,7 +113,8 @@ extern int64_t K_get_sum(K *k);
 // запись документа в файл
 extern int K_save(int fd, K *k);
 // загрузка документа из файла
-extern K *K_load(int fd);
+extern K *K_load_v1(int fd);
+extern K *K_load_v2(int fd);
 
 // сумма
 typedef struct S {
@@ -119,7 +127,7 @@ typedef struct S {
 
 // чек
 typedef struct C {
-    list_t klist;       // список тэгов K
+    list_t klist;	// список тэгов K
     uint64_t p;     // ИНН переводчика
     char *h;        // телефон перевозчика
     uint8_t t1054;  // признак расчета
@@ -133,7 +141,11 @@ extern void C_destroy(C *c);
 extern bool C_addK(C *c, K *k);
 
 extern int C_save(int fd, C *c);
-extern C* C_load(int fd);
+
+// загрузка из файла
+extern C* C_load_v1(int fd);
+extern C* C_load_v2(int fd);
+
 void C_calc_sum(C *c);
 
 // данные кассира
@@ -147,7 +159,8 @@ typedef struct P1 {
 extern P1 *P1_create(void);
 extern void P1_destroy(P1 *p1);
 extern int P1_save(int fd, P1 *p1);
-extern P1* P1_load(int fd);
+extern P1* P1_load_v1(int fd);
+extern P1* P1_load_v2(int fd);
 
 // массив 64-битных величин
 typedef struct {
@@ -180,6 +193,7 @@ extern int string_array_add(string_array_t *array, const char *s, bool unique, i
 
 // Корзина фискального приложения
 typedef struct AD {
+	uint16_t version;	 // версия корзины
     P1* p1;              // данные кассира
     uint8_t t1055;
     char * t1086;

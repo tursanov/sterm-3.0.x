@@ -33,6 +33,14 @@ static int strcmp2(const char *s1, const char *s2) {
 
 #define COPYSTR(s) ((s) != NULL ? strdup(s) : NULL)
 
+static char *strcopy(char **old, char *_new)
+{
+	if (*old)
+		free(*old);
+	*old = _new != NULL ? strdup(_new) : NULL;
+	return *old;
+}
+
 void doc_no_init(doc_no_t *d, const char *s) {
 	d->s = COPYSTR(s);
 }
@@ -189,21 +197,29 @@ L *L_create(void) {
 void L_destroy(L *l) {
     if (l->s)
         free(l->s);
+    if (l->h)
+        free(l->h);
+    if (l->z)
+        free(l->z);
     free(l);
 }
 
 int L_save(int fd, L *l) {
-    if (save_string(fd, l->s) < 0 ||
-        SAVE_INT(fd, l->p) < 0 ||
-        SAVE_INT(fd, l->r) < 0 ||
-        SAVE_INT(fd, l->t) < 0 ||
-        SAVE_INT(fd, l->n) < 0 ||
-        SAVE_INT(fd, l->c) < 0)
+    if (save_string(fd, l->s) < 0
+			|| SAVE_INT(fd, l->p) < 0
+			|| SAVE_INT(fd, l->r) < 0
+			|| SAVE_INT(fd, l->t) < 0
+			|| SAVE_INT(fd, l->n) < 0
+			|| SAVE_INT(fd, l->c) < 0
+			// V2
+			|| SAVE_INT(fd, l->i) < 0
+			|| save_string(fd, l->h) < 0
+			|| save_string(fd, l->z) < 0)
         return -1;
     return 0;
 }
 
-L *L_load(int fd) {
+L *L_load_v1(int fd) {
     L *l = L_create();
     if (load_string(fd, &l->s) < 0 ||
         LOAD_INT(fd, l->p) < 0 ||
@@ -211,6 +227,25 @@ L *L_load(int fd) {
         LOAD_INT(fd, l->t) < 0 ||
         LOAD_INT(fd, l->n) < 0 ||
         LOAD_INT(fd, l->c) < 0) {
+        L_destroy(l);
+        return NULL;
+    }
+    return l;
+}
+
+L *L_load_v2(int fd) {
+    L *l = L_create();
+    if (load_string(fd, &l->s) < 0
+			|| LOAD_INT(fd, l->p) < 0
+			|| LOAD_INT(fd, l->r) < 0
+			|| LOAD_INT(fd, l->t) < 0
+			|| LOAD_INT(fd, l->n) < 0
+			|| LOAD_INT(fd, l->c) < 0
+			// V2
+			|| LOAD_INT(fd, l->i) < 0
+			|| load_string(fd, &l->h) < 0
+			|| load_string(fd, &l->z) < 0)
+	{
         L_destroy(l);
         return NULL;
     }
@@ -232,6 +267,8 @@ void K_destroy(K *k) {
         free(k->t);
     if (k->e)
         free(k->e);
+    if (k->z)
+        free(k->z);
 
 	doc_no_free(&k->d);
 	doc_no_free(&k->r);
@@ -276,14 +313,15 @@ K *K_divide(K *k, uint8_t p, int64_t *sum) {
 				//memset(&k1->llist, 0, sizeof(k1->llist));
 				k->llist.delete_func = (list_item_delete_func_t)L_destroy;
 
-				k1->o = k->o;          // Операция
+				k1->o = k->o;			// Операция
 				k1->a = k->a;
-				k1->p = k->p;          // ИНН перевозчика
+				k1->p = k->p;			// ИНН перевозчика
 
-				k1->h = COPYSTR(k->h); // телефон перевозчика
-				k1->m = k->m;          // способ оплаты
-				k1->t = COPYSTR(k->t);            // номер телефона пассажира
-				k1->e = COPYSTR(k->e);            // адрес электронной посты пассажира
+				k1->h = COPYSTR(k->h);	// телефон перевозчика
+				k1->m = k->m;			// способ оплаты
+				k1->t = COPYSTR(k->t);	// номер телефона пассажира
+				k1->e = COPYSTR(k->e);	// адрес электронной посты пассажира
+				k1->z = COPYSTR(k->z);	// информация о перевозчике
 
 				doc_no_copy(&k1->d, &k->d);
 				doc_no_copy(&k1->r, &k->r);
@@ -336,11 +374,14 @@ static int64_t K_calc_total_sum(K *k) {
 }
 
 static int L_compare(void *arg, L *l1, L *l2) {
-	if ((strcmp2(l1->s, l2->s) == 0 &&
+	if (strcmp2(l1->s, l2->s) == 0 &&
 		l1->r == l2->r &&
 		l1->t == l2->t &&
 		l1->n == l2->n &&
-		l1->c == l2->c))
+		l1->c == l2->c &&
+		l1->i == l2->i &&
+		strcmp2(l1->h, l2->h) == 0 &&
+		strcmp2(l1->z, l2->z) == 0)
 		return 0;
 	return 1;
 }
@@ -373,7 +414,8 @@ int K_save(int fd, K *k) {
         save_string(fd, k->h) < 0 ||
         SAVE_INT(fd, k->m) < 0 ||
         save_string(fd, k->t) < 0 ||
-        save_string(fd, k->e) < 0)
+        save_string(fd, k->e) < 0 ||
+        save_string(fd, k->z) < 0)
         return -1;
     return 0;
 }
@@ -388,9 +430,28 @@ static void K_after_add(K *k) {
 	}
 }
 
-K *K_load(int fd) {
+static void K_preprocess_L(K *k)
+{
+	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next)
+	{
+		L *l = LIST_ITEM(li3, L);
+		if (!l->z)
+		{
+			if (!l->h)
+				l->h = strdup("+70000000000");
+		}
+		else 
+		{
+			l->i = k->p;
+			strcopy(&l->h, k->h);
+			strcopy(&l->z, k->z);
+		}
+	}
+}
+
+K *K_load_v1(int fd) {
     K *k = K_create();
-    if (load_list(fd, &k->llist, (load_item_func_t)L_load) < 0 ||
+    if (load_list(fd, &k->llist, (load_item_func_t)L_load_v1) < 0 ||
             LOAD_INT(fd, k->o) < 0 ||
 			LOAD_INT(fd, k->a) < 0 ||
             doc_no_load(fd, &k->d) < 0 ||
@@ -412,6 +473,30 @@ K *K_load(int fd) {
     return k;
 }
 
+K *K_load_v2(int fd) {
+    K *k = K_create();
+    if (load_list(fd, &k->llist, (load_item_func_t)L_load_v2) < 0 ||
+            LOAD_INT(fd, k->o) < 0 ||
+			LOAD_INT(fd, k->a) < 0 ||
+            doc_no_load(fd, &k->d) < 0 ||
+			doc_no_load(fd, &k->r) < 0 ||
+			doc_no_load(fd, &k->i1) < 0 ||
+			doc_no_load(fd, &k->i2) < 0 ||
+			doc_no_load(fd, &k->i21) < 0 ||
+			doc_no_load(fd, &k->u) < 0 ||
+			op_doc_no_load(fd, &k->b) < 0 ||
+			LOAD_INT(fd, k->p) < 0 ||
+            load_string(fd, &k->h) < 0 ||
+            LOAD_INT(fd, k->m) < 0 ||
+            load_string(fd, &k->t) < 0 ||
+            load_string(fd, &k->e) < 0 ||
+            load_string(fd, &k->z) < 0) {
+        K_destroy(k);
+        return NULL;
+    }
+    K_after_add(k);
+    return k;
+}
 
 C* C_create(void) {
     C *c = (C *)malloc(sizeof(C));
@@ -461,9 +546,9 @@ int C_save(int fd, C *c) {
     return 0;
 }
 
-C * C_load(int fd) {
+C * C_load_v1(int fd) {
     C *c = C_create();
-    if (load_list(fd, &c->klist, (load_item_func_t)K_load) < 0 ||
+    if (load_list(fd, &c->klist, (load_item_func_t)K_load_v1) < 0 ||
             LOAD_INT(fd, c->p) < 0 ||
             load_string(fd, &c->h) < 0 ||
             LOAD_INT(fd, c->t1054) < 0 ||
@@ -474,6 +559,21 @@ C * C_load(int fd) {
     }
     return c;
 }
+
+C * C_load_v2(int fd) {
+    C *c = C_create();
+    if (load_list(fd, &c->klist, (load_item_func_t)K_load_v2) < 0 ||
+            LOAD_INT(fd, c->p) < 0 ||
+            load_string(fd, &c->h) < 0 ||
+            LOAD_INT(fd, c->t1054) < 0 ||
+            LOAD_INT(fd, c->t1055) < 0 ||
+            load_string(fd, &c->pe) < 0) {
+        C_destroy(c);
+        return NULL;
+    }
+    return c;
+}
+
 
 P1 *P1_create(void) {
     P1* p1 = (P1 *)malloc(sizeof(P1));
@@ -503,7 +603,19 @@ int P1_save(int fd, P1 *p1) {
     return 0;
 }
 
-P1* P1_load(int fd) {
+P1* P1_load_v1(int fd) {
+    P1 *p1 = P1_create();
+    if (load_string(fd, &p1->i) < 0 ||
+        load_string(fd, &p1->p) < 0 ||
+        load_string(fd, &p1->t) < 0 ||
+        load_string(fd, &p1->c) < 0)
+        return NULL;
+    printf("P1->i = %s\n, P1->p = %s, P1->t = %s, P1->c = %s\n",
+            p1->i, p1->p, p1->t, p1->c);
+    return p1;
+}
+
+P1* P1_load_v2(int fd) {
     P1 *p1 = P1_create();
     if (load_string(fd, &p1->i) < 0 ||
         load_string(fd, &p1->p) < 0 ||
@@ -663,10 +775,11 @@ int AD_save() {
         return -1;
     }
     
-    if (SAVE_INT(fd, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0 ||
-        (_ad->p1 != NULL && P1_save(fd, _ad->p1) < 0) ||
-        save_string(fd, _ad->t1086) < 0 ||
-        save_list(fd, &_ad->clist, (list_item_func_t)C_save) < 0)
+    if (SAVE_INT(fd, (uint8_t)AD_VERSION) < 0
+			|| SAVE_INT(fd, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0
+			|| (_ad->p1 != NULL && P1_save(fd, _ad->p1) < 0)
+			|| save_string(fd, _ad->t1086) < 0
+			|| save_list(fd, &_ad->clist, (list_item_func_t)C_save) < 0)
         ret = -1;
     else
         ret = 0;
@@ -689,14 +802,28 @@ int AD_load(uint8_t t1055, bool clear) {
         return -1;
     int ret;
     uint8_t hasP1 = 0;
-    
-    if (LOAD_INT(fd, hasP1) < 0 ||
-        (hasP1 && (_ad->p1 = P1_load(fd)) == NULL) ||
-        load_string(fd, &_ad->t1086) < 0 ||
-        load_list(fd, &_ad->clist, (load_item_func_t)C_load) < 0)
-        ret = -1;
-    else
-        ret = 0;
+
+	if (LOAD_INT(fd, hasP1) < 0)
+		ret = -1;
+	if (hasP1 < 2) // 1 версия корзины
+	{
+		printf("**** AD version 1 ****\n");
+		if ((hasP1 && (_ad->p1 = P1_load_v1(fd)) == NULL) ||
+			load_string(fd, &_ad->t1086) < 0 ||
+			load_list(fd, &_ad->clist, (load_item_func_t)C_load_v1) < 0)
+			ret = -1;
+		else
+			ret = 0;
+	} else if (hasP1 == 2) { // 2 версия корзины
+		printf("**** AD version 2 ****\n");
+		if (LOAD_INT(fd, hasP1) < 0
+				|| (hasP1 && (_ad->p1 = P1_load_v2(fd)) == NULL)
+				|| load_string(fd, &_ad->t1086) < 0
+				|| load_list(fd, &_ad->clist, (load_item_func_t)C_load_v2) < 0)
+			ret = -1;
+		else
+			ret = 0;
+	}
 
 	AD_calc_sum();
         
@@ -1011,6 +1138,8 @@ int AD_processO(K *k) {
 
     printf("process new K. K->o = %d\n", k->o);
 
+	K_preprocess_L(k);
+
     switch (k->o) {
         case 1:
 			doc_no_copy(&k->i1, &k->d);
@@ -1280,7 +1409,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 if (!check) {
                     AD_process(_k);
                 } else {
-                    const char tags[] = "ODRNPHMTE";
+                    const char tags[] = "ODRNPHMTEZ";
                     for (int i = 0, mask = 1; i < ASIZE(tags); i++, mask <<= 1) {
                         bool required = (REQUIRED_K_MASK & mask) != 0;
                         bool present = (_kMask & mask) != 0;
@@ -1357,6 +1486,20 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                     if ((ret = process_currency_value("L", name, val,
                                                       &_lMask, 0x20, &_l->c)) != 0)
                         return ret;
+				} else if (strcmp(name, "I") == 0) {
+                    if ((ret = check_str_len("L", name, val, 10, 12)) != 0 ||
+                        (ret = process_int_value("L", name, val, 0, INT64_MAX,
+                                                 &_lMask, 0x40, &v64)) != 0)
+                        return ret;
+                    _l->i = v64;
+                } else if (strcmp(name, "H") == 0 &&
+                    (ret = process_phone_value("L", name, val, &_lMask, 0x80,
+                                                &_l->h)) != 0) {
+                    return ret;
+                } else if (strcmp(name, "Z") == 0 &&
+                    (ret = process_string_value("L", name, val, 256, &_lMask, 0x100,
+                                                &_l->z)) != 0) {
+                    return ret;
                 }
             } else if (_k != NULL) {
                 if (strcmp(name, "O") == 0) {
@@ -1395,6 +1538,10 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 }  else if (strcmp(name, "E") == 0 &&
                             (ret = process_email_value("K", name, val,
                                                        &_kMask, 0x100, &_k->e)) != 0) {
+                    return ret;
+                } else if (strcmp(name, "Z") == 0 &&
+                    (ret = process_string_value("K", name, val, 256, &_kMask, 0x200,
+                                                &_k->z)) != 0) {
                     return ret;
                 }
             } else if (_p1 != NULL) {
