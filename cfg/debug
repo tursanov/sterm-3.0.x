@@ -29,7 +29,7 @@ option		__USE_NFSROOT__
 # Различные отладочные средства
 
 # Печать в stdout, а не на принтер
-option		__DEBUG_PRINT__
+#option		__DEBUG_PRINT__
 
 # Запись сообщений о работе с КЛ в специальный файл
 #option		__LOGDBG__

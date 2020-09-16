@@ -500,7 +500,7 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 		return 0;
 	}
 
-	printf("data.data: %s\n", (const char *)data.data);
+//	printf("data.data: %s\n", (const char *)data.data);
 
 	struct tm tm;
 
@@ -514,7 +514,7 @@ static int fa_tlv_add_unixtime(form_t *form, uint16_t tag, bool required) {
 
 	time_t value = timegm(&tm);
 
-	printf("time: %d\n", value);
+//	printf("time: %d\n", value);
 
 	int ret;
 	if ((ret = ffd_tlv_add_unix_time(tag, value)) != 0) {
