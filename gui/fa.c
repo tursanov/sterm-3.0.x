@@ -1104,10 +1104,11 @@ void fa_cheque() {
 			ffd_tlv_add_vln(1216, 0);
 			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
-			if (c->p != user_inn) {
+			//if (c->p != user_inn) {
+			if (C_is_agent_cheque(c, user_inn)) {
 				ffd_tlv_add_uint8(1057, 1 << 6);
 				char phone[19+1];
-				/*size_t size =*/ get_phone(c->h, phone);
+				get_phone(c->h, phone);
 				ffd_tlv_add_string(1171, phone);
 			}
 
@@ -1141,12 +1142,17 @@ void fa_cheque() {
 							printf("ADD 1200, %lld\n", l->c);
 							ffd_tlv_add_vln(1200, l->c);
 						}
-						if (c->p != user_inn) {
+
+						if (l->i == 0) {
+							if (!l->z || !l->z[0]) {
+								ffd_tlv_add_fixed_string(1226, "000000000000", 12);
+							}
+						} else if (l->i != user_inn) {
 							char inn[12+1];
 							if (c->p > 9999999999ll)
-								sprintf(inn, "%.12lld", c->p);
+								sprintf(inn, "%.12lld", l->i);
 							else
-								sprintf(inn, "%.10lld", c->p);
+								sprintf(inn, "%.10lld", l->i);
 							ffd_tlv_add_fixed_string(1226, inn, 12);
 						}
 						ffd_tlv_stlv_end();

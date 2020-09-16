@@ -574,6 +574,36 @@ C * C_load_v2(int fd) {
     return c;
 }
 
+bool C_is_agent_cheque(C *c, int64_t user_inn)
+{
+	// проверяем, что есть хотя бы один элемент L
+	if (!c->klist.head)
+		return false;
+	K *k = LIST_ITEM(c->klist.head, K);
+	if (!k->llist.head)
+		return false;
+
+	// проверяем, что ИНН первого элемента не равен user_inn
+	int64_t orig_inn = LIST_ITEM(k->llist.head, L)->i;
+	if (orig_inn == user_inn)
+		return false;
+
+	// проверяем, что все L имеют одинаковый ИНН
+	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next) {
+		K* k = LIST_ITEM(li1, K);
+		for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+			L *l = LIST_ITEM(li3, L);
+			int64_t inn = l->i;
+
+			if (inn != orig_inn)
+				return false;
+		}
+	}
+
+	return true;
+}
+
+
 
 P1 *P1_create(void) {
     P1* p1 = (P1 *)malloc(sizeof(P1));
