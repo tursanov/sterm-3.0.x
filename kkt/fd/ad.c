@@ -435,7 +435,7 @@ static void K_preprocess_L(K *k)
 	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next)
 	{
 		L *l = LIST_ITEM(li3, L);
-		if (!l->z)
+		if (l->z && l->z[0] != 0)
 		{
 			if (!l->h)
 				l->h = strdup("+70000000000");
