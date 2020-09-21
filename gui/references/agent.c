@@ -310,6 +310,32 @@ int agents_save() {
 	return ret;
 }
 
+agent_t* get_agent_by_id(int id) {
+	if (id < 0)
+		return NULL;
+
+	for (list_item_t *li = agents.head; li; li = li->next) {
+		agent_t *agent = LIST_ITEM(li, agent_t);
+		if (agent->n == id)
+			return agent;
+	}
+	return NULL;
+}
+
+int get_agent_id_by_index(int index) {
+	if (index == 0)
+		return -1;
+
+	int n = 1;
+	for (list_item_t *li = agents.head; li; li = li->next, n++) {
+		agent_t *agent = LIST_ITEM(li, agent_t);
+		if (n == index)
+			return agent->n;
+	}
+	return -1;
+}
+
+
 void fa_agents() {
 
 	lvform_column_t columns[] = {

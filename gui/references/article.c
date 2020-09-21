@@ -138,19 +138,6 @@ article_t* article_load(int fd) {
 	return a;
 }
 
-static int get_agent_id_by_index(int index) {
-	if (index == 0)
-		return -1;
-
-	int n = 1;
-	for (list_item_t *li = agents.head; li; li = li->next, n++) {
-		agent_t *agent = LIST_ITEM(li, agent_t);
-		if (n == index)
-			return agent->n;
-	}
-	return -1;
-}
-
 static bool process_article_edit(form_t *form, article_t *a) {
 	while (form_execute(form) == 1) {
 		form_data_t name;
@@ -196,7 +183,7 @@ static bool process_article_edit(form_t *form, article_t *a) {
 				a->pay_method = pay_method + 1;
 				a->vat_rate = vat_rate + 1;
 				a->pay_agent = get_agent_id_by_index(pay_agent);
-	
+
 				return true;
 			}
 		}
@@ -319,7 +306,7 @@ list_t articles = { NULL, NULL, 0, (list_item_delete_func_t)article_free };
 int articles_load() {
     int fd = s_open(ARTICLES_FILE_NAME, false);
 	int ret;
-    
+
     if (fd == -1) {
         return -1;
     }

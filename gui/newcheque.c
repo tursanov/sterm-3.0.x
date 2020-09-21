@@ -32,6 +32,7 @@
 
 typedef struct {
 	article_t *article;
+	agent_t *agent;
 	ffd_tlv_t *tlv;
 	const ffd_tlv_t *name;
 	ffd_fvln_t count;
@@ -402,14 +403,14 @@ static void article_new(window_t *parent) {
 		}
 
 		cheque_article_t *ca;
-		if (newcheque.articles.head) {
+/*		if (newcheque.articles.head) {
 			ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
 			if (ca->article == NULL || ca->article->pay_agent != a->pay_agent) {
 				window_show_error(win, 1059, 
 					"Нельзя добавлять в один чек товары (услуги) разных поставщиков");
 				continue;
 			}
-		}
+		}*/
 
 		ca = cheque_article_new();
 		ca->article = a;
@@ -844,6 +845,27 @@ static void newcheque_show_op(window_t *w, const char *title) {
 	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
 }
 
+static agent_t *get_newcheque_agent() {
+	bool first = true;
+	agent_t *cheque_agent = NULL;
+
+	for (list_item_t *li = newcheque.articles.head; li != NULL; li = li->next) {
+		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
+		int agent_id = ca->article != NULL ? ca->article->pay_agent : 0;
+		agent_t *agent = get_agent_by_id(agent_id);
+		ca->agent = agent;
+
+		if (first) {
+			cheque_agent = agent;
+			first = false;
+		} else if (agent != cheque_agent) {
+			cheque_agent = NULL;
+		}
+	}
+
+	return cheque_agent;
+}
+
 bool newcheque_print(window_t *w) {
 	data_t cashier;
 	data_t post;
@@ -879,22 +901,12 @@ bool newcheque_print(window_t *w) {
 	if (newcheque.pay_kind == 5 && !newcheque_distribute_sum(w, newcheque.dsum))
 		return false;
 
+
 	while (newcheque.articles.count > 0) {
 		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
 		article_group_params_t p = { ca->article ? ca->article->pay_agent : 0 };
 		uint64_t sum = 0;
-		agent_t *agent = NULL;
-
-		if (p.agent_id) {
-			for (list_item_t *li = agents.head; li; li = li->next) {
-				agent_t *a = LIST_ITEM(li, agent_t);
-				if (p.agent_id == a->n) {
-					agent = a;
-					break;
-				}
-			}
-		} else
-			agent = NULL;
+		agent_t *agent = get_newcheque_agent();
 
 		printf("cashier: %s\n", cashier_get_cashier());
 
@@ -931,7 +943,7 @@ bool newcheque_print(window_t *w) {
 						ffd_tlv_add(t);
 					p += FFD_TLV_SIZE(t);
 				}
-			} else if (ca->article->pay_agent == p.agent_id /*&& ca->article->tax_system == p.tax_system*/) {
+			} else {
 				printf("add new 1059\n");
 				ffd_tlv_add_uint8(1214, ca->article->pay_method);
 				ffd_tlv_add_string(1030, ca->article->name);
@@ -939,7 +951,7 @@ bool newcheque_print(window_t *w) {
 				ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
 				if (ca->article->vat_rate < 7)
 					ffd_tlv_add_uint8(1199, ca->article->vat_rate);
-				if (agent != NULL)
+				if (ca->agent != NULL)
 					ffd_tlv_add_fixed_string(1226, agent->inn, 12);
 			}
 			ffd_tlv_stlv_end();
