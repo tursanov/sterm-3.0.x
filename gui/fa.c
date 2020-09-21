@@ -1144,7 +1144,8 @@ void fa_cheque() {
 						}
 
 						if (l->i == 0) {
-							if (!l->z || !l->z[0]) {
+							// ¥á«¨ ˆ == 0, ­® ¥áâì l->z, §­ ç¨â ¯¥à¥¢®§ç¨ª ­¥ à®áá¨©áª¨©.
+							if (l->z && l->z[0] != 0) {
 								ffd_tlv_add_fixed_string(1226, "000000000000", 12);
 							}
 						} else if (l->i != user_inn) {
