@@ -311,7 +311,7 @@ int agents_save() {
 }
 
 agent_t* get_agent_by_id(int id) {
-	if (id < 0)
+	if (id <= 0)
 		return NULL;
 
 	for (list_item_t *li = agents.head; li; li = li->next) {

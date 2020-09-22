@@ -952,7 +952,7 @@ bool newcheque_print(window_t *w) {
 				if (ca->article->vat_rate < 7)
 					ffd_tlv_add_uint8(1199, ca->article->vat_rate);
 				if (ca->agent != NULL)
-					ffd_tlv_add_fixed_string(1226, agent->inn, 12);
+					ffd_tlv_add_fixed_string(1226, ca->agent->inn, 12);
 			}
 			ffd_tlv_stlv_end();
 			sum += ca->sum;
