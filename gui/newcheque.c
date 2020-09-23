@@ -901,182 +901,181 @@ bool newcheque_print(window_t *w) {
 	if (newcheque.pay_kind == 5 && !newcheque_distribute_sum(w, newcheque.dsum))
 		return false;
 
+	cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
+	article_group_params_t p = { ca->article ? ca->article->pay_agent : 0 };
+	uint64_t sum = 0;
+	agent_t *agent = get_newcheque_agent();
 
-	while (newcheque.articles.count > 0) {
-		cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
-		article_group_params_t p = { ca->article ? ca->article->pay_agent : 0 };
-		uint64_t sum = 0;
-		agent_t *agent = get_newcheque_agent();
+	printf("cashier: %s\n", cashier_get_cashier());
 
-		printf("cashier: %s\n", cashier_get_cashier());
+	ffd_tlv_reset();
+	ffd_tlv_add_string(1021, cashier_get_cashier());
+	const char *cashier_inn = cashier_get_inn();
+	if (cashier_inn[0])
+		ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
+	ffd_tlv_add_uint8(1054, newcheque.pay_type);
 
-		ffd_tlv_reset();
-		ffd_tlv_add_string(1021, cashier_get_cashier());
-		const char *cashier_inn = cashier_get_inn();
-		if (cashier_inn[0])
-			ffd_tlv_add_fixed_string(1203, cashier_inn, 12);
-		ffd_tlv_add_uint8(1054, newcheque.pay_type);
+	printf("p.tax_system = %d, p.agent = %d\n", newcheque.tax_system, p.agent_id);
 
-		printf("p.tax_system = %d, p.agent = %d\n", newcheque.tax_system, p.agent_id);
+	ffd_tlv_add_uint8(1055, b_tax_systems[newcheque.tax_system]);
+	if (newcheque.phone_or_email && newcheque.phone_or_email[0])
+		ffd_tlv_add_string(1008, newcheque.phone_or_email);
 
-		ffd_tlv_add_uint8(1055, b_tax_systems[newcheque.tax_system]);
-		if (newcheque.phone_or_email && newcheque.phone_or_email[0])
-			ffd_tlv_add_string(1008, newcheque.phone_or_email);
+	if (_ad->t1086 != NULL) {
+		ffd_tlv_stlv_begin(1084, 320);
+		ffd_tlv_add_string(1085, "’…Œˆ€‹");
+		ffd_tlv_add_string(1086, _ad->t1086);
+		ffd_tlv_stlv_end();
+	}
 
-		if (_ad->t1086 != NULL) {
-			ffd_tlv_stlv_begin(1084, 320);
-			ffd_tlv_add_string(1085, "’…Œˆ€‹");
-			ffd_tlv_add_string(1086, _ad->t1086);
-			ffd_tlv_stlv_end();
-		}
+	if (newcheque.add_info && newcheque.add_info[0])
+		ffd_tlv_add_string(1192, newcheque.add_info);
 
-		if (newcheque.add_info && newcheque.add_info[0])
-			ffd_tlv_add_string(1192, newcheque.add_info);
-
-		for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
-			cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
-			ffd_tlv_stlv_begin(1059, 1024);
-			if (ca->tlv) {
-				for (uint8_t *p = FFD_TLV_DATA(ca->tlv), *e = p + ca->tlv->length; p < e; ) {
-					ffd_tlv_t *t = (ffd_tlv_t *)p;
-					if (t->tag != 1043)
-						ffd_tlv_add(t);
-					p += FFD_TLV_SIZE(t);
-				}
-			} else {
-				printf("add new 1059\n");
-				ffd_tlv_add_uint8(1214, ca->article->pay_method);
-				ffd_tlv_add_string(1030, ca->article->name);
-				ffd_tlv_add_vln(1079, ca->price_per_unit);
-				ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
-				if (ca->article->vat_rate < 7)
-					ffd_tlv_add_uint8(1199, ca->article->vat_rate);
-				if (ca->agent != NULL)
-					ffd_tlv_add_fixed_string(1226, ca->agent->inn, 12);
+	for (list_item_t *li = newcheque.articles.head; li; li = li->next) {
+		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
+		ffd_tlv_stlv_begin(1059, 1024);
+		if (ca->tlv) {
+			for (uint8_t *p = FFD_TLV_DATA(ca->tlv), *e = p + ca->tlv->length; p < e; ) {
+				ffd_tlv_t *t = (ffd_tlv_t *)p;
+				if (t->tag != 1043)
+					ffd_tlv_add(t);
+				p += FFD_TLV_SIZE(t);
 			}
-			ffd_tlv_stlv_end();
-			sum += ca->sum;
-			printf("sum: %lld\n", ca->sum);
+		} else {
+			printf("add new 1059\n");
+			ffd_tlv_add_uint8(1214, ca->article->pay_method);
+			ffd_tlv_add_string(1030, ca->article->name);
+			ffd_tlv_add_vln(1079, ca->price_per_unit);
+			ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
+			if (ca->article->vat_rate < 7)
+				ffd_tlv_add_uint8(1199, ca->article->vat_rate);
+			if (ca->agent != NULL)
+				ffd_tlv_add_fixed_string(1226, ca->agent->inn, 12);
 		}
+		ffd_tlv_stlv_end();
+		sum += ca->sum;
+		printf("sum: %lld\n", ca->sum);
+	}
 
-		if (agent != NULL) {
-			ffd_tlv_add_uint8(1057, 1 << agent->pay_agent);
-			switch (agent->pay_agent) {
-				case 0:
-				case 1:
-					ffd_tlv_add_string(1075, agent->transfer_operator_phone);
-					ffd_tlv_add_string(1044, agent->pay_agent_operation);
-					ffd_tlv_add_string(1073, agent->pay_agent_phone);
-					ffd_tlv_add_string(1026, agent->money_transfer_operator_name);
-					ffd_tlv_add_string(1005, agent->money_transfer_operator_address);
-					ffd_tlv_add_fixed_string(1016, agent->money_transfer_operator_inn, 12);
-					ffd_tlv_add_string(1171, agent->supplier_phone);
-					break;
-				case 2:
-				case 3:
-					ffd_tlv_add_string(1073, agent->pay_agent_phone);
-					ffd_tlv_add_string(1174, agent->payment_processor_phone);
-					ffd_tlv_add_string(1171, agent->supplier_phone);
-					break;
-				case 4:
-				case 5:
-				case 6:
-					ffd_tlv_add_string(1171, agent->supplier_phone);
-					break;
-			}
-		} else if (newcheque.agent_data_size > 0) {
-			for (uint8_t *p = newcheque.agent_data,
-					*end = p + newcheque.agent_data_size; p < end; ) {
-				ffd_tlv_t *tlv = (ffd_tlv_t *)p;
-				ffd_tlv_add(tlv);
-				p += FFD_TLV_SIZE(tlv);
-			}
+	if (agent != NULL) {
+		ffd_tlv_add_uint8(1057, 1 << agent->pay_agent);
+		switch (agent->pay_agent) {
+			case 0:
+			case 1:
+				ffd_tlv_add_string(1075, agent->transfer_operator_phone);
+				ffd_tlv_add_string(1044, agent->pay_agent_operation);
+				ffd_tlv_add_string(1073, agent->pay_agent_phone);
+				ffd_tlv_add_string(1026, agent->money_transfer_operator_name);
+				ffd_tlv_add_string(1005, agent->money_transfer_operator_address);
+				ffd_tlv_add_fixed_string(1016, agent->money_transfer_operator_inn, 12);
+				ffd_tlv_add_string(1171, agent->supplier_phone);
+				break;
+			case 2:
+			case 3:
+				ffd_tlv_add_string(1073, agent->pay_agent_phone);
+				ffd_tlv_add_string(1174, agent->payment_processor_phone);
+				ffd_tlv_add_string(1171, agent->supplier_phone);
+				break;
+			case 4:
+			case 5:
+			case 6:
+				ffd_tlv_add_string(1171, agent->supplier_phone);
+				break;
 		}
-
-		switch (newcheque.pay_kind) {
-		case 0:
-			newcheque.dsum[0] = sum;
-			newcheque.dsum[1] =
-			newcheque.dsum[2] =
-			newcheque.dsum[3] =
-			newcheque.dsum[4] = 0;
-			break;
-		case 1:
-			newcheque.dsum[1] = sum;
-			newcheque.dsum[0] =
-			newcheque.dsum[2] =
-			newcheque.dsum[3] =
-			newcheque.dsum[4] = 0;
-			break;
-		case 2:
-			newcheque.dsum[2] = sum;
-			newcheque.dsum[0] =
-			newcheque.dsum[1] =
-			newcheque.dsum[3] =
-			newcheque.dsum[4] = 0;
-			break;
-		case 3:
-			newcheque.dsum[3] = sum;
-			newcheque.dsum[0] =
-			newcheque.dsum[1] =
-			newcheque.dsum[2] =
-			newcheque.dsum[4] = 0;
-			break;
-		case 4:
-			newcheque.dsum[4] = sum;
-			newcheque.dsum[0] =
-			newcheque.dsum[1] =
-			newcheque.dsum[2] =
-			newcheque.dsum[3] = 0;
-			break;
+	} else if (newcheque.agent_data_size > 0) {
+		for (uint8_t *p = newcheque.agent_data,
+				*end = p + newcheque.agent_data_size; p < end; ) {
+			ffd_tlv_t *tlv = (ffd_tlv_t *)p;
+			ffd_tlv_add(tlv);
+			p += FFD_TLV_SIZE(tlv);
 		}
+	}
 
-		ffd_tlv_add_vln(1031, newcheque.dsum[0]);
-		ffd_tlv_add_vln(1081, newcheque.dsum[1]);
-		ffd_tlv_add_vln(1215, newcheque.dsum[2]);
-		ffd_tlv_add_vln(1216, newcheque.dsum[3]);
-		ffd_tlv_add_vln(1217, newcheque.dsum[4]);
-
-/*		printf("dsum[0] = %llu\n", dsum[0]);
-		printf("dsum[1] = %llu\n", dsum[1]);
-		printf("dsum[2] = %llu\n", dsum[2]);
-		printf("dsum[3] = %llu\n", dsum[3]);
-		printf("dsum[4] = %llu\n", dsum[4]);*/
-
-		cashier_save();
-
-		newcheque_show_op(w, "ˆ¤¥â ¯¥ç âì ç¥ª ...");
-
-		if (!fa_create_doc(CHEQUE, NULL, 0, NULL, NULL))
-			return false;
-
-		list_remove_if(&newcheque.articles, &p, (list_item_func_t)remove_articles);
-
-		newcheque.sum -= sum;
-		newcheque_update_sum(w, false);
-
-		if (newcheque.agent_data_size > 0) {
-			newcheque.agent_data_size = 0;
-			free(newcheque.agent_data);
-			newcheque.agent_data = NULL;
-		}
-
-		if (newcheque.add_info) {
-			free(newcheque.add_info);
-			newcheque.add_info = NULL;
-			window_set_data(w, 1192, 0, "", 0);
-		}
-
-		newcheque.dsum[0] =
+	switch (newcheque.pay_kind) {
+	case 0:
+		newcheque.dsum[0] = sum;
 		newcheque.dsum[1] =
 		newcheque.dsum[2] =
 		newcheque.dsum[3] =
-		newcheque.dsum[4];
-
-		newcheque_save();
-		window_draw(w);
-		kbd_flush_queue();
+		newcheque.dsum[4] = 0;
+		break;
+	case 1:
+		newcheque.dsum[1] = sum;
+		newcheque.dsum[0] =
+		newcheque.dsum[2] =
+		newcheque.dsum[3] =
+		newcheque.dsum[4] = 0;
+		break;
+	case 2:
+		newcheque.dsum[2] = sum;
+		newcheque.dsum[0] =
+		newcheque.dsum[1] =
+		newcheque.dsum[3] =
+		newcheque.dsum[4] = 0;
+		break;
+	case 3:
+		newcheque.dsum[3] = sum;
+		newcheque.dsum[0] =
+		newcheque.dsum[1] =
+		newcheque.dsum[2] =
+		newcheque.dsum[4] = 0;
+		break;
+	case 4:
+		newcheque.dsum[4] = sum;
+		newcheque.dsum[0] =
+		newcheque.dsum[1] =
+		newcheque.dsum[2] =
+		newcheque.dsum[3] = 0;
+		break;
 	}
+
+	ffd_tlv_add_vln(1031, newcheque.dsum[0]);
+	ffd_tlv_add_vln(1081, newcheque.dsum[1]);
+	ffd_tlv_add_vln(1215, newcheque.dsum[2]);
+	ffd_tlv_add_vln(1216, newcheque.dsum[3]);
+	ffd_tlv_add_vln(1217, newcheque.dsum[4]);
+
+/*		printf("dsum[0] = %llu\n", dsum[0]);
+	printf("dsum[1] = %llu\n", dsum[1]);
+	printf("dsum[2] = %llu\n", dsum[2]);
+	printf("dsum[3] = %llu\n", dsum[3]);
+	printf("dsum[4] = %llu\n", dsum[4]);*/
+
+	cashier_save();
+
+	newcheque_show_op(w, "ˆ¤¥â ¯¥ç âì ç¥ª ...");
+
+	if (!fa_create_doc(CHEQUE, NULL, 0, NULL, NULL))
+		return false;
+
+
+	list_clear(&newcheque.articles);
+	//list_remove_if(&newcheque.articles, &p, (list_item_func_t)remove_articles);
+
+	newcheque.sum = 0;
+	newcheque_update_sum(w, false);
+
+	if (newcheque.agent_data_size > 0) {
+		newcheque.agent_data_size = 0;
+		free(newcheque.agent_data);
+		newcheque.agent_data = NULL;
+	}
+
+	if (newcheque.add_info) {
+		free(newcheque.add_info);
+		newcheque.add_info = NULL;
+		window_set_data(w, 1192, 0, "", 0);
+	}
+
+	newcheque.dsum[0] =
+	newcheque.dsum[1] =
+	newcheque.dsum[2] =
+	newcheque.dsum[3] =
+	newcheque.dsum[4];
+
+	newcheque_save();
+	window_draw(w);
+	kbd_flush_queue();
 
 	return true;
 }
