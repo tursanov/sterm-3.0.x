@@ -1060,8 +1060,11 @@ int AD_makeAnnulReturn(K *k, K *k2, uint8_t t1055, int64_t sB) {
 		if (f->p == k->p && strcmp2(f->h, k->h) == 0 && f->t1054 == 2 && f->t1055 == t1055) {
 			for (list_item_t *li12 = f->klist.head; li12; li12 = li12->next) {
 				f_k = LIST_ITEM(li12, K);
-				if ((doc_no_is_empty(&f_k->i2) || doc_no_compare(&f_k->i2, &k->r) == 0) &&
-					doc_no_compare(&f_k->i21, &k->r) == 0 && f_k->m == k->m && f_k->o == 2) {
+				if (((!doc_no_is_empty(&f_k->d) &&
+								doc_no_compare(&f_k->i2, &k->r) == 0 &&
+								doc_no_compare(&f_k->i21, &k->d) == 0) ||
+								doc_no_compare(&f_k->i21, &k->r) == 0) &&
+						f_k->m == k->m && f_k->o == 2) {
 					if (K_equalByL(k, f_k)) {
 						goto L1;
 					}
@@ -1070,6 +1073,8 @@ int AD_makeAnnulReturn(K *k, K *k2, uint8_t t1055, int64_t sB) {
 		}
 	}
 
+	f = NULL;
+
 L1:
 	if (f_k && k2 && k2->llist.head) {
 		for (list_item_t *li21 = _ad->clist.head; li21; li21 = li21->next) {
@@ -1077,8 +1082,11 @@ L1:
 			if (s->p == k2->p && strcmp2(s->h, k2->h) == 0 && s->t1054 == 1 && s->t1055 == t1055) {
 				for (list_item_t *li22 = s->klist.head; li22; li22 = li22->next) {
 					s_k = LIST_ITEM(li22, K);
-					if ((doc_no_is_empty(&s_k->i2) || doc_no_compare(&s_k->i2, &k2->r) == 0) &&
-						doc_no_compare(&s_k->i21, &k2->r) == 0 && s_k->m == k2->m && s_k->o == 2) {
+					if (((!doc_no_is_empty(&s_k->d) &&
+								doc_no_compare(&s_k->i2, &k2->r) == 0 &&
+								doc_no_compare(&s_k->i21, &k2->d) == 0) ||
+								doc_no_compare(&s_k->i21, &k2->r) == 0) &&
+							s_k->m == k2->m && s_k->o == 2) {
 						if (K_equalByL(k2, s_k))
 							goto L2;
 					}
@@ -1100,8 +1108,14 @@ L2:
 				list_remove(&_ad->clist, s);
 		}
 	} else {
-		op_doc_no_set(&k->b, &k->r, "гашение возврата", NULL);
-		AD_makeCheque(k, &k->r, 1, t1055, sB);
+		if (!doc_no_is_empty(&k->d))
+		{
+			op_doc_no_set(&k->b, &k->d, "гашение возврата", NULL);
+			AD_makeCheque(k, &k->d, 1, t1055, sB);
+		} else {
+			op_doc_no_set(&k->b, &k->r, "гашение возврата", NULL);
+			AD_makeCheque(k, &k->r, 1, t1055, sB);
+		}
 
 		if (k2 && k2->llist.count > 0) {
 			op_doc_no_set(&k2->b, &k->r, "гашение возврата", NULL);
