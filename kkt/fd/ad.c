@@ -3,14 +3,16 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
-#include "express.h"
 #include "sysdefs.h"
 #include "serialize.h"
 #if defined WIN32 || defined __APPLE__
 #include "ad.h"
 void cashier_set_name(const char *name) {
 }
+#define E_KKT_ILL_ATTR	0x95
+#define E_KKT_NO_ATTR	0x96
 #else
+#include "express.h"
 #include "kkt/fd/ad.h"
 #include "gui/fa.h"
 #endif
@@ -373,6 +375,17 @@ static int64_t K_calc_total_sum(K *k) {
 	return sum;
 }
 
+static int64_t K_calc_total_sum_by_P(K *k, int p) {
+	int64_t sum = 0;
+	for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+		L *l = LIST_ITEM(li3, L);
+		if (l->p == p)
+			sum += l->t;
+	}
+	return sum;
+}
+
+
 static int L_compare(void *arg, L *l1, L *l2) {
 	if (strcmp2(l1->s, l2->s) == 0 &&
 		l1->r == l2->r &&
@@ -584,16 +597,17 @@ bool C_is_agent_cheque(C *c, int64_t user_inn)
 		return false;
 
 	// проверяем, что ИНН первого элемента не равен user_inn
-	int64_t orig_inn = LIST_ITEM(k->llist.head, L)->i;
+	L *l = LIST_ITEM(k->llist.head, L);
+	const int64_t orig_inn = l->i;
 	if (orig_inn == user_inn)
 		return false;
 
 	// проверяем, что все L имеют одинаковый ИНН
 	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next) {
-		K* k = LIST_ITEM(li1, K);
+		k = LIST_ITEM(li1, K);
 		for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
-			L *l = LIST_ITEM(li3, L);
-			int64_t inn = l->i;
+			l = LIST_ITEM(li3, L);
+			const int64_t inn = l->i;
 
 			if (inn != orig_inn)
 				return false;
@@ -602,7 +616,6 @@ bool C_is_agent_cheque(C *c, int64_t user_inn)
 
 	return true;
 }
-
 
 
 P1 *P1_create(void) {
@@ -800,11 +813,11 @@ void AD_destroy() {
 int AD_save() {
     int ret = -1;
     int fd = s_open(FILE_NAME, true);
-    
+
     if (fd == -1) {
         return -1;
     }
-    
+
     if (SAVE_INT(fd, (uint8_t)AD_VERSION) < 0
 			|| SAVE_INT(fd, (uint8_t)(_ad->p1 != 0 ? 1 : 0)) < 0
 			|| (_ad->p1 != NULL && P1_save(fd, _ad->p1) < 0)
@@ -1225,7 +1238,8 @@ int AD_processO(K *k) {
         case 4:
 			tB1 = 0;
             k2 = K_divide(k, 2, &tB1);
-            AD_makeAnnulReturn(k, k2, _ad->t1055, tB1);
+			tB2 = K_calc_total_sum_by_P(k, 1);
+            AD_makeAnnulReturn(k, k2, _ad->t1055, tB1 > tB2 ? tB2 : tB1);
             break;
     }
     return 0;

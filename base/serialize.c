@@ -2,7 +2,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
+#if !defined WIN32
+	#include <unistd.h>
+#else
+	#include <io.h>
+#endif
 #include <fcntl.h>
 #include "serialize.h"
 
