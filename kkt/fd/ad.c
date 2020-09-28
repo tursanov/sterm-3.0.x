@@ -151,7 +151,7 @@ void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2)
 	}
 	if (d1 != NULL)
 		dst->s = COPYSTR(d1->s);
-#if 0		
+#if 0
 	const char *n = "\xfc";
 	size_t n_len = strlen(n);
 	size_t len1 = (d1 && d1->s != NULL) ? strlen(d1->s) : 0;
@@ -428,7 +428,8 @@ int K_save(int fd, K *k) {
         SAVE_INT(fd, k->m) < 0 ||
         save_string(fd, k->t) < 0 ||
         save_string(fd, k->e) < 0 ||
-        save_string(fd, k->z) < 0)
+        save_string(fd, k->z) < 0 ||
+		SAVE_INT(fd, k->a_flag))
         return -1;
     return 0;
 }
@@ -503,7 +504,8 @@ K *K_load_v2(int fd) {
             LOAD_INT(fd, k->m) < 0 ||
             load_string(fd, &k->t) < 0 ||
             load_string(fd, &k->e) < 0 ||
-            load_string(fd, &k->z) < 0) {
+            load_string(fd, &k->z) < 0 ||
+            LOAD_INT(fd, k->a_flag) < 0) {
         K_destroy(k);
         return NULL;
     }
@@ -515,7 +517,7 @@ C* C_create(void) {
     C *c = (C *)malloc(sizeof(C));
     memset(c, 0, sizeof(C));
     c->klist.delete_func = (list_item_delete_func_t)K_destroy;
-    
+
     return c;
 }
 
@@ -1148,7 +1150,7 @@ int AD_makeReissue(K *k, uint8_t t1055, int64_t tB1, int64_t tB2, int64_t *sB1, 
 			for (list_item_t *li12 = g->klist.head; li12; li12 = li12->next) {
 				g_x = LIST_ITEM(li12, K);
 				if (g_x->o == 1 && doc_no_special_compare(&k->n, &g_x->d) == 0) {
-					if (g_x->m == k->m) {
+					if (g_x->m == k->m && (k->m != 2 || !k->a_flag)) {
 						int64_t tB = K_calc_total_sum(g_x);
 						int64_t sB = 0;
 						if (tB + tB1 <= tB2) {
@@ -1260,7 +1262,7 @@ static int stage = 0;
     return 0;
 }
 
-#define REQUIRED_K_MASK 0x71
+#define REQUIRED_K_MASK (0x71 + 0x400)
 #define REQUIRED_L_MASK 0x1F
 #define ERR_INVALID_VALUE   E_KKT_ILL_ATTR
 #define ERR_NO_REQ_ATTR   	E_KKT_NO_ATTR
@@ -1467,7 +1469,7 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                 if (!check) {
                     AD_process(_k);
                 } else {
-                    const char tags[] = "ODRNPHMTEZ";
+                    const char tags[] = "ODRNPHMTEAZ";
                     for (int i = 0, mask = 1; i < ASIZE(tags); i++, mask <<= 1) {
                         bool required = (REQUIRED_K_MASK & mask) != 0;
                         bool present = (_kMask & mask) != 0;
@@ -1597,8 +1599,12 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                             (ret = process_email_value("K", name, val,
                                                        &_kMask, 0x100, &_k->e)) != 0) {
                     return ret;
+                }  else if (strcmp(name, "A") == 0) {
+                	_k->a_flag = true;
+                	_kMask |= 0x200;
+                    return ret;
                 } else if (strcmp(name, "Z") == 0 &&
-                    (ret = process_string_value("K", name, val, 256, &_kMask, 0x200,
+                    (ret = process_string_value("K", name, val, 256, &_kMask, 0x400,
                                                 &_k->z)) != 0) {
                     return ret;
                 }
