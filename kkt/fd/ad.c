@@ -1078,6 +1078,7 @@ int AD_makeAnnulReturn(K *k, K *k2, uint8_t t1055, int64_t sB) {
 				if (((!doc_no_is_empty(&f_k->d) &&
 								doc_no_compare(&f_k->i2, &k->r) == 0 &&
 								doc_no_compare(&f_k->i21, &k->d) == 0) ||
+								doc_no_compare(&f_k->i2, &k->r) == 0 ||
 								doc_no_compare(&f_k->i21, &k->r) == 0) &&
 						f_k->m == k->m && f_k->o == 2) {
 					if (K_equalByL(k, f_k)) {
@@ -1100,6 +1101,7 @@ L1:
 					if (((!doc_no_is_empty(&s_k->d) &&
 								doc_no_compare(&s_k->i2, &k2->r) == 0 &&
 								doc_no_compare(&s_k->i21, &k2->d) == 0) ||
+								doc_no_compare(&s_k->i2, &k2->r) == 0 ||
 								doc_no_compare(&s_k->i21, &k2->r) == 0) &&
 							s_k->m == k2->m && s_k->o == 2) {
 						if (K_equalByL(k2, s_k))
