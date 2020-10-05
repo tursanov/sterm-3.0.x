@@ -93,6 +93,19 @@ void cheque_release(void) {
 
 #define IR_COLOR	clGray
 
+static char *get_str_pay_method(K *k) {
+	switch (k->m) {
+		case 1:
+			return "НАЛ";
+		case 2:
+			return "БЕЗНАЛ";
+		case 3:
+			return "Д/ПР";
+		default:
+			return "???";
+	}
+}
+
 static int email_or_phone_draw(C *c, int start_y) {
 	int y = start_y + fnt->max_height*5 + GAP + 4;
 	char email_or_phone[128];
@@ -170,8 +183,8 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 		} else
 			scroll_enabled = false;
 
-		sprintf(text, "Документ N%s (СУММА: %.1lld.%.2lld)", k->d.s ? k->d.s : "",
-			sum / 100, sum % 100);
+		sprintf(text, "Документ N%s (СУММА: %.1lld.%.2lld %s)", k->d.s ? k->d.s : "",
+			sum / 100, sum % 100, get_str_pay_method(k));
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
 
@@ -302,9 +315,8 @@ static int cheque_draw_sum(int start_y) {
 			count++;
 		}
 		if (sumE != 0) {
-			sprintf(title[count], "Сумма безналичными к %s:", sumE > 0 ? "получению от пассажира" : 
-				"выдаче пассажиру");
-			vln_printf(value[count], labs(sumE));
+			sprintf(title[count], "Расчет безналичными согласно данным чека(ов)");
+			value[count][0] = 0;
 			count++;
 		}
 	}

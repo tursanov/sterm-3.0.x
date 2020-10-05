@@ -576,7 +576,6 @@ bool fa_create_doc(uint16_t doc_type, const uint8_t *pattern_footer,
 			size_t err_info_len;
 
 			//printf("#1 %d\n", doc_type);
-LCheckLastDocNo:
 			err_info_len = sizeof(err_info);
 			status = kkt_get_last_doc_info(&ldi, err_info, &err_info_len);
 			if (status != 0) {
@@ -586,16 +585,19 @@ LCheckLastDocNo:
 				//printf("#3: %d, %d\n", ldi.last_nr, ldi.last_printed_nr);
 				if (ldi.last_nr != ldi.last_printed_nr) {
 					message_box("Ошибка", "Последний сформированный документ не был напечатан.\n"
-							"Для его печати вставьте бумагу в ККТ и нажмите Enter",
+							"Для его печати вставьте бумагу в ККТ, войдите в меню ККТ и выберите пункт\n"
+							"\"Печать последнего сформированного документа\"",
 							dlg_yes, 0, al_center);
-					if (update_func)
+					fdo_resume();
+					return false;
+/*					if (update_func)
 						update_func(update_func_arg);
 					status = fd_print_last_doc(ldi.last_type);
 
 					//printf("LD: status = %d\n", status);
 
 					if (status != 0)
-						fd_set_error(doc_type, status, err_info, err_info_len);
+						fd_set_error(doc_type, status, err_info, err_info_len);*/
 				}
 			}
 		}
@@ -613,8 +615,8 @@ LCheckLastDocNo:
 
 		printf("status: %.2X\n", status);
 
-		if (status == 0x41 || status == 0x42 || status == 0x44)
-			goto LCheckLastDocNo;
+		//if (status == 0x41 || status == 0x42 || status == 0x44)
+		//	goto LCheckLastDocNo;
 
 		return false;
 	}
@@ -1174,6 +1176,7 @@ void fa_cheque() {
 					changed = true;
 				} else {
 					has_errors = true;
+					cheque_draw();
 					break;
 				}
 			}

@@ -1717,9 +1717,13 @@ void AD_calc_sum() {
 
 bool AD_get_state(AD_state *s) {
 	memset(s, 0, sizeof(*s));
+
+	K* kn = NULL;
+
 	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
 		size_t n = 0;
+		bool has_cashless_payments = false;
 		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
 			if (doc_no_is_empty(&k->u)) {
@@ -1737,12 +1741,38 @@ bool AD_get_state(AD_state *s) {
 						s->cashless_total_sum += sum;
 					else
 						s->cashless_total_sum -= sum;
+
+					if (kn == NULL && k->o == 2 && !doc_no_is_empty(&k->n))
+						kn = k;
+
+					if (sum != 0)
+						has_cashless_payments = true;
 				}
 			}
 		}
 		if (n > 0)
 			s->actual_cheque_count++;
+		if (has_cashless_payments)
+			s->cashless_cheque_count++;
 	}
+
+	if (kn != NULL && s->cashless_total_sum > 0) {
+		for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+			C *c = LIST_ITEM(li1, C);
+			for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+				K *k = LIST_ITEM(li2, K);
+				if (doc_no_is_empty(&k->u) &&
+						k->m == 2 &&
+						k->o == 1 &&
+						doc_no_special_compare(&kn->n, &k->d) == 0) {
+					s->has_cashless_reissuance = true;
+					return s->actual_cheque_count;
+				}
+			}
+		}
+	}
+
+
 	return s->actual_cheque_count > 0;
 }
 

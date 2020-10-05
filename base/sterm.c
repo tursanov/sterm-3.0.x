@@ -3870,17 +3870,38 @@ static bool need_pos(void)
 #if defined __EXT_POS__
 			!cfg.ext_pos &&
 #endif
-			cfg.kkt_apc && has_bank_data){
+			cfg.kkt_apc){
 		struct AD_state ads;
 		AD_get_state(&ads);
-		if (ads.has_cashless_payments){
-			int64_t s = ads.cashless_total_sum;
-			if (s < 0)
-				s *= -1;
-			bi.amount1 = s / 100;
-			bi.amount2 = ((s % 100) + 5) / 10;
-			clear_bank_info(&bi_pos, true);
-			ret = true;
+
+		if (ads.has_cashless_payments && (has_bank_data || ads.has_cashless_reissuance)){
+			if (ads.cashless_cheque_count > 1) {
+				message_box(
+					"ВНИМАНИЕ!",
+					"Процесс автоматической печати не может быть продолжен.\n"
+					"Для выполнения расчета по банковской карте необходимо\n"
+					"войти в фискальное приложение, запомнить или записать суммы\n"
+					"по каждому чеку, содержащему оплату по безналичному расчету,\n"
+					"а также проанализировать вид операции (оплата, возврат или отмена).\n"
+					"Далее, необходимо войти в банковское приложение и совершить\n"
+					"соответствующие операции по банковской карте для каждого чека отдельно.\n"
+					"После успешного расчета по банковской карте для печати\n"
+					"кассовых чеков необходимо использовать Фискальное приложение.\n"
+					"ВАЖНО: дял каждого кассового чека с суммой оплаты по безналичному\n"
+					"расчету должна быть оформлена операция по банковской карте на ту же сумму."
+					,
+					dlg_yes, DLG_BTN_YES, al_center);
+				ClearScreen(clBtnFace);
+				redraw_term(true, main_title);
+			} else {
+				int64_t s = ads.cashless_total_sum;
+				if (s < 0)
+					s *= -1;
+				bi.amount1 = s / 100;
+				bi.amount2 = ((s % 100) + 5) / 10;
+				clear_bank_info(&bi_pos, true);
+				ret = true;
+			}
 		}
 	}
 	return ret;

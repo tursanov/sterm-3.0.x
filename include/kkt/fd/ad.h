@@ -234,8 +234,12 @@ typedef struct AD_state {
 	int actual_cheque_count;
 	// признак наличия банковских операций
 	bool has_cashless_payments;
+	// признак наличия переоформления по банковской карте
+	bool has_cashless_reissuance;
 	// сумма к оплате по банковским операциям
 	int64_t cashless_total_sum;
+	// кол-во чеков с оплатой по банковской карте
+	int cashless_cheque_count;
 } AD_state;
 
 // получение состояния корзины (false - корзина пуста)
