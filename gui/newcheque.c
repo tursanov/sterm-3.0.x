@@ -301,6 +301,7 @@ static void article_selected_changed(control_t *c, int index, void *item) {
 
 		if (win) {
 			control_t *c = window_get_control(win, 1079);
+			printf("article_selected_changed: %d\n", index);
 
 			article_t *a = (article_t *)item;
 			if (a->price_per_unit > 0) {
@@ -344,7 +345,7 @@ static void article_new(window_t *parent) {
 
 	window_add_control(win, 
 			listview_create(1059, screen, TEXT_START, y, DISCX - GAP * 2, h, columns, ASIZE(columns),
-				&articles, (listview_get_item_text_func_t)article_get_text, 
+				&articles, (listview_get_item_text_func_t)article_get_text,
 				article_selected_changed, 0));
 	y += h + GAP;
 
