@@ -1766,7 +1766,7 @@ bool AD_get_state(AD_state *s) {
 						k->o == 1 &&
 						doc_no_special_compare(&kn->n, &k->d) == 0) {
 					s->has_cashless_reissuance = true;
-					return s->actual_cheque_count;
+					return s->actual_cheque_count > 0;
 				}
 			}
 		}

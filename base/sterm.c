@@ -3863,9 +3863,9 @@ static bool need_apc(void)
 	return ret;
 }
 
-static bool need_pos(void)
+static int need_pos(void)
 {
-	bool ret = false;
+	bool ret = 0;
 	if (cfg.bank_system &&
 #if defined __EXT_POS__
 			!cfg.ext_pos &&
@@ -3887,12 +3887,13 @@ static bool need_pos(void)
 					"соответствующие операции по банковской карте для каждого чека отдельно.\n"
 					"После успешного расчета по банковской карте для печати\n"
 					"кассовых чеков необходимо использовать Фискальное приложение.\n"
-					"ВАЖНО: дял каждого кассового чека с суммой оплаты по безналичному\n"
+					"ВАЖНО: для каждого кассового чека с суммой оплаты по безналичному\n"
 					"расчету должна быть оформлена операция по банковской карте на ту же сумму."
 					,
 					dlg_yes, DLG_BTN_YES, al_center);
 				ClearScreen(clBtnFace);
 				redraw_term(true, main_title);
+				ret = -1;
 			} else {
 				int64_t s = ads.cashless_total_sum;
 				if (s < 0)
@@ -3900,7 +3901,7 @@ static bool need_pos(void)
 				bi.amount1 = s / 100;
 				bi.amount2 = ((s % 100) + 5) / 10;
 				clear_bank_info(&bi_pos, true);
-				ret = true;
+				ret = 1;
 			}
 		}
 	}
@@ -3942,10 +3943,11 @@ static void on_response(void)
 			if ((c_state != cs_hasreq) && need_apc()){
 				show_req();
 				apc = true;
-				if (need_pos()){
+				int np = need_pos();
+				if (np == 1){
 					show_pos();
 					apc = pos_active;
-				}else{
+				}else if (np == 0){
 					show_cheque_fa();
 					apc = fa_active;
 				}
