@@ -1756,7 +1756,7 @@ bool AD_get_state(AD_state *s) {
 			s->cashless_cheque_count++;
 	}
 
-	if (kn != NULL && s->cashless_total_sum > 0) {
+	if (kn != NULL) {
 		for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 			C *c = LIST_ITEM(li1, C);
 			for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
