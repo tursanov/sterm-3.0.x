@@ -3950,7 +3950,8 @@ static void on_response(void)
 				}else if (np == 0){
 					show_cheque_fa();
 					apc = fa_active;
-				}
+				} else
+					apc = false;
 			}
 			if (!apc)
 				set_term_busy(false);
