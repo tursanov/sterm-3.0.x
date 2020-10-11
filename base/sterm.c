@@ -2212,15 +2212,15 @@ static void on_end_pos(void)
 			hide_cursor();
 			static struct custom_btn btns[] = {
 				{
-					.text	= "Успешная оплата",
+					.text	= "Успешный расчет",
 					.cmd	= DLG_BTN_YES,
 				},
 				{
-					.text	= "Повтор оплаты",
+					.text	= "Повтор расчета",
 					.cmd	= DLG_BTN_RETRY,
 				},
 				{
-					.text	= "Отказ от оплаты",
+					.text	= "Отказ от расчета",
 					.cmd	= DLG_BTN_CANCEL,
 				},
 				{
