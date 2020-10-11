@@ -73,6 +73,7 @@ static int get_param_type(char *name)
 		{POS_PARAM_TERMID_STR,	POS_PARAM_TERMID},
 		{POS_PARAM_CLERKID_STR,	POS_PARAM_CLERKID},
 		{POS_PARAM_CLERKTYPE_STR,POS_PARAM_CLERKTYPE},
+		{POS_PARAM_ORDS_STR,POS_PARAM_ORDS},
 	};
 	int i;
 	if (name == NULL)
@@ -325,6 +326,9 @@ static bool pos_write_param(struct pos_data_buf *buf, char *name, int param,
 			val[0] = recode(ds_key_char(kt));
 			val[1] = 0;
 			l = 1;
+			break;
+		case POS_PARAM_ORDS:
+			val[0] = 0;
 			break;
 		default:
 			if (required){
