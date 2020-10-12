@@ -65,10 +65,16 @@ static cheque_article_t *cheque_article_new() {
 }
 
 static void cheque_article_tlv_init(cheque_article_t *ca) {
+	uint8_t t1214 = 0;
+	int size = FFD_TLV_SIZE(ca->tlv);
+
 	for (uint8_t *ptr = FFD_TLV_DATA(ca->tlv), *end = ptr + ca->tlv->length; ptr < end;) {
 		const ffd_tlv_t *tlv = (ffd_tlv_t *)ptr;
 
 		switch (tlv->tag) {
+			case 1214:
+				t1214 = FFD_TLV_DATA_AS_UINT8(tlv);
+				break;
 			case 1023:
 				ffd_tlv_data_as_fvln(tlv, &ca->count);
 				break;
@@ -84,6 +90,21 @@ static void cheque_article_tlv_init(cheque_article_t *ca) {
 		}
 
 		ptr += FFD_TLV_SIZE(tlv);
+	}
+
+	if (t1214 == 3 && !ca->name) {
+		const char *text = "€‚€‘‚›‰ …„Œ…’ €‘—…’€";
+		int text_len = strlen(text);
+		size_t tlv_size = sizeof(ffd_tlv_t) + text_len;
+
+		ca->tlv = (ffd_tlv_t *)realloc(ca->tlv, size + tlv_size);
+		ffd_tlv_t *tlv = (ffd_tlv_t *)((uint8_t *)ca->tlv + size);
+		
+		tlv->tag = 1030;
+		tlv->length = text_len;
+		memcpy(FFD_TLV_DATA(tlv), text, text_len);
+		ca->tlv->length += tlv_size;
+		ca->name = tlv;
 	}
 }
 
@@ -939,7 +960,14 @@ bool newcheque_print(window_t *w) {
 			for (uint8_t *p = FFD_TLV_DATA(ca->tlv), *e = p + ca->tlv->length; p < e; ) {
 				ffd_tlv_t *t = (ffd_tlv_t *)p;
 				if (t->tag != 1043)
-					ffd_tlv_add(t);
+				{
+					if (t->tag == 1030 && FFD_TLV_SIZE(t) == 0)
+					{
+						ffd_tlv_add_string(1030, "€‚€‘‚›‰ …„Œ…’ €‘—…’€");
+					}
+					else
+						ffd_tlv_add(t);
+				}
 				p += FFD_TLV_SIZE(t);
 			}
 		} else {
