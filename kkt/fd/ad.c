@@ -1742,12 +1742,12 @@ bool AD_get_state(AD_state *s) {
 					else
 						s->cashless_total_sum -= sum;
 
-					if (kn == NULL && k->o == 2 && !doc_no_is_empty(&k->n))
-						kn = k;
-
 					if (sum != 0)
 						has_cashless_payments = true;
 				}
+				
+				if (kn == NULL && k->o == 2 && !doc_no_is_empty(&k->n))
+					kn = k;
 			}
 		}
 		if (n > 0)
