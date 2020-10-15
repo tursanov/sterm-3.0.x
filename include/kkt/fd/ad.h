@@ -20,7 +20,7 @@ typedef struct L {
     int64_t t;      // Стоимость составляющей, включая НДС
     uint8_t n;      // Стоимость составляющей, включая НДС
     int64_t c;      // Величина НДС за составляющую
-	int64_t i;		// ИНИ поставщика
+	int64_t i;		// ИНН поставщика
 	char *h;		// Номер телефона поставщика
 	char *z;		// Наименование поставщика
 } L;
@@ -150,7 +150,7 @@ extern C* C_load_v2(int fd);
 void C_calc_sum(C *c);
 
 // проверка чека, что он является агентским 
-bool C_is_agent_cheque(C *c, int64_t user_inn);
+bool C_is_agent_cheque(C *c, int64_t user_inn, char *phone);
 
 // данные кассира
 typedef struct P1 {

@@ -868,8 +868,11 @@ static void newcheque_show_op(window_t *w, const char *title) {
 }
 
 static agent_t *get_newcheque_agent() {
-	bool first = true;
 	agent_t *cheque_agent = NULL;
+	bool first = true;
+
+	if (!newcheque.articles.head)
+		return NULL;
 
 	for (list_item_t *li = newcheque.articles.head; li != NULL; li = li->next) {
 		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
@@ -877,11 +880,12 @@ static agent_t *get_newcheque_agent() {
 		agent_t *agent = get_agent_by_id(agent_id);
 		ca->agent = agent;
 
+		if (agent == NULL)
+			return NULL;
+
 		if (first) {
 			cheque_agent = agent;
 			first = false;
-		} else if (agent != cheque_agent) {
-			cheque_agent = NULL;
 		}
 	}
 

@@ -1106,10 +1106,9 @@ void fa_cheque() {
 			ffd_tlv_add_vln(1216, 0);
 			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
-			//if (c->p != user_inn) {
-			if (C_is_agent_cheque(c, user_inn)) {
+			char phone[19+1];
+			if (C_is_agent_cheque(c, user_inn, phone)) {
 				ffd_tlv_add_uint8(1057, 1 << 6);
-				char phone[19+1];
 				get_phone(c->h, phone);
 				ffd_tlv_add_string(1171, phone);
 			}

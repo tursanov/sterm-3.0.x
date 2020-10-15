@@ -589,7 +589,7 @@ C * C_load_v2(int fd) {
     return c;
 }
 
-bool C_is_agent_cheque(C *c, int64_t user_inn)
+bool C_is_agent_cheque(C *c, int64_t user_inn, char* phone)
 {
 	// проверяем, что есть хотя бы один элемент L
 	if (!c->klist.head)
@@ -598,23 +598,27 @@ bool C_is_agent_cheque(C *c, int64_t user_inn)
 	if (!k->llist.head)
 		return false;
 
-	// проверяем, что ИНН первого элемента не равен user_inn
-	L *l = LIST_ITEM(k->llist.head, L);
-	const int64_t orig_inn = l->i;
-	if (orig_inn == user_inn)
-		return false;
+	bool is_phone_set = false;
 
-	// проверяем, что все L имеют одинаковый ИНН
 	for (list_item_t *li1 = c->klist.head; li1 != NULL; li1 = li1->next) {
 		k = LIST_ITEM(li1, K);
 		for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
-			l = LIST_ITEM(li3, L);
+			L *l = LIST_ITEM(li3, L);
 			const int64_t inn = l->i;
 
-			if (inn != orig_inn)
+			if (inn == user_inn)
 				return false;
+
+			if (!is_phone_set && l->h && strcmp(l->h, "+70000000000") != 0)
+			{
+				strcpy(phone, l->h);
+				is_phone_set = true;
+			}
 		}
 	}
+
+	if (!is_phone_set)
+		strcpy(phone, "+70000000000");
 
 	return true;
 }
