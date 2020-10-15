@@ -439,6 +439,7 @@ static void article_new(window_t *parent) {
 		ca->count = fvln;
 		ca->price_per_unit = vln;
 		ca->sum = cheque_article_vln_sum(ca);
+		ca->agent = get_agent_by_id(a->pay_agent);
 
 		newcheque.sum += ca->sum;
 
@@ -878,7 +879,6 @@ static agent_t *get_newcheque_agent() {
 		cheque_article_t *ca = LIST_ITEM(li, cheque_article_t);
 		int agent_id = ca->article != NULL ? ca->article->pay_agent : 0;
 		agent_t *agent = get_agent_by_id(agent_id);
-		ca->agent = agent;
 
 		if (agent == NULL)
 			return NULL;
@@ -982,8 +982,10 @@ bool newcheque_print(window_t *w) {
 			ffd_tlv_add_fvln(1023, ca->count.value, ca->count.dot);
 			if (ca->article->vat_rate < 7)
 				ffd_tlv_add_uint8(1199, ca->article->vat_rate);
-			if (ca->agent != NULL)
+			if (ca->agent != NULL) {
+				printf("ca->agent->inn: %s\n", ca->agent->inn);
 				ffd_tlv_add_fixed_string(1226, ca->agent->inn, 12);
+			}
 		}
 		ffd_tlv_stlv_end();
 		sum += ca->sum;

@@ -324,7 +324,7 @@ int articles_load() {
 int articles_save() {
     int fd = s_open(ARTICLES_FILE_NAME, true);
 	int ret;
-    
+
     if (fd == -1) {
         return -1;
     }

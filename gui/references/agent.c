@@ -273,7 +273,7 @@ list_t agents = { NULL, NULL, 0, (list_item_delete_func_t)agent_free };
 int agents_load() {
     int fd = s_open(AGENTS_FILE_NAME, false);
 	int ret;
-    
+
     if (fd == -1) {
         return -1;
     }
@@ -295,7 +295,7 @@ int agents_destroy() {
 int agents_save() {
     int fd = s_open(AGENTS_FILE_NAME, true);
 	int ret;
-    
+
     if (fd == -1) {
         return -1;
     }
