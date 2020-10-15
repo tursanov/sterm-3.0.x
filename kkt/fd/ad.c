@@ -333,6 +333,9 @@ K *K_divide(K *k, uint8_t p, int64_t *sum) {
 				doc_no_copy(&k1->i21, &k->i21);
 				doc_no_copy(&k1->u, &k->u);
 				op_doc_no_copy(&k1->b, &k->b);
+
+				k1->a_flag = k->a_flag;
+				k1->y = k->y;
 			}
 
 			list_add_item(&k1->llist, tmp);
@@ -428,8 +431,10 @@ int K_save(int fd, K *k) {
         SAVE_INT(fd, k->m) < 0 ||
         save_string(fd, k->t) < 0 ||
         save_string(fd, k->e) < 0 ||
+		// v2
         save_string(fd, k->z) < 0 ||
-		SAVE_INT(fd, k->a_flag))
+		SAVE_INT(fd, k->a_flag) < 0 ||
+		SAVE_INT(fd, k->y) < 0)
         return -1;
     return 0;
 }
@@ -461,6 +466,11 @@ static void K_preprocess_L(K *k)
 			strcopy(&l->z, k->z);
 		}
 	}
+}
+
+static void K_set_pos_data(K *k)
+{
+	k->y = bi.id;
 }
 
 K *K_load_v1(int fd) {
@@ -504,8 +514,10 @@ K *K_load_v2(int fd) {
             LOAD_INT(fd, k->m) < 0 ||
             load_string(fd, &k->t) < 0 ||
             load_string(fd, &k->e) < 0 ||
+			// v2
             load_string(fd, &k->z) < 0 ||
-            LOAD_INT(fd, k->a_flag) < 0) {
+            LOAD_INT(fd, k->a_flag) < 0 ||
+		   	LOAD_INT(fd, k->y) < 0)	{
         K_destroy(k);
         return NULL;
     }
@@ -1204,6 +1216,7 @@ int AD_processO(K *k) {
     printf("process new K. K->o = %d\n", k->o);
 
 	K_preprocess_L(k);
+	K_set_pos_data(k);
 
     switch (k->o) {
         case 1:
