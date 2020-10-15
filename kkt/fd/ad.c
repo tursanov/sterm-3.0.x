@@ -470,7 +470,8 @@ static void K_preprocess_L(K *k)
 
 static void K_set_pos_data(K *k)
 {
-	k->y = bi.id;
+	const struct bank_info *b = get_bi();
+	k->y = b ? b->id : 0;
 }
 
 K *K_load_v1(int fd) {
