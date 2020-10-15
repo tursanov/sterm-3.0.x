@@ -1763,6 +1763,11 @@ bool AD_get_state(AD_state *s) {
 					if (sum != 0)
 						has_cashless_payments = true;
 				}
+
+				if (k->y != 0 && k->y > s->order_id) {
+					s->order_id = k->y;
+					has_cashless_payments = true;
+				}
 				
 				if (kn == NULL && k->o == 2 && !doc_no_is_empty(&k->n))
 					kn = k;

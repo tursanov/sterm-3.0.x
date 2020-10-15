@@ -241,6 +241,8 @@ typedef struct AD_state {
 	int64_t cashless_total_sum;
 	// кол-во чеков с оплатой по банковской карте
 	int cashless_cheque_count;
+	// идентификатор заказа
+	int order_id;
 } AD_state;
 
 // получение состояния корзины (false - корзина пуста)

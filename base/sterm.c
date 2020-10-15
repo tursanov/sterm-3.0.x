@@ -3872,7 +3872,8 @@ static int need_pos(void)
 		struct AD_state ads;
 		AD_get_state(&ads);
 
-		if (ads.has_cashless_payments && (has_bank_data || ads.has_cashless_reissuance)){
+		if (ads.has_cashless_payments &&
+				(has_bank_data || ads.has_cashless_reissuance || ads.order_id > 0)) {
 			if (ads.cashless_cheque_count > 1) {
 				message_box(
 					"‚ˆŒ€ˆ…!",
@@ -3898,6 +3899,8 @@ static int need_pos(void)
 					s *= -1;
 				bi.amount1 = s / 100;
 				bi.amount2 = ((s % 100) + 5) / 10;
+				if (ads.order_id > 0)
+					bi.id = ads.order_id;
 				clear_bank_info(&bi_pos, true);
 				ret = 1;
 			}
