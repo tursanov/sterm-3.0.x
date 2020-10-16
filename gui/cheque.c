@@ -23,6 +23,7 @@ static int active_item_n = 0;
 static int active_item_child = 0;
 static int64_t sumN = 0;
 static int64_t sumE = 0;
+static bool has_cashless_payments = false;
 static list_item_t *first = NULL;
 static int first_n = 0;
 static bool main_view = true;
@@ -59,6 +60,10 @@ int cheque_init(void) {
 
 	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
+
+		if (c->sum.e != 0)
+			has_cashless_payments = true;
+
 		if (c->t1054 == 1 || c->t1054 == 4) {
 			sumN += c->sum.n;
 			sumE += c->sum.e;
@@ -304,7 +309,7 @@ static int cheque_draw_sum(int start_y) {
 
 	//printf("sumN: %lld, sumE: %lld\n", sumN, sumE);
 
-	if (sumN == 0 && sumE == 0) {
+	if (sumN == 0 && !has_cheque_payments) {
 		sprintf(title[count], "Получение или выдача денежных средств не требуется");
 		count++;
 	} else {
@@ -314,7 +319,7 @@ static int cheque_draw_sum(int start_y) {
 			vln_printf(value[count], labs(sumN));
 			count++;
 		}
-		if (sumE != 0) {
+		if (has_cheque_payments) {
 			sprintf(title[count], "Расчет безналичными согласно данным чека(ов)");
 			value[count][0] = 0;
 			count++;
@@ -329,7 +334,7 @@ static int cheque_draw_sum(int start_y) {
 	SetTextColor(screen, clBlack);
 	TextOut(screen, x, y + GAP/2, cheque_title);
 	y += GAP;*/
-	
+
 	y += 4;
 
 	w = 0;
@@ -361,25 +366,25 @@ static int cheque_draw_sum(int start_y) {
 static int cheque_draw_cashier(int start_y) {
 	char text[512];
 	char *p = text;
-	
+
 	p += sprintf(text, "Кассир: %s", cashier_get_name());
-	
+
 	if (cashier_get_post()[0])
 		p += sprintf(p, ", Должность: %s", cashier_get_post());
-		
+
 	if (cashier_get_inn()[0])
 		p += sprintf(p, ", ИНН: %s", cashier_get_inn());
-		
+
 	int x = 10;
 	int y = start_y + (BUTTON_HEIGHT - fnt->max_height) / 2;
-	
+
 	SetTextColor(screen, clBlack);
 	TextOut(screen, x, y, text);
-	
+
 	x += TextWidth(fnt, text) + 10;
 
 	draw_button(screen, x, start_y, BUTTON_WIDTH, BUTTON_HEIGHT, "Изменить", active_button == 2);
-	
+
 	return start_y + BUTTON_HEIGHT + 4;
 }
 
@@ -392,20 +397,20 @@ static int cheque_main_draw() {
 		char title[256];
 		sprintf(title, "Всего чеков: %d текущая страница (с %d по %d чек)",
 			_ad->clist.count, first_n + 1, MIN(first_n + MAX_CHEQUE_PER_PAGE, _ad->clist.count));
-	
+
 		draw_title(screen, fnt, title);
 
 		y += 20;
 		y = cheque_draw_cashier(y);
-				
+
 		size_t n = 0;
 		for (list_item_t *i1 = first; i1 && n < MAX_CHEQUE_PER_PAGE; i1 = i1->next, n++) {
 			C *c = LIST_ITEM(i1, C);
 			y = cheque_draw_cheque(c, first_n + n, y, true);
 		}
-		
+
 		y = cheque_draw_sum(y);
-		
+
 		x = ((DISCX - (BUTTON_WIDTH*2 + GAP)) / 2);
 		draw_button(screen, x, y, BUTTON_WIDTH, BUTTON_HEIGHT, "Печать", active_button == 0);
 	} else {
