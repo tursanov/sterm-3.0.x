@@ -309,7 +309,7 @@ static int cheque_draw_sum(int start_y) {
 
 	//printf("sumN: %lld, sumE: %lld\n", sumN, sumE);
 
-	if (sumN == 0 && !has_cheque_payments) {
+	if (sumN == 0 && !has_cashless_payments) {
 		sprintf(title[count], "Получение или выдача денежных средств не требуется");
 		count++;
 	} else {
@@ -319,7 +319,7 @@ static int cheque_draw_sum(int start_y) {
 			vln_printf(value[count], labs(sumN));
 			count++;
 		}
-		if (has_cheque_payments) {
+		if (has_cashless_payments) {
 			sprintf(title[count], "Расчет безналичными согласно данным чека(ов)");
 			value[count][0] = 0;
 			count++;

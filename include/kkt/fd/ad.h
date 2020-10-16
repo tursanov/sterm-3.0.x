@@ -151,7 +151,7 @@ extern C* C_load_v2(int fd);
 void C_calc_sum(C *c);
 
 // проверка чека, что он является агентским 
-bool C_is_agent_cheque(C *c, int64_t user_inn, char *phone);
+bool C_is_agent_cheque(C *c, int64_t user_inn, char *phone, bool *is_same_agent);
 
 // данные кассира
 typedef struct P1 {

@@ -1072,10 +1072,25 @@ static size_t get_phone(char *src, char *dst) {
 	return len;
 }
 
+
+extern struct dev_lst *devices;
+static bool kkt_has_param(const char *name)
+{
+	if (devices == NULL)
+		return false;
+	const struct dev_info *dev_kkt = get_dev_info(devices, DEV_KKT);
+	const char *ret = get_dev_param_str(dev_kkt, name);
+
+//	printf("devices: %p, dev_kkt: %p, ret: %p\n", devices, dev_kkt, ret);
+
+	return ret != NULL;
+}
+
 void fa_cheque() {
 	bool changed = false;
 	bool have_unformed_docs = false;
 	bool result;
+
 
 	cheque_init();
 
@@ -1107,10 +1122,15 @@ void fa_cheque() {
 			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
 			char phone[19+1];
-			if (C_is_agent_cheque(c, user_inn, phone)) {
+			bool is_same_agent;
+			bool attr = kkt_has_param("COMP1057WO1171");
+			if (C_is_agent_cheque(c, user_inn, phone, &is_same_agent)) {
 				ffd_tlv_add_uint8(1057, 1 << 6);
-				get_phone(c->h, phone);
-				ffd_tlv_add_string(1171, phone);
+
+				if (!attr || is_same_agent) {
+					get_phone(c->h, phone);
+					ffd_tlv_add_string(1171, phone);
+				}
 			}
 
 			if (_ad->t1086 != NULL) {
