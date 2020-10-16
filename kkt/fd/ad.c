@@ -406,15 +406,6 @@ bool K_equalByL(K *k1, K* k2) {
     return list_compare(&k1->llist, &k2->llist, NULL, (list_item_compare_func_t)L_compare) == 0;
 }
 
-int64_t K_get_sum(K *k) {
-	int64_t sum = 0;
-	for (list_item_t *item = k->llist.head; item != NULL; item = item->next) {
-		L *l = LIST_ITEM(item, L);
-		sum += l->t;
-	}
-	return sum;
-}
-
 int K_save(int fd, K *k) {
     if (save_list(fd, &k->llist, (list_item_func_t)L_save) < 0 ||
         SAVE_INT(fd, k->o) < 0 ||
@@ -1736,65 +1727,40 @@ void AD_calc_sum() {
 bool AD_get_state(AD_state *s) {
 	memset(s, 0, sizeof(*s));
 
-	K* kn = NULL;
-
 	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
 		C *c = LIST_ITEM(li1, C);
 		size_t n = 0;
-		bool has_cashless_payments = false;
+		int order_id = 0;
+		int64_t cashless_sum = 0;
+
 		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
 			K *k = LIST_ITEM(li2, K);
 			if (doc_no_is_empty(&k->u)) {
 				n++;
 				if (k->m == 2) {
-					s->has_cashless_payments = true;
-					int64_t sum = 0;
-
-					for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
-						L *l = LIST_ITEM(li3, L);
-						sum += l->t;
-					}
+					int64_t sum = K_calc_total_sum(k);
 					sum -= k->a;
-					if (c->t1054 == 1 || c->t1054 == 4)
-						s->cashless_total_sum += sum;
-					else
-						s->cashless_total_sum -= sum;
 
-					if (sum != 0)
-						has_cashless_payments = true;
+					cashless_sum +=	(c->t1054 == 1 || c->t1054 == 4)
+						? sum
+						: -sum;
 				}
 
-				if (k->y != 0 && k->y > s->order_id) {
-					s->order_id = k->y;
-					has_cashless_payments = true;
-				}
-				
-				if (kn == NULL && k->o == 2 && !doc_no_is_empty(&k->n))
-					kn = k;
+				if (k->y > order_id)
+					order_id = k->y;
 			}
 		}
+		
 		if (n > 0)
 			s->actual_cheque_count++;
-		if (has_cashless_payments)
-			s->cashless_cheque_count++;
-	}
 
-	if (kn != NULL) {
-		for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
-			C *c = LIST_ITEM(li1, C);
-			for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
-				K *k = LIST_ITEM(li2, K);
-				if (doc_no_is_empty(&k->u) &&
-						k->m == 2 &&
-						k->o == 1 &&
-						doc_no_special_compare(&kn->n, &k->d) == 0) {
-					s->has_cashless_reissuance = true;
-					return s->actual_cheque_count > 0;
-				}
-			}
+		if (cashless_sum != 0)
+		{
+			s->cashless_total_sum += cashless_sum;
+			s->cashless_cheque_count++;
+			s->order_id = order_id;
 		}
 	}
-
 
 	return s->actual_cheque_count > 0;
 }
