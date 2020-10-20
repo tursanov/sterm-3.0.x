@@ -1121,14 +1121,15 @@ void fa_cheque() {
 			ffd_tlv_add_vln(1216, 0);
 			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
+			char agent_phone[19+1];
 			char phone[19+1];
 			bool is_same_agent;
 			bool attr = kkt_has_param("COMP1057WO1171");
-			if (C_is_agent_cheque(c, user_inn, phone, &is_same_agent)) {
+			if (C_is_agent_cheque(c, user_inn, agent_phone, &is_same_agent)) {
 				ffd_tlv_add_uint8(1057, 1 << 6);
 
 				if (!attr || is_same_agent) {
-					get_phone(c->h, phone);
+					get_phone(agent_phone, phone);
 					ffd_tlv_add_string(1171, phone);
 				}
 			}
