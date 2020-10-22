@@ -1072,20 +1072,6 @@ static size_t get_phone(char *src, char *dst) {
 	return len;
 }
 
-
-extern struct dev_lst *devices;
-static bool kkt_has_param(const char *name)
-{
-	if (devices == NULL)
-		return false;
-	const struct dev_info *dev_kkt = get_dev_info(devices, DEV_KKT);
-	const char *ret = get_dev_param_str(dev_kkt, name);
-
-//	printf("devices: %p, dev_kkt: %p, ret: %p\n", devices, dev_kkt, ret);
-
-	return ret != NULL;
-}
-
 void fa_cheque() {
 	bool changed = false;
 	bool have_unformed_docs = false;

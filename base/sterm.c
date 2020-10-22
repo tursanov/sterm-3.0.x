@@ -3164,15 +3164,19 @@ static void show_kkt_info(void)
 
 			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес ККТ */
 			"%29s:  %u.%u.%u.%u\n"	/* Маска подсети */
-			"%29s:  %u.%u.%u.%u\n\n"/* IP-адрес шлюза */
+			"%29s:  %u.%u.%u.%u\n"/* IP-адрес шлюза */
 
 			"%29s:  %s\n"		/* Точка доступа GPRS */
 			"%29s:  %s\n"		/* Пользователь GPRS */
-			"%29s:  %s\n\n"		/* Пароль GPRS */
+			"%29s:  %s\n"		/* Пароль GPRS */
 
 			"%29s:  %s\n"		/* Интерфейс с ОФД */
 			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес ОФД */
-			"%29s:  %hu",		/* TCP-порт ОФД */
+			"%29s:  %hu\n"		/* TCP-порт ОФД */
+
+			"%29s:  %s\n"			/* SUPPORT_1222_1224_1225 */
+			"%29s:  %s"			/* COMP1057WO1171 */
+			,
 		"ККТ", kkt->name,
 		"Заводской номер ККТ", (kkt_nr == NULL) ? "НЕ УСТАНОВЛЕН" : kkt_nr,
 		"Версия ПО", (kkt_ver == NULL) ? "НЕИЗВЕСТНО" : kkt_ver,
@@ -3207,7 +3211,9 @@ static void show_kkt_info(void)
 		"Интерфейс с ОФД", fdo_iface_str(cfg.fdo_iface),
 		"IP-адрес ОФД", cfg.fdo_ip & 0xff, (cfg.fdo_ip >> 8) & 0xff,
 		(cfg.fdo_ip >> 16) & 0xff, cfg.fdo_ip >> 24,
-		"TCP-порт ОФД", cfg.fdo_port
+		"TCP-порт ОФД", cfg.fdo_port,
+		"Тэги ФФД 1222 и 1224", kkt_has_param("SUPPORT_1222_1224_1225") ? "да" : "нет",
+		"Тэги ФФД 1057 без 1171", kkt_has_param("COMP1057WO1171") ? "да" : "нет"
 	);
 	online = false;
 	guess_term_state();
