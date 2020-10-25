@@ -24,6 +24,7 @@ static int active_item_child = 0;
 static int64_t sumN = 0;
 static int64_t sumE = 0;
 static bool has_cashless_payments = false;
+static bool has_cash_payments = false;
 static list_item_t *first = NULL;
 static int first_n = 0;
 static bool main_view = true;
@@ -34,12 +35,69 @@ static int draw_flags = 0;
 #define BUTTON_WIDTH	100
 #define BUTTON_HEIGHT	30
 
+static void calc_sum()
+{
+	sumN = 0;
+	sumE = 0;
+	has_cashless_payments = false;
+	has_cash_payments = false;
+
+	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
+		C *c = LIST_ITEM(li1, C);
+
+		int64_t n = 0;
+		int64_t e = 0;
+
+		for (list_item_t *li2 = c->klist.head; li2 != NULL; li2 = li2->next) {
+			K *k = LIST_ITEM(li2, K);
+			if (!doc_no_is_empty(&k->u))
+				continue;
+
+			for (list_item_t *li3 = k->llist.head; li3 != NULL; li3 = li3->next) {
+				L *l = LIST_ITEM(li3, L);
+				switch (k->m) {
+				case 1:
+					if (l->t > 0)
+						has_cash_payments = true;
+					n += l->t;
+					break;
+				case 2:
+					if (l->t > 0)
+						has_cashless_payments = true;
+					e += l->t;
+					break;
+				}
+			}
+
+			if (k->a > 0) {
+				switch (k->m) {
+				case 1:
+					n -= k->a;
+					break;
+				case 2:
+					e -= k->a;
+					break;
+				}
+			}
+		}
+
+		if (c->t1054 == 1 || c->t1054 == 4) {
+			sumN += n;
+			sumE += e;
+		} else {
+			sumN -= n;
+			sumE -= e;
+		}
+	}
+}
+
+
 int cheque_init(void) {
 	if (fnt == NULL)
 		fnt = CreateFont(_("fonts/fixedsys8x16.fnt"), false);
 	if (fnt1 == NULL)
 		fnt1 = CreateFont(_("fonts/terminal10x18.fnt"), false);
-		
+
 	if (screen == NULL)
 	  	screen = CreateGC(0, 0, DISCX, DISCY);
     SetFont(screen, fnt);
@@ -52,26 +110,12 @@ int cheque_init(void) {
 	else
 		active_button = 0;
 
-	sumN = 0;
-	sumE = 0;
 	first = _ad->clist.head;
 	first_n = 0;
 	main_view = true;
 
-	for (list_item_t *li1 = _ad->clist.head; li1 != NULL; li1 = li1->next) {
-		C *c = LIST_ITEM(li1, C);
+	calc_sum();
 
-		if (c->sum.e != 0)
-			has_cashless_payments = true;
-
-		if (c->t1054 == 1 || c->t1054 == 4) {
-			sumN += c->sum.n;
-			sumE += c->sum.e;
-		} else {
-			sumN -= c->sum.n;
-			sumE -= c->sum.e;
-		}
-	}
 
 	cheque_draw();
 	current_c = NULL;
@@ -188,8 +232,11 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 		} else
 			scroll_enabled = false;
 
-		sprintf(text, "„®ªã¬¥­â N%s (‘“ŒŒ€: %.1lld.%.2lld %s)", k->d.s ? k->d.s : "",
-			sum / 100, sum % 100, get_str_pay_method(k));
+		sprintf(text, "„®ªã¬¥­â N%s (‘“ŒŒ€: %.1lld.%.2lld %s)%s",
+			k->d.s ? k->d.s : "",
+			sum / 100, sum % 100,
+			get_str_pay_method(k),
+			doc_no_is_empty(&k->u) ? "" : " (…‡€‚…˜…Ž… ……Ž”ŽŒ‹…ˆ…)");
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
 
