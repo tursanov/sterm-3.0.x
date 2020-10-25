@@ -3212,8 +3212,8 @@ static void show_kkt_info(void)
 		"IP- ¤à¥á Ž”„", cfg.fdo_ip & 0xff, (cfg.fdo_ip >> 8) & 0xff,
 		(cfg.fdo_ip >> 16) & 0xff, cfg.fdo_ip >> 24,
 		"TCP-¯®àâ Ž”„", cfg.fdo_port,
-		"’í£¨ ””„ 1222 ¨ 1224", kkt_has_param("SUPPORT_1222_1224_1225") ? "¤ " : "­¥â",
-		"’í£¨ ””„ 1057 ¡¥§ 1171", kkt_has_param("COMP1057WO1171") ? "¤ " : "­¥â"
+		"’¥£¨ ””„ 1222 ¨ 1224", kkt_has_param("SUPPORT_1222_1224_1225") ? "¤ " : "­¥â",
+		"’¥£¨ ””„ 1057 ¡¥§ 1171", kkt_has_param("COMP1057WO1171") ? "¤ " : "­¥â"
 	);
 	online = false;
 	guess_term_state();
