@@ -445,7 +445,7 @@ static struct optn_item kkt_optn_items[] = {
 		optn_kkt_log_level, ini_int, kkt_log_level, NULL),
 	OPTN_STR_ENUM("Поток в КЛ3", "Поток, для которого отображаются данные\r\n"
 		"в КЛ работы с ККТ", optn_kkt_log_stream, ini_uint32, kkt_log_stream, NULL),
-	OPTN_INT_ENUM("Часовой пояс", "Смещение в часах местного времени\r\n"
+	OPTN_INT_ENUM("Смещение времени", "Смещение в часах местного времени\r\n"
 		"относительно московского", optn_tz_offs, ini_int, tz_offs, NULL),
 	OPTN_ENUM("Опорный таймаут, мс", "Все таймауты работы с ККТ вычисляются\r\n"
 		"на основании опорного", optn_int_enum, optn_kkt_base_timeout,
