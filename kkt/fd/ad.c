@@ -1466,11 +1466,16 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
 {
     int64_t v64;
     int ret;
+
     switch (evt) {
         case 0:
             break;
         case 1:
             if (strcmp(name, "K") == 0) {
+            	if (_l != NULL) {
+            		L_destroy(_l);
+            		_l = NULL;
+            	}
             	if (_k != NULL)
             		K_destroy(_k);
                 _k = K_create();
@@ -1542,9 +1547,9 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
             break;
         case 3:
             if (_l != NULL) {
-                if (strcmp(name, "S") == 0 &&
-                    (ret = process_string_value("L", name, val, 128, &_lMask, 0x1,
-                                                &_l->s)) != 0) {
+                if (strcmp(name, "S") == 0) {
+                    if ((ret = process_string_value("L", name, val, 128, &_lMask, 0x1,
+                                                &_l->s)) != 0)
                     return ret;
                 } else if (strcmp(name, "P") == 0) {
                     if ((ret = process_int_value("L", name, val, 1, 4,
@@ -1575,14 +1580,14 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                                                  &_lMask, 0x40, &v64)) != 0)
                         return ret;
                     _l->i = v64;
-                } else if (strcmp(name, "H") == 0 &&
-                    (ret = process_phone_value("L", name, val, &_lMask, 0x80,
-                                                &_l->h)) != 0) {
-                    return ret;
-                } else if (strcmp(name, "Z") == 0 &&
-                    (ret = process_string_value("L", name, val, 256, &_lMask, 0x100,
-                                                &_l->z)) != 0) {
-                    return ret;
+                } else if (strcmp(name, "H") == 0) {
+                    if ((ret = process_phone_value("L", name, val, &_lMask, 0x80,
+                                                &_l->h)) != 0)
+	                    return ret;
+                } else if (strcmp(name, "Z") == 0) {
+                    if ((ret = process_string_value("L", name, val, 256, &_lMask, 0x100,
+                                                &_l->z)) != 0)
+	                    return ret;
                 }
             } else if (_k != NULL) {
                 if (strcmp(name, "O") == 0) {
@@ -1605,31 +1610,33 @@ int kkt_xml_callback(uint32_t check, int evt, const char *name, const char *val)
                                                  &_kMask, 0x10, &v64)) != 0)
                         return ret;
                     _k->p = v64;
-                } else if (strcmp(name, "H") == 0 &&
-                           (ret = process_phone_value("K", name, val,
-                                                      &_kMask, 0x20, &_k->h)) != 0) {
+                } else if (strcmp(name, "H") == 0) {
+                	if ((ret = process_phone_value("K", name, val,
+                                                      &_kMask, 0x20, &_k->h)) != 0)
                     return ret;
                 } else if (strcmp(name, "M") == 0) {
                     if ((ret = process_int_value("K", name, val, 0, 3,
                                                  &_kMask, 0x40, &v64)) != 0)
                         return ret;
 					_k->m = (uint8_t)v64;
-                } else if (strcmp(name, "T") == 0 &&
-                          (ret = process_phone_value("K", name, val,
-                                                     &_kMask, 0x80, &_k->t)) != 0) {
+                } else if (strcmp(name, "T") == 0) {
+                    if ((ret = process_phone_value("K", name, val,
+                                                     &_kMask, 0x80, &_k->t)) != 0)
                     return ret;
-                }  else if (strcmp(name, "E") == 0 &&
-                            (ret = process_email_value("K", name, val,
-                                                       &_kMask, 0x100, &_k->e)) != 0) {
+                }  else if (strcmp(name, "E") == 0) {
+                    if ((ret = process_email_value("K", name, val,
+                                                       &_kMask, 0x100, &_k->e)) != 0)
                     return ret;
                 }  else if (strcmp(name, "A") == 0) {
                 	_k->a_flag = true;
                 	_kMask |= 0x200;
+                    return 0;
+                } else if (strcmp(name, "Z") == 0) {
+                    if ((ret = process_string_value("K", name, val, 256, &_kMask, 0x400,
+                                                &_k->z)) != 0)
                     return ret;
-                } else if (strcmp(name, "Z") == 0 &&
-                    (ret = process_string_value("K", name, val, 256, &_kMask, 0x400,
-                                                &_k->z)) != 0) {
-                    return ret;
+                } else {
+		           	printf("Unknown tag %s=\"%s\"\n", name, val);
                 }
             } else if (_p1 != NULL) {
                 if (strcmp(name, "I") == 0) {
