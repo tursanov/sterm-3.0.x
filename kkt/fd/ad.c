@@ -891,11 +891,11 @@ int AD_load(uint8_t t1055, bool clear) {
 	}
 
 	AD_calc_sum();
-        
+
     printf("AD_load: %d, ad.C.count: %u, ad.docs.count: %u\n", ret, _ad->clist.count,
     	_ad->docs.count);
     printf("ad.t1086: %s\n", _ad->t1086);
-    
+
     s_close(fd);
     return ret;
 }
