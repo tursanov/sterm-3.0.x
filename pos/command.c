@@ -306,6 +306,7 @@ static void normalize_termid()
 		if (p_len + t_len == sizeof(bi_pos.termid)) {
 			memcpy(bi_pos.termid, _ad->p1->p + 1, p_len);
 			memcpy(bi_pos.termid + p_len, _ad->p1->t, t_len);
+			recode_str(bi_pos.termid, sizeof(bi_pos.termid));
 		}
 	}
 }
