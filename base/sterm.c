@@ -1,4 +1,4 @@
-/* Основные функции терминала. (c) gsr 2000-2019 */
+/* Основные функции терминала. (c) gsr 2000-2020 */
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -532,8 +532,7 @@ const char *find_term_state(int st)
 		{st_ppp_dialing,	"Дозвон PPP"},
 		{st_ppp_login,		"Авторизация"},
 		{st_ppp_ipcp,		"Конфигурация TCP/IP"},
-		{st_ppp_ready,		"PPP OK"},
-		{st_stop_iplir,		"Выгрузка VipNet"},
+		{st_stop_iplir,		"Выгрузка ViPNet"},
 	};
 	int i;
 	static char buf[MAX_TERM_STATE_LEN+1];
@@ -937,10 +936,9 @@ static bool set_iplir_params(void)
 char *get_main_title(void)
 {
 	snprintf(main_title, sizeof(main_title), MAIN_TITLE " ("
-		_s(STERM_VERSION_BRANCH) "."
-		_s(STERM_VERSION_RELEASE) "."
-		_s(STERM_VERSION_PATCH) "."
-		_s(STERM_VERSION_BUILD) ") -- \x01%s РЕЖИМ",
+		_s(STERM_VERSION_MAJOR) "."
+		_s(STERM_VERSION_MINOR) "."
+		_s(STERM_VERSION_RELEASE) ") -- \x01%s РЕЖИМ",
 		(wm == wm_main) ? "ОСНОВНОЙ" : "ПРИГОРОДН\x9bЙ");
 	return main_title;
 }
@@ -2530,7 +2528,7 @@ static void show_resp(void)
 static void show_rom(void)
 {
 	if (kt == key_dbg){
-		set_scr_text(rom->data,ROM_BUF_LEN,txt_plain,true);
+		set_scr_text(rom->data, ROM_BUF_LEN, txt_plain, true);
 		set_term_state(st_hash);
 		set_term_astate(ast_none);
 	}else
@@ -2541,7 +2539,7 @@ static void show_rom(void)
 static void show_prom(void)
 {
 	if (kt == key_dbg){
-		set_scr_text(prom->data,PROM_BUF_LEN,txt_plain,true);
+		set_scr_text(prom->data, PROM_BUF_LEN, txt_plain, true);
 		set_term_state(st_array);
 		set_term_astate(ast_none);
 	}else
@@ -2551,12 +2549,12 @@ static void show_prom(void)
 /* Показать ОЗУ ключей */
 static void show_keys(void)
 {
-	if (kt != key_dbg)
-		err_beep();
-	else{
-		set_scr_text(keys,KEY_BUF_LEN,txt_plain,true);
+	if (kt == key_dbg){
+		set_scr_text(keys, KEY_BUF_LEN, txt_plain, true);
 		set_term_state(st_keys);
-	}
+		set_term_astate(ast_none);
+	}else
+		err_beep();
 }
 
 /* Показать обмен в канале */
@@ -2868,9 +2866,8 @@ static void show_term_info(void)
 	init_devices();
 	snprintf(buf, sizeof(buf),
 		"%29s: \"Экспресс-2А-К\"\n"
-		"%29s:  " _s(STERM_VERSION_BRANCH) "."
-		_s(STERM_VERSION_RELEASE) "." _s(STERM_VERSION_PATCH) "."
-		_s(STERM_VERSION_BUILD) "\n"
+		"%29s:  " _s(STERM_VERSION_MAJOR) "."
+		_s(STERM_VERSION_MINOR) "." _s(STERM_VERSION_RELEASE) "\n"
 		"%29s:  %.4hX\n"
 		"%29s:  %.*s\n"
 		"%29s:  %s (%s)\n"

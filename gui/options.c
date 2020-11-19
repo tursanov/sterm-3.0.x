@@ -1,4 +1,4 @@
-/* Настройка параметров терминала. (c) gsr & alex 2000-2004, 2018-2019. */
+/* Настройка параметров терминала. (c) gsr & alex 2000-2004, 2018-2020. */
 
 #include <sys/socket.h>
 #include <sys/times.h>
@@ -1546,7 +1546,6 @@ static bool draw_optn_buttons(void)
 	return true;
 }
 
-#include "build.h"
 /* Рисование области подсказки */
 static bool draw_optn_help(void)
 {
@@ -1574,10 +1573,9 @@ static bool draw_optn_help(void)
 	SetTextColor(pMemGC, clGreen);
 	
 	sprintf(buf, "Терминал %s "
-			_s(STERM_VERSION_BRANCH) "."
-			_s(STERM_VERSION_RELEASE) "."
-			_s(STERM_VERSION_PATCH) "."
-			_s(STERM_VERSION_BUILD),
+			_s(STERM_VERSION_MAJOR) "."
+			_s(STERM_VERSION_MINOR) "."
+			_s(STERM_VERSION_RELEASE),
 			term_string);
 	TextOut(pMemGC, 20, 20 + i * (pFont->max_height + 4), buf);
 	i++;
