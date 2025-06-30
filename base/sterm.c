@@ -932,7 +932,6 @@ static bool set_iplir_params(void)
 }
 
 /* Получение заголовка главного окна терминала */
-#include "build.h"
 char *get_main_title(void)
 {
 	snprintf(main_title, sizeof(main_title), MAIN_TITLE " ("
