@@ -27,7 +27,7 @@ clean:
 		@echo -e "\033[01;32mCleaning modules using Linux kernel tools...\033[00m"
 		@$(foreach DIR, $(SUBDIRS), $(MAKE) -C $(KDIR) M=$(MODULES_DIR)/$(DIR) clean;)
 		@echo -e "\033[01;32mModules clean complete.\033[00m"
-		@rm -rf
+		@rm -rf bin
 
 modules_install:
 		@rm -rf bin
