@@ -11,9 +11,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include "gui/scr.h"
+#include "kkt/kkt.h"
 #include "log/express.h"
 #include "log/local.h"
-#include "gui/scr.h"
 #include "prn/express.h"
 #include "prn/local.h"
 #include "cfg.h"
@@ -195,7 +196,10 @@ static void write_term_info(void)
 /* Идентификатор терминала */
 	req_buf[req_len++] = term_id[0];
 	req_buf[req_len++] = map_tcap_byte(term_id[1]);
-	req_buf[req_len++] = term_id[2];
+	req_buf[req_len] = term_id[2];
+	if (cfg.has_kkt && cfg.fiscal_mode && (kkt != NULL) && kkt_has_param("SUPPORT_VAT_5_7"))
+		req_buf[req_len] = 0x41;
+	req_len++;
 /* Заводской номер терминала */
 	memcpy(req_buf + req_len, tn, sizeof(tn));
 	req_len += sizeof(tn);
