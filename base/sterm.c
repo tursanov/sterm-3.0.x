@@ -3137,6 +3137,7 @@ static void show_kkt_info(void)
 		show_no_kkt();
 		return;
 	}
+	fa_get_reregistration_data();
 	static char txt[4096];
 	snprintf(txt, sizeof(txt),
 			"%29s: \"%s\"\n"	/* ККТ */
@@ -3150,6 +3151,7 @@ static void show_kkt_info(void)
 			"%29s:  %s\n"		/* Фаза жизни ФН */
 			"%29s:  %s\n"		/* Текущий документ */
 			"%29s:  %s (%u)\n"	/* Смена */
+			"%29s:  %lu\n"		/* ИНН кассира */
 			"%29s:  %s\n"		/* Предупреждения */
 			"%29s:  %u (%s %s)\n"	/* Последний сформ. документ */
 			"%29s:  %s\n"		/* Без квитанции ОФД */
@@ -3160,7 +3162,7 @@ static void show_kkt_info(void)
 
 			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес ККТ */
 			"%29s:  %u.%u.%u.%u\n"	/* Маска подсети */
-			"%29s:  %u.%u.%u.%u\n"/* IP-адрес шлюза */
+			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес шлюза */
 
 			"%29s:  %s\n"		/* Точка доступа GPRS */
 			"%29s:  %s\n"		/* Пользователь GPRS */
@@ -3170,9 +3172,12 @@ static void show_kkt_info(void)
 			"%29s:  %u.%u.%u.%u\n"	/* IP-адрес ОФД */
 			"%29s:  %hu\n"		/* TCP-порт ОФД */
 
-			"%29s:  %s\n"			/* SUPPORT_1222_1224_1225 */
-			"%29s:  %s"			/* COMP1057WO1171 */
-			,
+			"%29s:  %s, "		/* SUPPORT_1222_1224_1225 */
+			"%35s:  %s\n"		/* COMP1057WO1171 */
+			"%29s:  %s, "		/* SUPPORT_NULL_IN_TEMPLATE */
+			"%35s:  %s\n"		/* SUPPORT_FRAGMENTATION */
+			"%29s:  %s, "		/* SUPPORT_ESC_R */
+			"%35s:  %s\n",		/* SUPPORT_VAT_5_7 */
 		"ККТ", kkt->name,
 		"Заводской номер ККТ", (kkt_nr == NULL) ? "НЕ УСТАНОВЛЕН" : kkt_nr,
 		"Версия ПО", (kkt_ver == NULL) ? "НЕИЗВЕСТНО" : kkt_ver,
@@ -3184,6 +3189,7 @@ static void show_kkt_info(void)
 		"Текуший документ", fs_status_ok ? fs_doc_type_str(fs_status.current_doc) : "НЕТ",
 		"Смена", fs_shift_ok ? (fs_shift_state.opened ? "Открыта" : "Закрыта") : "НЕТ",
 		fs_shift_ok ? fs_shift_state.shift_nr : 0,
+		"ИНН пользователя", user_inn,
 		"Предупреждения", fs_status_ok ? fs_alert_str(fs_status.alert_flags) : "НЕТ",
 		"Последний сформ. документ", fs_status_ok ? fs_status.last_doc_nr : 0,
 		fs_status_ok ? fs_date_str(&fs_status.dt.date) : "00.00.0000",
@@ -3209,7 +3215,11 @@ static void show_kkt_info(void)
 		(cfg.fdo_ip >> 16) & 0xff, cfg.fdo_ip >> 24,
 		"TCP-порт ОФД", cfg.fdo_port,
 		"Теги ФФД 1222 и 1224", kkt_has_param("SUPPORT_1222_1224_1225") ? "да" : "нет",
-		"Теги ФФД 1057 без 1171", kkt_has_param("COMP1057WO1171") ? "да" : "нет"
+		"Теги ФФД 1057 без 1171", kkt_has_param("COMP1057WO1171") ? "да" : "нет",
+		"Отказ от печати ФД", kkt_has_param("SUPPORT_NULL_IN_TEMPLATE") ? "да" : "нет",
+		"Печать фрагментами", kkt_has_param("SUPPORT_FRAGMENTATION") ? "да" : "нет",
+		"Печать шаблонами", kkt_has_param("SUPPORT_ESC_R") ? "да" : "нет",
+		"Поддержка ставок НДС 5% и 7%", kkt_has_param("SUPPORT_VAT_5_7") ? "да" : "нет"
 	);
 	online = false;
 	guess_term_state();

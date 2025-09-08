@@ -316,13 +316,14 @@ static void print_stlv(uint8_t *p, size_t size, int level) {
 		ffd_tlv_t *t = (ffd_tlv_t *)p;
 
 		tag_type_t type = tags_get_tlv_text(t, text, sizeof(text));
-		out_printf("%s%s", tmp, text);
-
-		if (type == tag_type_stlv)
-			print_stlv(p + 4, t->length, 1);
-
-		size_t l = t->length + sizeof(*t);
-		i += l;
+		
+ 		out_printf("%s%s", tmp, text);
+ 
+ 		if (type == tag_type_stlv)
+			print_stlv(p + 4, t->length, level + 1);
+ 
+ 		size_t l = t->length + sizeof(*t);
+ 		i += l;
 		p += l;
 	}
 }

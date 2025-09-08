@@ -91,7 +91,6 @@ static void calc_sum()
 	}
 }
 
-
 int cheque_init(void) {
 	if (fnt == NULL)
 		fnt = CreateFont(_("fonts/fixedsys8x16.fnt"), false);
@@ -100,7 +99,7 @@ int cheque_init(void) {
 
 	if (screen == NULL)
 	  	screen = CreateGC(0, 0, DISCX, DISCY);
-    SetFont(screen, fnt);
+	SetFont(screen, fnt);
 
 	active_item = NULL;
 	active_item_n = 0;
@@ -115,7 +114,6 @@ int cheque_init(void) {
 	main_view = true;
 
 	calc_sum();
-
 
 	cheque_draw();
 	current_c = NULL;
@@ -178,7 +176,7 @@ static int email_or_phone_draw(C *c, int start_y) {
 
 static int doc_view_collapsed_draw(C *c, int start_y) {
 	int y = start_y;
-	char text[128];
+	char text[256];
 	char docs[128];
 	int n = 0;
 	char *p = docs;
@@ -189,7 +187,7 @@ static int doc_view_collapsed_draw(C *c, int start_y) {
 			(n < 3 ? (li1->next ? ", " : "") : (li1->next ? "..." : "")));
 	}
 
-	sprintf(text, "ΰ®α¬®βΰ ¤®ªγ¬¥­β®Ά η¥ª  (%d) [%s]", c->klist.count, docs);
+	snprintf(text, sizeof(text), "ΰ®α¬®βΰ ¤®ªγ¬¥­β®Ά η¥ª  (%zu) [%s]", c->klist.count, docs);
 	int tw = TextWidth(fnt, text);
 	Color selectedColor = (active_item && LIST_ITEM(active_item, C) == c &&
 			active_item_child == 1) ? clRopnetDarkBrown : clSilver;
@@ -206,7 +204,7 @@ static int doc_view_collapsed_draw(C *c, int start_y) {
 
 static int doc_view_expanded_draw(C *c, int start_y) {
 	int y = start_y;
-	char text[1024];
+	char text[2048];
 
 	SetTextColor(screen, clBlack);
 
@@ -216,7 +214,7 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 			continue;
 
 		K *k = LIST_ITEM(li1, K);
-		uint64_t sum = 0;
+		unsigned long long sum = 0;
 
 		int y1 = y + fnt->max_height;
 		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
@@ -239,23 +237,36 @@ static int doc_view_expanded_draw(C *c, int start_y) {
 			doc_no_is_empty(&k->u) ? "" : " (…‡€‚……… ……”‹……)");
 		TextOut(screen, GAP*2, y, text);
 		y += fnt->max_height;
-
+		
 		for (list_item_t *li2 = k->llist.head; li2 != NULL; li2 = li2->next) {
 			const char *svat[] = {
 				"„‘ 20%",
 				"„‘ 10%",
 				"„‘ 20/120",
 				"„‘ 10/110",
+				"",
+				"",
+            	"„‘ 5%",
+            	"„‘ 7%",
+            	"„‘ 5/105",
+            	"„‘ 7/107"
 			};
 			char *p = text;
 			L *l = LIST_ITEM(li2, L);
-			p += sprintf(p, "%s: %.1lld.%.2lld", l->s, l->t / 100, l->t % 100);
-			if (l->n >= 1 && l->n <= 4) {
+			p += sprintf(p, "%s: %.1lld.%.2lld", l->s, (long long)l->t / 100, (long long)l->t % 100);
+			if ((l->n >= 1 && l->n <= 4) || (l->n >= 7 && l->n <= 10)) {
 				sprintf(p, " (Ά β.η. %s: %.1lld.%.2lld)", svat[l->n - 1],
-					l->c / 100, l->c % 100);
+					(long long)l->c / 100, (long long)l->c % 100);
 			}
-			TextOut(screen, GAP*4, y, text);
-			y += fnt->max_height;
+			
+			#define MAX_CH 90
+			int len = strlen(text);
+			p = text;
+			for (int i = 0; i < len; i+= MAX_CH, p += MAX_CH)
+			{
+			    TextOutN(screen, GAP*4, y, p, MAX_CH);
+			    y += fnt->max_height;
+			}
 		}
 	}
 	if (scroll_enabled || expanded_top_n > 0) {
@@ -304,7 +315,7 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 	w = 0;
 	sw = 0;
 	for (int i = 0; i < ASIZE(payout_kind); i++) {
-		sprintf(ss[i], "%.1lld.%.2lld", s[i] / 100, s[i] % 100);
+		sprintf(ss[i], "%.1lld.%.2lld", (long long)s[i] / 100, (long long)s[i] % 100);
 		int tw = TextWidth(fnt, payout_kind[i]);
 		if (tw > w)
 			w = tw;
@@ -343,7 +354,7 @@ static int cheque_draw_cheque(C *c, int n, int start_y, bool doc_info_collapsed_
 }
 
 static int vln_printf(char *buffer, int64_t v) {
-	return sprintf(buffer, "%.lld.%.2lld", v / 100, v % 100);
+	return sprintf(buffer, "%.lld.%.2lld", (long long)v / 100, (long long)v % 100);
 }
 
 static int cheque_draw_sum(int start_y) {
@@ -442,7 +453,7 @@ static int cheque_main_draw() {
 	int y = 8;
 	if (first) {
 		char title[256];
-		sprintf(title, "‚α¥£® η¥ª®Ά: %d β¥ªγι ο αβΰ ­¨ζ  (α %d ―® %d η¥ª)",
+		sprintf(title, "‚α¥£® η¥ª®Ά: %zd β¥ªγι ο αβΰ ­¨ζ  (α %d ―® %zd η¥ª)",
 			_ad->clist.count, first_n + 1, MIN(first_n + MAX_CHEQUE_PER_PAGE, _ad->clist.count));
 
 		draw_title(screen, fnt, title);
@@ -641,7 +652,7 @@ static void select_phone_or_email() {
 	for (size_t i = 0; i < _ad->emails.count; i++, n++)
 		items[n] = _ad->emails.values[i];
 
-	sprintf(title, "’¥«. ¨«¨ e-mail (%d):", item_count);
+	sprintf(title, "’¥«. ¨«¨ e-mail (%zd):", item_count);
 
 	BEGIN_FORM(form, "‚Ά®¤ β¥«¥δ®­  ¨«¨ e-mail ―®«γη β¥«ο η¥ª ")
 		FORM_ITEM_EDIT_COMBOBOX(1008, title, c->pe, FORM_INPUT_TYPE_TEXT, 64,

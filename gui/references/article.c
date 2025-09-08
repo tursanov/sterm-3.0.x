@@ -46,8 +46,12 @@ static const char * str_vats[] =
 	"„‘ 20/120",
 	"„‘ 10/110",
 	"„‘ 0%",
+	"… Ž„‹…†ˆ’ €‹ŽƒŽŽ‹Ž†…ˆž „‘",
 	"„‘ … Ž‹€ƒ€…’‘Ÿ",
-	"… Ž„‹…†ˆ’ €‹ŽƒŽŽ‹Ž†…ˆž „‘"
+	"„‘ 5%",
+	"„‘ 7%",
+	"„‘ 5/105",
+	"„‘ 7/107",
 };
 
 int article_get_text(void *obj, int index, char *text, size_t text_size) {
@@ -74,7 +78,8 @@ int article_get_text(void *obj, int index, char *text, size_t text_size) {
 			snprintf(text, text_size, "%s", str_pay_methods[a->pay_method - 1]);
 			break;			
 		case 3:
-			snprintf(text, text_size, "%.1lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
+			snprintf(text, text_size, "%.1lld.%.2lld",
+				a->price_per_unit / 100LLU, a->price_per_unit % 100LLU);
 			break;
 		case 4:
 			snprintf(text, text_size, "%s", str_vats[a->vat_rate - 1]);
@@ -107,7 +112,8 @@ static void article_free(article_t *a) {
 	free(a);
 }
 
-int article_save(int fd, article_t *a) {
+int article_save(void *arg, article_t *a) {
+	int fd = (int)(intptr_t)arg;
 	uint8_t tax_system = 1;
 	if (SAVE_INT(fd, a->n) < 0 ||
 		save_string(fd, a->name) < 0 ||
@@ -147,7 +153,7 @@ static bool process_article_edit(form_t *form, article_t *a) {
 		int vat_rate;
 		int pay_agent;
 		char *endp;
-		
+
 		form_get_data(form, 1030, 1, &name);
 		//tax_system = form_get_int_data(form, 1055, 0, -1);
 		pay_method = form_get_int_data(form, 1214, 0, -1);
@@ -177,7 +183,9 @@ static bool process_article_edit(form_t *form, article_t *a) {
 				fa_show_error(form, 1079, "–¥­  §  ¥¤. ¯à¥¤¬¥â  à áç¥â  ¢¢¥¤¥­  ­¥¢¥à­®");
 			else {
 				a->price_per_unit = (uint64_t)((v + 0.009) * 100.0);
-				if (a->name) free(a->name); a->name = strdup((char *)name.data);
+				if (a->name)
+					free(a->name);
+				a->name = strdup((char *)name.data);
 				a->name[name.size] = 0;
 				//a->tax_system = (1 << tax_system);
 				a->pay_method = pay_method + 1;
@@ -214,7 +222,7 @@ void destroy_agent_info_list(char **l) {
 	free(l);
 }
 
-void* create_new_article(data_source_t *ds) {
+void* create_new_article(data_source_t *ds __attribute__((unused))) {
 	article_t *a = NULL;
 	form_t *form = NULL;
 	char **agent_info_list = create_agent_info_list();
@@ -247,12 +255,12 @@ void* create_new_article(data_source_t *ds) {
 	return a;
 }
 
-int edit_article(data_source_t *ds, void *obj) {
+int edit_article(data_source_t *ds __attribute__((unused)), void *obj) {
 	int ret = -1;
 	article_t *a = (article_t *)obj;
 	form_t *form = NULL;
 //	int tax_system = get_bit(a->tax_system);
-	char price_per_unit[17];
+	char price_per_unit[32];
 	char **agent_info_list = create_agent_info_list();
 	int pay_agent_index = 0;
 
@@ -266,7 +274,8 @@ int edit_article(data_source_t *ds, void *obj) {
 	else
 		pay_agent_index++;
 
-	sprintf(price_per_unit, "%.1lld.%.2lld", a->price_per_unit / 100, a->price_per_unit % 100);
+	sprintf(price_per_unit, "%.1lld.%.2lld",
+		a->price_per_unit / 100LLU, a->price_per_unit % 100LLU);
 
 	BEGIN_FORM(form, "ˆ§¬¥­¨âì ¤ ­­ë¥ â®¢ à /à ¡®âë/ãá«ã£¨")
 		FORM_ITEM_EDIT_TEXT(1030, " ¨¬¥­®¢ ­¨¥:", a->name, FORM_INPUT_TYPE_TEXT, 128)
@@ -293,7 +302,7 @@ int edit_article(data_source_t *ds, void *obj) {
 
 extern void on_newcheque_article_removed(article_t *a);
 
-int remove_article(data_source_t *ds, void *obj) {
+int remove_article(data_source_t *ds __attribute__((unused)), void *obj) {
 	on_newcheque_article_removed((article_t *)obj);
 	return 0;
 }

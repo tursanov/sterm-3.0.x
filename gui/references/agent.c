@@ -57,7 +57,8 @@ static void agent_free(agent_t *a) {
 	free(a);
 }
 
-int agent_save(int fd, agent_t *a) {
+int agent_save(void *arg, agent_t *a) {
+	int fd = (int)(intptr_t)arg;
 	if (SAVE_INT(fd, a->n) < 0 ||
 		save_string(fd, a->name) < 0 ||
 		save_string(fd, a->inn) < 0 ||
@@ -163,18 +164,40 @@ static bool process_agent_edit(form_t *form, agent_t *a) {
 			ok = fa_check_field(form, &supplier_phone, 1171, "Поле \"Телефон поставщика\" не заполнено");
 
 		if (ok) {
-			if (a->name) free(a->name); a->name = strdup((char *)name.data);
-			if (a->inn) free(a->inn); a->inn = strdup((char *)inn.data);
-			if (a->description) free(a->description); a->description = strdup((char *)description.data);
+			if (a->name)
+				free(a->name);
+			a->name = strdup((char *)name.data);
+			if (a->inn)
+				free(a->inn);
+			a->inn = strdup((char *)inn.data);
+			if (a->description)
+				free(a->description);
+			a->description = strdup((char *)description.data);
 			a->pay_agent = pay_agent;
-			if (a->transfer_operator_phone) free(a->transfer_operator_phone); a->transfer_operator_phone = strdup((char *)transfer_operator_phone.data);
-			if (a->pay_agent_operation) free(a->pay_agent_operation); a->pay_agent_operation = strdup((char *)pay_agent_operation.data);
-			if (a->pay_agent_phone) free(a->pay_agent_phone); a->pay_agent_phone = strdup((char *)pay_agent_phone.data);
-			if (a->payment_processor_phone) free(a->payment_processor_phone); a->payment_processor_phone = strdup((char *)payment_processor_phone.data);
-			if (a->money_transfer_operator_name) free(a->money_transfer_operator_name); a->money_transfer_operator_name = strdup((char *)money_transfer_operator_name.data);
-			if (a->money_transfer_operator_address) free(a->money_transfer_operator_address); a->money_transfer_operator_address = strdup((char *)money_transfer_operator_address.data);
-			if (a->money_transfer_operator_inn) free(a->money_transfer_operator_inn); a->money_transfer_operator_inn = strdup((char *)money_transfer_operator_inn.data);
-			if (a->supplier_phone) free(a->supplier_phone); a->supplier_phone = strdup((char *)supplier_phone.data);
+			if (a->transfer_operator_phone)
+				free(a->transfer_operator_phone);
+			a->transfer_operator_phone = strdup((char *)transfer_operator_phone.data);
+			if (a->pay_agent_operation)
+				free(a->pay_agent_operation);
+			a->pay_agent_operation = strdup((char *)pay_agent_operation.data);
+			if (a->pay_agent_phone)
+				free(a->pay_agent_phone);
+			a->pay_agent_phone = strdup((char *)pay_agent_phone.data);
+			if (a->payment_processor_phone)
+				free(a->payment_processor_phone);
+			a->payment_processor_phone = strdup((char *)payment_processor_phone.data);
+			if (a->money_transfer_operator_name)
+				free(a->money_transfer_operator_name);
+			a->money_transfer_operator_name = strdup((char *)money_transfer_operator_name.data);
+			if (a->money_transfer_operator_address)
+				free(a->money_transfer_operator_address);
+			a->money_transfer_operator_address = strdup((char *)money_transfer_operator_address.data);
+			if (a->money_transfer_operator_inn)
+				free(a->money_transfer_operator_inn);
+			a->money_transfer_operator_inn = strdup((char *)money_transfer_operator_inn.data);
+			if (a->supplier_phone)
+				free(a->supplier_phone);
+			a->supplier_phone = strdup((char *)supplier_phone.data);
 			return true;
 		}
 	}
@@ -182,7 +205,7 @@ static bool process_agent_edit(form_t *form, agent_t *a) {
 	return ok;
 }
 
-void* create_new_agent(data_source_t *ds) {
+void* create_new_agent(data_source_t *ds __attribute__((unused))) {
 	agent_t *a = NULL;
 	form_t *form = NULL;
 	BEGIN_FORM(form, "Новый поставщик")
@@ -218,7 +241,7 @@ void* create_new_agent(data_source_t *ds) {
 	return a;
 }
 
-int edit_agent(data_source_t *ds, void *obj) {
+int edit_agent(data_source_t *ds __attribute__((unused)), void *obj) {
 	int ret = -1;
 	agent_t *a = (agent_t *)obj;
 	form_t *form = NULL;
@@ -250,7 +273,7 @@ int edit_agent(data_source_t *ds, void *obj) {
 	return ret;
 }
 
-int remove_agent(data_source_t *ds, void *obj) {
+int remove_agent(data_source_t *ds __attribute__((unused)), void *obj) {
 	agent_t *agent = (agent_t *)obj;
 	for (list_item_t *li = articles.head; li; li = li->next) {
 		article_t *a = LIST_ITEM(li, article_t);
@@ -334,7 +357,6 @@ int get_agent_id_by_index(int index) {
 	}
 	return -1;
 }
-
 
 void fa_agents() {
 

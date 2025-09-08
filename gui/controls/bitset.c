@@ -14,8 +14,9 @@ typedef struct bitset_t {
 	char *text;
 	char **short_items;
 	char **items;
+	uint8_t *bits;
 	int tmp_value;
-	int value;
+	intptr_t value;
 	size_t item_count;
 	bool expanded;
 	int dropdown_y;
@@ -35,7 +36,7 @@ bool bitset_is_empty(bitset_t *bitset);
 
 
 control_t* bitset_create(int id, GCPtr gc, int x, int y, int width, int height,
-	const char **short_items, const char **items, size_t item_count, int value)
+	const char **short_items, const char **items, uint8_t *bits, size_t item_count, int value)
 {
     bitset_t *bitset = (bitset_t *)malloc(sizeof(bitset_t));
     control_api_t api = {
@@ -56,12 +57,14 @@ control_t* bitset_create(int id, GCPtr gc, int x, int y, int width, int height,
 	bitset->item_count = item_count;
 	bitset->short_items = (char **)malloc(sizeof(char *) * item_count);
 	bitset->items = (char **)malloc(sizeof(char *) * item_count);
+	bitset->bits = (uint8_t *)malloc(sizeof(uint8_t) * item_count);
 	bitset->expanded = false;
 
 	size_t text_size = 0;
 	for (size_t i = 0; i < bitset->item_count; i++) {
 		bitset->short_items[i] = strdup(short_items[i]);
 		bitset->items[i] = strdup(items[i]);
+		bitset->bits[i] = bits[i];
 		text_size += strlen(short_items[i]) + 1;
 	}
 
@@ -93,6 +96,7 @@ void bitset_destroy(bitset_t *bitset) {
 		}
 		free(bitset->items);
 		free(bitset->short_items);
+		free(bitset->bits);
 	}
 
 	free(bitset->text);
@@ -107,7 +111,7 @@ static void bitset_draw_normal(bitset_t *bitset) {
 
 	char *s = bitset->text;
 	for (size_t i = 0; i < bitset->item_count; i++)
-		if (bitset->value & (1 << i))
+		if (bitset->value & bitset->bits[i])
 			s += sprintf(s, "%s%s", s != bitset->text ? "," : "",
 				bitset->short_items[i]);
 	*s = 0;
@@ -192,10 +196,10 @@ bool bitset_handle(bitset_t *bitset, const struct kbd_event *e) {
 				bitset->expanded = true;
 				bitset->tmp_value = bitset->value;
 			} else if (e->key == KEY_SPACE) {
-				if (bitset->tmp_value & (1 << bitset->selected_index))
-					bitset->tmp_value &= ~(1 << bitset->selected_index);
+				if (bitset->tmp_value & bitset->bits[bitset->selected_index])
+					bitset->tmp_value &= ~bitset->bits[bitset->selected_index];
 				else
-					bitset->tmp_value |= (1 << bitset->selected_index);
+					bitset->tmp_value |= bitset->bits[bitset->selected_index];
 			} else if (e->key == KEY_ENTER) {
 				bitset->value = bitset->tmp_value;
 				goto L1;
@@ -210,6 +214,7 @@ L1:
 			control_refresh_parent(&bitset->control);
 			return true;
 		}
+		__fallthrough__;
 	case KEY_TAB:
 		return bitset->expanded;
 	case KEY_DOWN:
@@ -242,10 +247,11 @@ bool bitset_get_data(bitset_t *bitset, int what, data_t *data) {
 	return false;
 }
 
-bool bitset_set_data(bitset_t *bitset, int what, const void *data, size_t data_len) {
+bool bitset_set_data(bitset_t *bitset, int what, const void *data,
+		size_t data_len __attribute__((unused))) {
 	switch (what) {
 	case 0:
-		bitset->value = (int)data;
+		bitset->value = (intptr_t)data;
 		bitset_draw(bitset);
 		return true;
 	}
