@@ -51,7 +51,7 @@ static bool should_load_pattern(const char *line, uint64_t target_inn, bool *is_
     inn_str[inn_len] = '\0';
     
     uint64_t file_inn;
-    if (sscanf(inn_str, "%lu", &file_inn) != 1) return false;
+    if (sscanf(inn_str, "%llu", &file_inn) != 1) return false;
     
     *is_default = (file_inn == 0);
     return (*is_default || file_inn == target_inn);
@@ -253,7 +253,7 @@ void kkt_reload_patterns(uint64_t inn) {
         return;
     }
     
-    printf("Загружаем шаблоны для ИНН %lu...\n", inn);
+    printf("Загружаем шаблоны для ИНН %llu...\n", inn);
     
     char line[MAX_LINE_LENGTH];
     while (fgets(line, sizeof(line), file)) {

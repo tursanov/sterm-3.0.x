@@ -214,7 +214,7 @@ static void lvform_set_selected_index(lvform_t *lvform, int index) {
 }
 
 static void lvform_next_element(lvform_t *lvform, bool prev) {
-	int old = active_element;
+	//int old = active_element;
 	if (!prev) {
 		if (active_element == 4)
 			active_element = 0;
