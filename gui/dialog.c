@@ -34,7 +34,7 @@
 /* Максимальная длина строки текста в окне */
 #define DLG_MAX_STR_LEN		80	//60
 /* Максимальное число строк в диалоговом окне */
-#define DLG_MAX_LINES		35
+#define DLG_MAX_LINES		50
 /* Горизонтальный размер диалогового окна */
 #define DLG_WIDTH		(DLG_MAX_STR_LEN + 2 * DLG_HMARGIN)
 /* Минимальная высота диалогового окна */
@@ -274,7 +274,7 @@ static void draw_dlg(struct dlg_win *dlg)
 		TextOut(pGC, x, y, str);
 		y += pFont->max_height;
 		line++;
-	}	
+	}
 	DeleteGC(pGC);
 	draw_dlg_buttons(dlg);
 }

@@ -3138,7 +3138,7 @@ static void show_kkt_info(void)
 		return;
 	}
 	fa_get_reregistration_data();
-	static char txt[4096];
+	static char txt[8192];
 	snprintf(txt, sizeof(txt),
 			"%29s: \"%s\"\n"	/* ККТ */
 			"%29s:  %s\n"		/* Заводской номер ККТ */
@@ -3151,7 +3151,7 @@ static void show_kkt_info(void)
 			"%29s:  %s\n"		/* Фаза жизни ФН */
 			"%29s:  %s\n"		/* Текущий документ */
 			"%29s:  %s (%u)\n"	/* Смена */
-			"%29s:  %lu\n"		/* ИНН кассира */
+			"%29s:  %llu\n"		/* ИНН кассира */
 			"%29s:  %s\n"		/* Предупреждения */
 			"%29s:  %u (%s %s)\n"	/* Последний сформ. документ */
 			"%29s:  %s\n"		/* Без квитанции ОФД */
@@ -3228,6 +3228,7 @@ static void show_kkt_info(void)
 	scr_visible = false;
 	set_term_busy(true);
 	ClearScreen(clBlack);
+
 	message_box("ККТ и ФН", txt, dlg_none, 0, al_left);
 	online = true;
 	pop_term_info();
