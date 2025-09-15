@@ -8,9 +8,11 @@
 #include <sys/times.h>
 #include <sys/types.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <regex.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -2849,6 +2851,70 @@ static void show_cheque_fa(void)
 	show_fa_with_arg(cmd_cheque_fa);
 }
 
+static time_t jul_date_to_unix_date(const char *jul_date)
+{
+	if ((jul_date == NULL) || (strlen(jul_date) != 5))
+		return -1;
+	struct tm tm;
+	if (sscanf(jul_date, "%2u%3u", &tm.tm_year, &tm.tm_mday) != 2)
+		return -1;
+	tm.tm_year += 100;
+	tm.tm_mon = 0;
+	tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
+	tm.tm_yday = tm.tm_wday = 0;
+	tm.tm_isdst = -1;
+	return mktime(&tm);
+}
+
+static regex_t reg;
+
+static int pattern_selector(const struct dirent *entry)
+{
+	return regexec(&reg, entry->d_name, 0, NULL, 0) == REG_NOERROR;
+}
+
+#define PATTERNS_REGEX	"^S00[0-9]{5}$"
+
+static const char *get_local_patterns_ver(void)
+{
+	const char *ret = NULL;
+	static char ver[6];
+	int rc = regcomp(&reg, PATTERNS_REGEX, REG_EXTENDED | REG_NOSUB);
+	if (rc != REG_NOERROR)
+		return ret;
+	struct dirent **names;
+	int n = scandir(PATTERNS_FOLDER, &names, pattern_selector, alphasort);
+	if (n == 1){
+		snprintf(ver, sizeof(ver), "%s", names[0]->d_name + 3);
+		ret = ver;
+	}
+	if (n > 0)
+		free(names);
+	regfree(&reg);
+	return ret;
+}
+
+static const char *get_kkt_patterns_ver(void)
+{
+	static char patterns_dt[19];
+	const char *patterns_ver = get_local_patterns_ver();
+	struct tm *patterns_tm = NULL;
+	if (patterns_ver != NULL){
+		time_t t = jul_date_to_unix_date(patterns_ver);
+		if (t != -1)
+			patterns_tm = localtime(&t);
+	}
+	if (patterns_ver == NULL)
+		snprintf(patterns_dt, sizeof(patterns_dt), "неизвестно");
+	else if (patterns_tm == NULL)
+		snprintf(patterns_dt, sizeof(patterns_dt), "%s (неизвестно)", patterns_ver);
+	else
+		snprintf(patterns_dt, sizeof(patterns_dt), "%s (%.2u.%.2u.%.4u)",
+			patterns_ver, patterns_tm->tm_mday, patterns_tm->tm_mon + 1,
+			patterns_tm->tm_year + 1900);
+	return patterns_dt;
+}
+
 /* Вывод на экран информации о терминале */
 static void show_term_info(void)
 {
@@ -2869,6 +2935,7 @@ static void show_term_info(void)
 		_s(STERM_VERSION_MINOR) "." _s(STERM_VERSION_RELEASE) "\n"
 		"%29s:  %.4hX\n"
 		"%29s:  %.*s\n"
+		"%29s:  %s\n"
 		"%29s:  %s (%s)\n"
 		"%29s:  %s\n"
 		"%29s:  %s\n"
@@ -2877,6 +2944,7 @@ static void show_term_info(void)
 		"Терминал", "Код версии",
 		"CRC", term_check_sum,
 		"Серийный номер", sizeof(tn), tn,
+		"Шаблоны печати ФД", get_kkt_patterns_ver(),
 		"IP хост-ЭВМ", inet_ntoa(dw2ip(get_x3_ip())),
 		cfg.use_p_ip ? "осн." : "доп.",
 		"Лицензия ИПТ", bank_ok ? "Есть" : "Нет",
@@ -3142,7 +3210,8 @@ static void show_kkt_info(void)
 	snprintf(txt, sizeof(txt),
 			"%29s: \"%s\"\n"	/* ККТ */
 			"%29s:  %s\n"		/* Заводской номер ККТ */
-			"%29s:  %s\n"		/* Версия ПО */
+			"%29s:  %s, "		/* Версия ПО */
+			"%15s: %s\n"		/* Шаблоны печати ФД */
 			"%29s:  %s\n\n"		/* Показания RTC */
 
 			"%29s:  %s\n"		/* Заводской номер ФН */
@@ -3181,6 +3250,7 @@ static void show_kkt_info(void)
 		"ККТ", kkt->name,
 		"Заводской номер ККТ", (kkt_nr == NULL) ? "НЕ УСТАНОВЛЕН" : kkt_nr,
 		"Версия ПО", (kkt_ver == NULL) ? "НЕИЗВЕСТНО" : kkt_ver,
+		"Шаблоны печати ФД", get_kkt_patterns_ver(),
 		"Показания RTC", rtc_ok ? fs_rtc_str(&rtc) : "НЕИЗВЕСТНО",
 		"Заводской номер ФН", (kkt_fs_nr == NULL) ? "НЕИЗВЕСТНО" : kkt_fs_nr,
 		"Версия ФН", fs_version.version,

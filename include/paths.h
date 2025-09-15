@@ -31,5 +31,7 @@
 #define SIG_FILE_NAME		_("auxdata.sig")
 /* Имя файла признака работы в пригородном режиме */
 #define LOCAL_FLAG_NAME		_(".wm_local")
+/* Каталог с шаблонами печати ФД на ККТ */
+#define PATTERNS_FOLDER		_("patterns")
 
 #endif		/* PATHS_H */
