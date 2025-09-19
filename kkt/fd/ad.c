@@ -144,7 +144,9 @@ void op_doc_no_copy(op_doc_no_t *dst, op_doc_no_t *src) {
 	dst->s = COPYSTR(src->s);
 }
 
-void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1, const char *op, doc_no_t *d2) {
+void op_doc_no_set(op_doc_no_t *dst, doc_no_t *d1,
+		__attribute__((__unused__)) const char *op,
+		__attribute__((__unused__)) doc_no_t *d2) {
 	if (dst->s) {
 		free(dst->s);
 		dst->s = NULL;
@@ -389,7 +391,7 @@ static int64_t K_calc_total_sum_by_P(K *k, int p) {
 }
 
 
-static int L_compare(void *arg, L *l1, L *l2) {
+static int L_compare(__attribute__((__unused__)) void *arg, L *l1, L *l2) {
 	if (strcmp2(l1->s, l2->s) == 0 &&
 		l1->r == l2->r &&
 		l1->t == l2->t &&
