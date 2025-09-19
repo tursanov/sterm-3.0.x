@@ -526,6 +526,15 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 		newcheque.agent_data_size = 0;
 		newcheque.agent_data = NULL;
 	}
+	
+	if (newcheque.client) {
+	    free(newcheque.client);
+	    newcheque.client = NULL;
+	}
+	if (newcheque.client_inn) {
+	    free(newcheque.client_inn);
+	    newcheque.client_inn = NULL;
+	}
 
 	newcheque.dsum[0] = 
 	newcheque.dsum[1] = 
@@ -612,6 +621,16 @@ static bool read_doc(window_t *parent, window_t *win, uint32_t doc_no) {
 			newcheque.dsum[4] = ffd_tlv_data_as_vln(tlv);
 			if (newcheque.dsum[4] > 0)
 				pay_kind = (pay_kind < 0) ? 4 : 5;
+		} else if (tlv->tag == 1227) {
+		    newcheque.client = (char *)malloc(tlv->length + 1);
+		    memcpy(newcheque.client, FFD_TLV_DATA(tlv), tlv->length);
+		    newcheque.client[tlv->length] = 0;
+			window_set_data(parent, 1227, 0, newcheque.client, tlv->length);
+		} else if (tlv->tag == 1228) {
+		    newcheque.client_inn = (char *)malloc(tlv->length + 1);
+		    memcpy(newcheque.client_inn, FFD_TLV_DATA(tlv), tlv->length);
+		    newcheque.client_inn[tlv->length] = 0;
+			window_set_data(parent, 1228, 0, newcheque.client_inn, tlv->length);
 		}
 
 		ptr += FFD_TLV_SIZE(tlv);
@@ -729,6 +748,14 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 	control_t *c;
 	if (!e->pressed)
 		return true;
+		
+    if (e->key == KEY_NUMMUL || (e->key == KEY_8 && (e->shift_state & SHIFT_CTRL)))
+    {
+		c = window_get_focus(w);
+		if (c && c->id == 9997)
+			article_from_cheque_new(w);
+        return true;
+    }
 
 	switch (e->key) {
 		case KEY_NUMPLUS:
@@ -737,11 +764,6 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 			if (c && c->id == 9997)
 				article_new(w);
 			break;
-		case KEY_NUMMUL:
-			c = window_get_focus(w);
-			if (c && c->id == 9997)
-				article_from_cheque_new(w);
-			break;
 		case KEY_MINUS:
 		case KEY_NUMMINUS:
 			c = window_get_focus(w);
@@ -749,6 +771,7 @@ bool newcheque_process(window_t *w, const struct kbd_event *e) {
 				article_delete(w);
 			break;
 	}
+	
 	return true;
 }
 
@@ -890,7 +913,7 @@ static void newcheque_show_op(window_t *w, const char *title) {
 	DrawText(screen, 100, 240, DISCX - 100*2, DISCY - 240*2, title, DT_CENTER | DT_VCENTER);
 }
 
-/*static agent_t *get_newcheque_agent() {
+static agent_t *get_newcheque_agent() {
 	agent_t *cheque_agent = NULL;
 	bool first = true;
 
@@ -912,7 +935,7 @@ static void newcheque_show_op(window_t *w, const char *title) {
 	}
 
 	return cheque_agent;
-}*/
+}
 
 bool newcheque_print(window_t *w) {
 	data_t cashier;
@@ -952,7 +975,7 @@ bool newcheque_print(window_t *w) {
 	cheque_article_t *ca = LIST_ITEM(newcheque.articles.head, cheque_article_t);
 	article_group_params_t p = { ca->article ? ca->article->pay_agent : 0 };
 	uint64_t sum = 0;
-//	agent_t *agent = get_newcheque_agent();
+	agent_t *agent = get_newcheque_agent();
 
 	printf("cashier: %s\n", cashier_get_cashier());
 
@@ -975,8 +998,8 @@ bool newcheque_print(window_t *w) {
 		ffd_tlv_add_string(1086, _ad->t1086);
 		ffd_tlv_stlv_end();
 	}
-
-	//const char *supplier_phone = agent != NULL ? agent->supplier_phone : NULL;
+	
+	const char *supplier_phone = agent != NULL ? agent->supplier_phone : NULL;
 
 	if (newcheque.add_info && newcheque.add_info[0])
 		ffd_tlv_add_string(1192, newcheque.add_info);
@@ -1034,7 +1057,7 @@ bool newcheque_print(window_t *w) {
 		}
 		ffd_tlv_stlv_end();
 		sum += ca->sum;
-		printf("sum: %lld\n", ca->sum);
+		printf("sum: %ld\n", ca->sum);
 	}
 
 /*	if (agent != NULL) {
