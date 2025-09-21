@@ -1302,9 +1302,9 @@ void fa_cheque() {
 						} else if (l->i != user_inn) {
 							char inn[12+1];
 							if (c->p > 9999999999ll)
-								sprintf(inn, "%.12ld", l->i);
+								sprintf(inn, "%.12lld", l->i);
 							else
-								sprintf(inn, "%.10ld", l->i);
+								sprintf(inn, "%.10lld", l->i);
 							ffd_tlv_add_fixed_string(1226, inn, 12);
 							
 							if (support_1222_1224_1225)
