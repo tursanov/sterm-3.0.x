@@ -1028,7 +1028,7 @@ static int fa_cheque_corr_2() {
 			fa_tlv_add_vln_ex(form, 1105, false, &vat_flags, 3) != 0 ||
 			fa_tlv_add_vln_ex(form, 1106, false, &vat_flags, 4) != 0 ||
 			fa_tlv_add_vln_ex(form, 1107, false, &vat_flags, 5) != 0)
-			continue;
+			return 1;
 			
         int64_t vat5 = fa_form_get_vln(form, 1108);
         int64_t vat7 = fa_form_get_vln(form, 1109);
@@ -1038,19 +1038,19 @@ static int fa_cheque_corr_2() {
         if (vat5 >= 0 || vat7 >= 0 || vat5_105 >= 0 || vat7_107 >= 0)
         {
     		if (ffd_tlv_stlv_begin(1115, 360) != 0)
-    		    continue;
+    		    return 1;
     		    
             if (vat5 >= 0 && fa_add_new_vat(7, vat5) != 0)
-                continue;
+    		    return 1;
             if (vat7 >= 0 && fa_add_new_vat(8, vat7) != 0)
-                continue;
+    		    return 1;
             if (vat5_105 >= 0 && fa_add_new_vat(9, vat5_105) != 0)
-                continue;
+    		    return 1;
             if (vat7_107 >= 0 && fa_add_new_vat(10, vat7_107) != 0)
-                continue;
+    		    return 1;
 			
 			if (ffd_tlv_stlv_end() != 0)
-			    continue;
+    		    return 1;
             
             vat_flags = 1;
         }
@@ -1058,13 +1058,14 @@ static int fa_cheque_corr_2() {
 
 		if (vat_flags == 0) {
 			fa_show_error(form, 1102, "Для данного документа должно быть заполнено хотя бы одно поле с НДС");
-			continue;
+   		    return 1;
 		}
 		
 //      dump_current_tlv();
 
 		if (fa_create_doc(CHEQUE_CORR, NULL, 0, update_form, form))
-			return 1;
+			return 2;
+        return 1;
 	}
 	
 	return 0;
@@ -1164,8 +1165,7 @@ void fa_cheque_corr() {
         fa_tlv_add_string(form, 1227, false);
         fa_tlv_add_fixed_string(form, 1228, 12, false);
 			
-			
-		if (fa_cheque_corr_2() == 1) {
+		if (fa_cheque_corr_2() == 2) {
 			break;
 		}
 		
@@ -1177,7 +1177,8 @@ void fa_cheque_corr() {
 	fa_set_group(FAPP_GROUP_MENU);
 }
 
-/*static size_t get_phone(char *src, char *dst) {
+#if 0
+static size_t get_phone(char *src, char *dst) {
 	if (src == NULL)
 		return 0;
 	char ch = *src;
@@ -1199,7 +1200,8 @@ void fa_cheque_corr() {
 	*dst = 0;
 
 	return len;
-}*/
+}
+#endif
 
 void fa_cheque() {
 //	bool changed = false;
@@ -1236,9 +1238,9 @@ void fa_cheque() {
 			ffd_tlv_add_vln(1217, (uint64_t)c->sum.b);
 
 			char agent_phone[19+1];
-			//char phone[19+1];
-			//bool is_same_agent;
-			// bool attr = kkt_has_param("COMP1057WO1171");
+/*			char phone[19+1];
+			bool is_same_agent;
+			bool attr = kkt_has_param("COMP1057WO1171");*/
 /*			if (C_is_agent_cheque(c, user_inn, agent_phone, &is_same_agent)) {
 				ffd_tlv_add_uint8(1057, 1 << 6);
 
@@ -1300,9 +1302,9 @@ void fa_cheque() {
 						} else if (l->i != user_inn) {
 							char inn[12+1];
 							if (c->p > 9999999999ll)
-								sprintf(inn, "%.12lld", l->i);
+								sprintf(inn, "%.12ld", l->i);
 							else
-								sprintf(inn, "%.10lld", l->i);
+								sprintf(inn, "%.10ld", l->i);
 							ffd_tlv_add_fixed_string(1226, inn, 12);
 							
 							if (support_1222_1224_1225)
