@@ -429,7 +429,7 @@ static uint8_t *check_prom(uint8_t *txt, int l, int *ecode, int dst)
 					}else if (!check_attr(p[0], p[1])){
 						*ecode = E_ILLATTR;
 						return p;
-					}else if (dst != dst_text){
+					}else if (dst != dst_scr){
 						*ecode = E_MISPLACE;
 						return p - 2;
 					}
@@ -724,7 +724,7 @@ static int get_dest(uint8_t b)
 	int ret = dst_none;
 	switch (b){
 		case X_SCR:
-			ret = dst_text;
+			ret = dst_scr;
 			break;
 		case X_XPRN:
 			ret = dst_xprn;
@@ -1016,7 +1016,7 @@ static uint8_t *check_para(uint8_t *txt, int l, int *ecode, int n_para)
 					if ((p + 2) > eptr){
 						*ecode = E_NOPEND;
 						return eptr - 1;
-					}else if (dst != dst_text){
+					}else if (dst != dst_scr){
 						*ecode = E_MISPLACE;
 						return p - 2;
 					}else if (!check_attr(p[0], p[1])){
@@ -1470,7 +1470,7 @@ int n_unhandled(void)
 /* Можно ли вывести абзац на экран */
 bool can_show(int dst)
 {
-	return	(dst == dst_text) || (dst == dst_xprn) ||
+	return	(dst == dst_scr) || (dst == dst_xprn) ||
 		(dst == dst_aprn) || (dst == dst_lprn) ||
 		(dst == dst_out) || (dst == dst_log);
 }
@@ -1801,7 +1801,7 @@ static void preexecute_resp(void)
 					log_para++;
 				}
 				break;
-			case dst_text:
+			case dst_scr:
 				if (transition_flag != -1)
 					transition_flag++;
 		}

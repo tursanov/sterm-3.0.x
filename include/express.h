@@ -88,19 +88,19 @@
 
 /* Устройство для вывода абзаца ответа */
 enum {
-	dst_none,
-	dst_sys,
-	dst_text,
+	dst_none,	/* нет */
+	dst_sys,	/* псевдоабзац (Ар2 5, Ар2 D, Ар2 \, Ар2 Z */
+	dst_scr,	/* экран */
 	dst_xprn,	/* ОПУ */
 	dst_aprn,	/* ДПУ */
 	dst_lprn,	/* ППУ */
-	dst_out,
-	dst_qout,
-	dst_hash,
-	dst_keys,
-	dst_bank,
-	dst_log,
-	dst_kkt,
+	dst_out,	/* ОЗУ заказа */
+	dst_qout,	/* ОЗУ заказа без вывода на экран */
+	dst_hash,	/* ОЗУ констант */
+	dst_keys,	/* ОЗУ ключей */
+	dst_bank,	/* ИПТ */
+	dst_log,	/* КЛ1 */
+	dst_kkt,	/* ККТ */
 };
 
 /* Информация об абзаце ответа */
