@@ -948,18 +948,23 @@ static uint8_t *check_kkt_xml(uint8_t *txt, int l, int *ecode)
 }
 
 /* Проверка абзаца ответа */
-static uint8_t *check_para(uint8_t *txt, int l, int *ecode)
+static uint8_t *check_para(uint8_t *txt, int l, int *ecode, int n_para)
 {
 	uint8_t *p, *pp, *eptr, b;
 	int dst = get_dest(txt[-1]);
 	bool has_warray = false;
-	*ecode = E_OK;
-	if ((txt == NULL) || (l <= 0))
+	if ((txt == NULL) || (l <= 0) || (ecode == NULL) || (n_para < 0)){
+		if (ecode != NULL)
+			*ecode = E_UNKNOWN;
 		return NULL;
-	else if (para_len(txt - resp_buf) > OUT_BUF_LEN){
+	}else if (n_para >= MAX_PARAS){
+		*ecode = E_MANY_PARAS;
+		return txt;
+	}else if (para_len(txt - resp_buf) > OUT_BUF_LEN){
 		*ecode = E_BIGPARA;
 		return txt;
 	}
+	*ecode = E_OK;
 	if (dst == dst_aprn)
 		p = check_aprn(txt, l, ecode);
 	else if (dst == dst_lprn)
@@ -1147,7 +1152,7 @@ uint8_t *check_syntax(uint8_t *txt, int l, int *ecode)
 {
 	bool keys = false;
 	bool has_dst = false;
-	int n_dsts = 0;
+	int n_dsts = 0, n_para = 0;
 	bool has_clear = false;
 	uint8_t *p = txt, *eptr = txt + l, b;
 	*ecode = E_OK;
@@ -1184,6 +1189,7 @@ uint8_t *check_syntax(uint8_t *txt, int l, int *ecode)
 							*ecode = E_CLEAR;
 							return p - 2;
 						}
+						n_para++;
 					}
 					break;
 				case X_80_20:
@@ -1257,7 +1263,7 @@ uint8_t *check_syntax(uint8_t *txt, int l, int *ecode)
 				case X_OUT:
 				case X_QOUT:
 main_chk:				has_dst = true;
-					p = check_para(p, txt + l - p, ecode);
+					p = check_para(p, txt + l - p, ecode, n_para);
 					if (*ecode != E_OK)
 						return p;
 					n_dsts++;
@@ -1273,6 +1279,7 @@ main_chk:				has_dst = true;
 				case X_PARA_END_N:
 				case X_REQ:
 					has_dst = false;
+					n_para++;
 					break;
 				case X_REPEAT:
 				case X_ATTR:
