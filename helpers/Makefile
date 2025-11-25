@@ -54,7 +54,7 @@ depend:
 		@$(CC) $(CFLAGS) -MM $(OBJS:.o=.c) > .depend
 
 chipid:		chipid.o
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
 ## chkrmlic
@@ -73,7 +73,7 @@ CHKRMLIC_OBJS =		\
 	$(addsuffix .o, $(CHKRMLIC_HELPERS_OBJS))
 
 chkrmlic:	$(CHKRMLIC_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^
 
 ## mkbind
@@ -91,7 +91,7 @@ MKBIND_OBJS =		\
 	$(addsuffix .o, $(MKBIND_HELPERS_OBJS))
 
 mkbind:		$(MKBIND_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^
 
 ## mkbnklic
@@ -110,7 +110,7 @@ MKBNKLIC_OBJS =	\
 	$(addsuffix .o, $(MKBNKLIC_HELPERS_OBJS))
 
 mkbnklic:	$(MKBNKLIC_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^
 
 ## mklog
@@ -125,7 +125,7 @@ MKLOG_OBJS =		\
 	$(addsuffix .o, $(MKLOG_HELPERS_OBJS))
 
 mklog:		$(MKLOG_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^
 
 ## mklprnlic
@@ -144,7 +144,7 @@ MKLPRNLIC_OBJS =	\
 	$(addsuffix .o, $(MKLPRNLIC_HELPERS_OBJS))
 
 mklprnlic:	$(MKLPRNLIC_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^
 
 ## mw
@@ -164,7 +164,7 @@ MW_OBJS =		\
 	$(addsuffix .o, $(MW_HELPERS_OBJS))
 
 mw:		$(MW_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^ -static
 
 ## usbload
@@ -183,7 +183,7 @@ USBLOAD_OBJS =		\
 	$(addsuffix .o, $(USBLOAD_HELPERS_OBJS))
 
 usbload:	$(USBLOAD_OBJS)
-		@echo -e "\t$(LD_NAME)   $@"
+		$(LD_BANNER)
 		@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE)
 
 clean:

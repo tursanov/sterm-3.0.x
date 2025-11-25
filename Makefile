@@ -151,7 +151,7 @@ $(SUBDIRS):
 	@$(MAKE) -C $@ -I../ -I../../
 
 sterm:	$(OBJS)
-	@echo -e "\t$(LD_NAME)   $@"
+	$(LD_BANNER)
 	@$(CC) $(CFLAGS) -o $@ $^ $(LINKAGE) -lstdc++
 
 mk_env:
