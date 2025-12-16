@@ -2109,11 +2109,14 @@ bool execute_resp(void)
 		int l = 0;
 		if (jump_next && !lprn_error_shown){
 			jump_next = false;
-			int k = 0;
-			do {
+			for (int k = 0; k < n_paras; k++){
 				cur_para = next_para(cur_para);
-				k++;
-			} while ((k < n_paras) && !can_stop(cur_para));
+				if (prev_handled()){
+					if (can_stop(cur_para))
+						break;
+				}else if (can_show(map[cur_para].dst))
+					break;
+			}
 			parsed = false;
 			ndest_shown = false;
 		}
