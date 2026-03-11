@@ -1,4 +1,5 @@
 ;Соответствие шаблонов печати фискальных документов пользователю ККТ
+;Добавлено описание шаблонов для фискальных документов "БСО" (04) и "БСО коррекции" (41)
 ;В шаблонах типа 3 и 6 для кассового чека и кассового чека коррекции реквизиты "номер смены" и "номер чека за смену" должны быть указаны
 ;В шаблоны типов 4-6 добавлены реквизиты:
 ;-	для поддержки ставок НДС 5%, 7%, 5/105 и 7/107:
@@ -29,6 +30,10 @@
 000000000000=034:cheque_pattern6.dat,035:cheque_pattern5.dat,036:cheque_pattern6.dat
 000000000000=311:cheque_corr_pattern.dat,312:cheque_corr_pattern2-r.dat,313:cheque_corr_pattern.dat
 000000000000=314:cheque_corr_pattern6.dat,315:cheque_corr_pattern5.dat,316:cheque_corr_pattern6.dat
+000000000000=041:cheque_pattern.dat,042:cheque_pattern2-r.dat,043:cheque_pattern.dat
+000000000000=044:cheque_pattern6.dat,045:cheque_pattern5.dat,046:cheque_pattern6.dat
+000000000000=411:cheque_corr_pattern.dat,412:cheque_corr_pattern2-r.dat,413:cheque_corr_pattern.dat
+000000000000=414:cheque_corr_pattern6.dat,415:cheque_corr_pattern5.dat,416:cheque_corr_pattern6.dat
 000000000000=051:close_shift_pattern.dat,052:close_shift_pattern2-r.dat,053:close_shift_pattern.dat
 000000000000=061:close_fs_pattern.dat,062:close_fs_pattern2-r.dat,063:close_fs_pattern.dat
 ;АО «ФПК»
@@ -38,3 +43,9 @@
 7708709686=034:opt_cheque_pattern4QR.dat
 7708709686=035:opt_cheque_pattern5QR.dat
 7708709686=036:opt_cheque_pattern6.dat
+7708709686=041:opt_cheque_patternQR.dat
+7708709686=042:opt_cheque_pattern2QR.dat
+7708709686=043:opt_cheque_pattern3.dat
+7708709686=044:opt_cheque_pattern4QR.dat
+7708709686=045:opt_cheque_pattern5QR.dat
+7708709686=046:opt_cheque_pattern6.dat
